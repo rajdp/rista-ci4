@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="315" height="187" viewBox="0 0 315 187">
+  <g id="Group_16923" data-name="Group 16923" transform="translate(-14694 6541)">
+    <rect id="Rectangle_610" data-name="Rectangle 610" width="315" height="187" rx="5" transform="translate(14694 -6541)" fill="#fff"/>
+    <g id="Group_16922" data-name="Group 16922" transform="translate(-5 -8)">
+      <g id="Group_16918" data-name="Group 16918">
+        <g id="Group_16914" data-name="Group 16914">
+          <g id="Rectangle_730" data-name="Rectangle 730" transform="translate(14719 -6507)" fill="#fff" stroke="#c4c4c4" stroke-width="1">
+            <rect width="110" height="25" rx="2" stroke="none"/>
+            <rect x="0.5" y="0.5" width="109" height="24" rx="1.5" fill="none"/>
+          </g>
+          <g id="Group_16913" data-name="Group 16913" transform="translate(13 0)">
+            <path id="Icon_material-drag-handle" data-name="Icon material-drag-handle" d="M14,13.5H6v1h8Zm-8,3h8v-1H6Z" transform="translate(14705 -6508.5)" fill="#707070"/>
+            <text id="Option_1" data-name="Option 1" transform="translate(14733 -6490)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0">Option 1</tspan></text>
+          </g>
+        </g>
+        <g id="Rectangle_730-2" data-name="Rectangle 730" transform="translate(14884 -6507)" fill="#e1e1e1" stroke="#c4c4c4" stroke-linecap="round" stroke-width="1.5" stroke-dasharray="5">
+          <rect width="110" height="25" rx="2" stroke="none"/>
+          <rect x="0.75" y="0.75" width="108.5" height="23.5" rx="1.25" fill="none"/>
+        </g>
+      </g>
+      <g id="Group_16920" data-name="Group 16920">
+        <g id="Group_16916" data-name="Group 16916" transform="translate(0 110)">
+          <g id="Rectangle_730-3" data-name="Rectangle 730" transform="translate(14719 -6507)" fill="#fff" stroke="#c4c4c4" stroke-width="1">
+            <rect width="110" height="25" rx="2" stroke="none"/>
+            <rect x="0.5" y="0.5" width="109" height="24" rx="1.5" fill="none"/>
+          </g>
+          <g id="Group_16913-2" data-name="Group 16913" transform="translate(13 0)">
+            <path id="Icon_material-drag-handle-2" data-name="Icon material-drag-handle" d="M14,13.5H6v1h8Zm-8,3h8v-1H6Z" transform="translate(14705 -6508.5)" fill="#707070"/>
+            <text id="Option_3" data-name="Option 3" transform="translate(14733 -6490)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0">Option 3</tspan></text>
+          </g>
+        </g>
+        <g id="Rectangle_770" data-name="Rectangle 770" transform="translate(14884 -6397)" fill="#e1e1e1" stroke="#c4c4c4" stroke-linecap="round" stroke-width="1.5" stroke-dasharray="5">
+          <rect width="110" height="25" rx="2" stroke="none"/>
+          <rect x="0.75" y="0.75" width="108.5" height="23.5" rx="1.25" fill="none"/>
+        </g>
+      </g>
+      <g id="Group_16921" data-name="Group 16921">
+        <g id="Group_16919" data-name="Group 16919">
+          <g id="Group_16915" data-name="Group 16915" transform="translate(0 55)">
+            <g id="Rectangle_730-4" data-name="Rectangle 730" transform="translate(14719 -6507)" fill="#fff" stroke="#c4c4c4" stroke-width="1">
+              <rect width="110" height="25" rx="2" stroke="none"/>
+              <rect x="0.5" y="0.5" width="109" height="24" rx="1.5" fill="none"/>
+            </g>
+            <g id="Group_16913-3" data-name="Group 16913" transform="translate(13 0)">
+              <path id="Icon_material-drag-handle-3" data-name="Icon material-drag-handle" d="M14,13.5H6v1h8Zm-8,3h8v-1H6Z" transform="translate(14705 -6508.5)" fill="#707070"/>
+              <text id="Option_2" data-name="Option 2" transform="translate(14733 -6490)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0">Option 2</tspan></text>
+            </g>
+          </g>
+          <g id="Rectangle_769" data-name="Rectangle 769" transform="translate(14884 -6452)" fill="#e1e1e1" stroke="#c4c4c4" stroke-linecap="round" stroke-width="1.5" stroke-dasharray="5">
+            <rect width="110" height="25" rx="2" stroke="none"/>
+            <rect x="0.75" y="0.75" width="108.5" height="23.5" rx="1.25" fill="none"/>
+          </g>
+        </g>
+        <g id="Group_16917" data-name="Group 16917" transform="translate(5 8)">
+          <path id="Icon_ionic-md-arrow-dropdown" data-name="Icon ionic-md-arrow-dropdown" d="M0,5.972,6,0l6,5.972Z" transform="translate(14844 -6441) rotate(-90)" fill="#707070"/>
+          <path id="Icon_ionic-md-arrow-dropdown-2" data-name="Icon ionic-md-arrow-dropdown" d="M0,0,6,5.972,12,0Z" transform="translate(14853.028 -6441) rotate(-90)" fill="#707070"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

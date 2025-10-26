@@ -1,0 +1,712 @@
+<?php
+defined('BASEPATH') or exit('No direct script access allowed');
+header('Access-Control-Allow-Origin: *');
+header("Access-Control-Allow-Headers: AccessToken");
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+
+require APPPATH . '/libraries/REST_Controller.php';
+
+class Book extends REST_Controller
+{
+    protected $jsonarr = array();
+    protected $headers;
+    protected $urlAuth;
+    protected $controller;
+
+    function __construct()
+    {
+        parent::__construct();
+        $this->load->model("book_model");
+        $this->load->model("common_model");
+        $this->load->model("cron_model");
+        $this->load->model("content_model");
+
+        header("Access-Control-Allow-Origin: *");
+        $this->controller = uri_string();
+        $urlAuth = $this->verifyAuthUrl();
+        $headers = $this->input->request_headers();
+        if ($urlAuth) {
+            $excludeurl = $this->excludefunction();
+            if ($excludeurl != 'true') {
+                if (isset($headers['Accesstoken'])) {
+                    $this->output->set_status_header(200);
+                    $headers['Accesstoken'];
+                } else {
+                    $this->jsonarr['ErrorObject'] = "Unauthorized User";
+                    $this->jsonarr['IsSuccess'] = false;
+                    $this->printjson($this->jsonarr);
+                    $this->output->set_status_header(401);
+                    exit();
+                }
+            } else {
+                $this->output->set_status_header(200);
+                return true;
+            }
+        } else {
+            $this->output->set_status_header(200);
+            $this->jsonarr['ErrorObject'] = "The requested url is not found.";
+            $this->jsonarr['IsSuccess'] = false;
+            $this->printjson($this->jsonarr);
+            exit();
+        }
+    }
+
+    public function verifyAuthUrl()
+    {
+        $this->allowedRoutes = array(
+            'v1/book/add',
+            'v1/book/add1',
+            'v1/book/edit',
+            'v1/book/list',
+            'v1/book/bulkUpload'
+        );
+        foreach ($this->allowedRoutes as $routeString) {
+            if ($this->controller == $routeString) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function excludefunction()
+    {
+        $this->excludeRoutes = array();
+        foreach ($this->excludeRoutes as $routeString) {
+            if ($this->controller == $routeString) {
+                return true;
+            }
+        }
+    }
+
+    public function list_post()
+    {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller, $params, $headers);
+        if ($params['platform'] != "web" && $params['platform'] != "ios") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } elseif ($params['role_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+        } elseif ($params['user_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "User Id should not be empty";
+        } else {
+            $this->common_model->createLog($params, 'v1/book/list', 'only request', 'list');
+            $bookList = $this->book_model->bookList($params);
+            if (count($bookList) > 0) {
+                foreach ($bookList as $key => $value) {
+                    if ($bookList[$key]['grade'] != "") {
+                        $bookList[$key]['grade'] = explode(',', $bookList[$key]['grade']);
+                    } else {
+                        $bookList[$key]['grade'] = [];
+                    }
+                    if ($bookList[$key]['subject']) {
+                        $bookList[$key]['subject'] = explode(',', $bookList[$key]['subject']);
+                    } else {
+                        $bookList[$key]['subject'] = [];
+                    }
+                    if ($bookList[$key]['links'] != '') {
+                        $bookList[$key]['links'] = explode(',', $bookList[$key]['links']);
+                    } else {
+                        $bookList[$key]['links'] = [];
+                    }
+                    if (isset($bookList['answerkey_path'])) {
+                        if ($this->config->item('filePathBase64') == true) {
+                            $base64AnswerKey = base64_encode(base64_encode(base64_encode(base64_encode($bookList['answerkey_path']))));
+                        }
+
+
+                        if ($this->config->item('filePathBase64') == true) {
+                            $bookList['answerkey_path'] = $base64AnswerKey;
+                        } else {
+                            if ($bookList['answerkey_path'] != '') {
+                                $bookList['answerkey_path'] = json_decode($bookList['answerkey_path']);
+                            } else {
+                                $bookList['answerkey_path'] = [];
+                            }
+                        }
+                    }
+                }
+            }
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr["ResponseObject"] = $bookList;
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params, 'v1/book/list', $this->jsonarr, 'list');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function edit_post()
+    {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller, $params, $headers);
+        if ($params['platform'] != "web" && $params['platform'] != "ios") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } elseif ($params['role_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+        } elseif ($params['user_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "User Id should not be empty";
+        } elseif ($params['content_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Content id should not be empty";
+        } elseif ($params['name'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Name Id should not be empty";
+        } elseif ($params['status'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Status should not be empty";
+        } elseif ($params['school_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "School id should not be empty";
+        } elseif (count($this->jsonarr) == 0) {
+            $this->common_model->createLog($params, 'v1/book/edit', 'only request', 'edit');
+            $nameIfExists = $this->book_model->checkBookId($params['content_id'], $params['school_id']);
+            if (count($nameIfExists) > 0) {
+                if (isset($params['links']) && count($params['links']) > 0) {
+                    foreach ($params['links'] as $key => $value) {
+                        $params['links'][$key] = str_replace(',', '', $value);
+                    }
+                    $links = implode(',', $params['links']);
+                } else {
+                    $links = "";
+                }
+                $book = array(
+                    'publication_code' => $params['publication_code'],
+                    'name' => $params['name'],
+                    'school_id' => $params['school_id'],
+                    'description' => $params['description'],
+                    'grade' => implode(',', $params['grade']),
+                    'subject' => implode(',', $params['subject']),
+                    'file_path' => $params['file_path'] != '' ? json_encode($params['file_path']) : '',
+                    'answerkey_path' => isset($params['answerkey_path']) && $params['answerkey_path'] != ' ' ? json_encode($params['answerkey_path']) : '',
+                    'base64_data' => $this->base64Conversion($params['file_path']),
+                    'content_type' => $params['content_type'],
+                    'links' => $links,
+                    'access' => $params['access'],
+                    'download' => isset($params['download']) ? $params['download'] : 0,
+                    'status' => $params['status'],
+                    'modified_by' => $params['user_id'],
+                    'modified_date' => date('Y-m-d H:i:s')
+                );
+                $condition = array('content_id' => $nameIfExists[0]['content_id']);
+                $updated = $this->common_model->update('content', $book, $condition);
+                $getTeacher = $this->common_model->getTeacher($params['user_id'], $params['school_id']);
+                if ($params['role_id'] == 4 && $getTeacher['individual_teacher'] != 1) {
+                    switch ($params['content_type']) {
+                        case '1':
+                            $type = 'Resource';
+                            break;
+                        case '2':
+                            $type = 'Assignment';
+                            break;
+                        case '3':
+                            $type = 'Assessment';
+                            break;
+                        default:
+                            $type = '';
+                            break;
+                    }
+                    $records = "Content Name: {$params['name']}<br>Content Type: {$type}<br>Teacher Name: {$getTeacher['teacher_name']}";
+                    $this->emailNotification($params, $params['content_id'], 'edited', $records);
+                }
+                if ($updated) {
+                    $this->jsonarr["IsSuccess"] = true;
+                    $this->jsonarr["ResponseObject"] = "Book updated successfully";
+                } else {
+                    $this->jsonarr["IsSuccess"] = false;
+                    $this->jsonarr["ErrorObject"] = "Failed to update Book";
+                }
+            } else {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Book not found";
+            }
+        }
+        $this->common_model->createLog($params, 'v1/book/edit', $this->jsonarr, 'edit');
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function add_post()
+    {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller, $params, $headers);
+        if ($params['platform'] != "web" && $params['platform'] != "ios") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } elseif ($params['role_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+        } elseif ($params['user_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "User Id should not be empty";
+        } elseif ($params['status'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "status should not be empty";
+        } elseif ($params['school_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "school_id should not be empty";
+        } elseif (count($this->jsonarr) == 0) {
+            $this->common_model->createLog($params, 'v1/book/add', 'only request', 'add');
+            if (isset($params['type']) && $params['type'] == 2) {
+                $data = [];
+                $z = 0;
+                $content_ids = $existsData = [];
+                for ($i = 0; $i < count($params['file_path']); $i++) {
+                    $data[$z]['publication_code'] = isset($params['publication_code']) && $params['publication_code'] != null ? $params['publication_code'] : '';
+                    $name = $params['file_path'][$i]['image'];
+                    $newName = substr($name, 0, (strrpos($name, ".")));
+                    $data[$z]['name'] = $newName;
+                    $data[$z]['description'] = isset($params['description']) && $params['description'] != null ? $params['description'] : '';
+                    $data[$z]['grade'] = implode(',', $params['grade']);
+                    $data[$z]['subject'] = implode(',', $params['subject']);
+                    $data[$z]['school_id'] = $params['school_id'];
+                    if (isset($params['file_path'])) {
+                        if ($params['file_path'] != '') {
+                            $data[$z]['file_path'] = json_encode([$params['file_path'][$i]]);
+                        } elseif ($params['file_path'] == '') {
+                            $data[$z]['file_path'] = '';
+                        }
+                    }
+                    if ($params['role_id'] == 6) {
+                        $data[$z]['corporate_id'] = $params['corporate_id'];
+                    }
+                    if (isset($params['answerkey_path'])) {
+                        if ($params['answerkey_path'] != ' ') {
+                            $data[$z]['answerkey_path'] = json_encode($params['answerkey_path']);
+                        } elseif ($params['answerkey_path'] == '') {
+                            $data[$z]['answerkey_path'] = '';
+                        }
+                    }
+                    $data[$z]['base64_data'] = $this->base64Conversion($params['file_path']);
+                    //$data[$z]['content_type'] = $params['content_type'];
+                    $data[$z]['content_type'] = $params["file_path"][$i]["resource_type"];
+                    $data[$z]['content_format'] = 1;
+                    $data[$z]['download'] = isset($params['download']) ? $params['download'] : 0;
+                    if (isset($params['links']) && count($params['links']) > 0) {
+                        foreach ($params['links'] as $key => $value) {
+                            $params['links'][$key] = str_replace(',', '', $value);
+                        }
+                        $data[$z]["links"] = implode(',', $params['links']);
+                    } else {
+                        $data[$z]['links'] = "";
+                    }
+                    $data[$z]['access'] = $params['access'];
+                    $data[$z]['status'] = $params['status'];
+                    $data[$z]['created_by'] = $params['user_id'];
+                    $data[$z]['created_date'] = date('Y-m-d H:i:s');
+                    $checkBook = $this->book_model->checkBook($data[$z]);
+                    if (count($checkBook) == 0) {
+                        $content_ids[] = $this->common_model->insert('content', $data[$z]);
+                    } else {
+                        if ($checkBook[0]['status'] != 1) {
+                            $content_ids = array('status' => 1);
+                            $condition = array('content_id' => $checkBook[0]['content_id']);
+                            $this->common_model->update('content', $content_ids, $condition);
+                        } else {
+                            $existsData[] = $data[$z]['name'];
+                        }
+                    }
+                    $z++;
+                }
+            } else {
+                $data = [];
+                if ($params['name'] == "") {
+                    $this->jsonarr['IsSuccess'] = false;
+                    $this->jsonarr['ErrorObject'] = "name should not be empty";
+                    return $this->printjson($this->jsonarr);
+                    exit();
+                }
+                $data['publication_code'] = $params['publication_code'];
+                $data['name'] = $params['name'];
+                $data['description'] = $params['description'];
+                $data['grade'] = implode(',', $params['grade']);
+                $data['subject'] = implode(',', $params['subject']);
+                $data['school_id'] = $params['school_id'];
+                if (isset($params['file_path'])) {
+                    if ($params['file_path'] != '') {
+                        $data['file_path'] = json_encode($params['file_path']);
+                    } elseif ($params['file_path'] == '') {
+                        $data['file_path'] = '';
+                    }
+                }
+                if ($params['role_id'] == 6) {
+                    $data['corporate_id'] = $params['corporate_id'];
+                }
+                if (isset($params['answerkey_path'])) {
+                    if ($params['answerkey_path'] != ' ') {
+                        $data['answerkey_path'] = json_encode($params['answerkey_path']);
+                    } elseif ($params['answerkey_path'] == '') {
+                        $data['answerkey_path'] = '';
+                    }
+                }
+                $data['base64_data'] = $this->base64Conversion($params['file_path']);
+                $data['content_type'] = $params['content_type'];
+                $data['content_format'] = 1;
+                $data['download'] = isset($params['download']) ? $params['download'] : 0;
+                if (isset($params['links']) && count($params['links']) > 0) {
+                    foreach ($params['links'] as $key => $value) {
+                        $params['links'][$key] = str_replace(',', '', $value);
+                    }
+                    $data["links"] = implode(',', $params['links']);
+                } else {
+                    $data['links'] = "";
+                }
+                //$data['links'] = isset($params['links']) && count($params['links']) > 0 ? implode(',', $params['links']) : '';
+                $data['access'] = $params['access'];
+                $data['status'] = $params['status'];
+                $data['created_by'] = $params['user_id'];
+                $data['created_date'] = date('Y-m-d H:i:s');
+            }
+            if (isset($params['type']) && $params['type'] == 2) {
+                $classroomContent = [];
+                if (isset($params['batch_id']) && $params['batch_id'] != '') {
+                    foreach ($params['batch_id'] as $key => $value) {
+                        foreach ($content_ids as $key1 => $value1) {
+                            $batchContentExists = $this->content_model->checkBatchContent($value, $value1);
+                            if (count($batchContentExists) == 0) {
+                                $classroomContent[$i]['batch_id'] = $value;
+                                $classroomContent[$i]['school_id'] = $params['school_id'];
+                                $classroomContent[$i]['content_id'] = $value1;
+                                $classroomContent[$i]['status'] = 1;
+                                $classroomContent[$i]['created_by'] = $params['user_id'];
+                                $classroomContent[$i]['created_date'] = date('Y-m-d H:i:s');
+                                $i++;
+                            }
+                        }
+                    }
+                    if (count($classroomContent) > 0) {
+                        $this->common_model->bulkInsert('classroom_content', $classroomContent);
+                    }
+                }
+
+                $implode = implode(',', $existsData);
+                if (count($content_ids) > 0) {
+                    $msg = '';
+                    if ($implode != '') {
+                        $msg = "and $implode already Exists";
+                    }
+                    $this->jsonarr['IsSuccess'] = True;
+                    $this->jsonarr['ResponseObject'] = "Book added Successfully $msg";
+                } else {
+                    $this->jsonarr['IsSuccess'] = false;
+                    $this->jsonarr['ErrorObject'] = "Book already Exists";
+                }
+            } else {
+                $checkBook = $this->book_model->checkBook($params);
+                if (count($checkBook) == 0) {
+                    $insert = $this->common_model->insert('content', $data);
+                    if ($insert > 0) {
+                        $this->jsonarr['IsSuccess'] = True;
+                        $this->jsonarr['ResponseObject'] = "Book added Successfully";
+                    } else {
+                        $this->jsonarr['IsSuccess'] = false;
+                        $this->jsonarr['ErrorObject'] = "Book not added";
+                    }
+                    $getTeacher = $this->common_model->getTeacher($params['user_id'], $params['school_id']);
+                    if ($params['role_id'] == 4 && $getTeacher['individual_teacher'] != 1) {
+                        switch ($params['content_type']) {
+                            case '1':
+                                $type = 'Resource';
+                                break;
+                            case '2':
+                                $type = 'Assignment';
+                                break;
+                            case '3':
+                                $type = 'Assessment';
+                                break;
+                            default:
+                                $type = '';
+                                break;
+                        }
+                        $records = "Content Name: {$params['name']} <br> Content Type: {$type}<br>Teacher Name: {$getTeacher['teacher_name']}";
+                        $this->emailNotification($params, $insert, 'added', $records);
+                    }
+                } else {
+                    $this->jsonarr['IsSuccess'] = false;
+                    $this->jsonarr['ErrorObject'] = "Book already Exists";
+                }
+            }
+        }
+        $this->common_model->createLog($params, 'v1/book/add', $this->jsonarr, 'add');
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function add1_post()
+    {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        // $this->common_model->checkPermission($this->controller, $params, $headers);
+        if ($params['platform'] != "web" && $params['platform'] != "ios") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } elseif ($params['role_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+        } elseif ($params['user_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "User Id should not be empty";
+        } elseif ($params['status'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "status should not be empty";
+        } elseif ($params['school_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "school_id should not be empty";
+        } elseif (count($this->jsonarr) == 0) {
+            $this->common_model->createLog($params, 'v1/book/add', 'only request', 'add');
+            if (isset($params['type']) && $params['type'] == 2) {
+                $data = [];
+                $z = 0;
+                $content_ids = $existsData = [];
+                for ($i = 0; $i < count($params['file_path']); $i++) {
+                    $data[$z]['publication_code'] = isset($params['publication_code']) && $params['publication_code'] != null ? $params['publication_code'] : '';
+                    $name = $params['file_path'][$i]['image'];
+                    $newName = substr($name, 0, (strrpos($name, ".")));
+                    $data[$z]['name'] = $newName;
+                    $data[$z]['description'] = isset($params['description']) && $params['description'] != null ? $params['description'] : '';
+                    $data[$z]['grade'] = implode(',', $params['grade']);
+                    $data[$z]['subject'] = implode(',', $params['subject']);
+                    $data[$z]['school_id'] = $params['school_id'];
+                    if (isset($params['file_path'])) {
+                        if ($params['file_path'] != '') {
+                            $data[$z]['file_path'] = json_encode([$params['file_path'][$i]]);
+                        } elseif ($params['file_path'] == '') {
+                            $data[$z]['file_path'] = '';
+                        }
+                    }
+                    if ($params['role_id'] == 6) {
+                        $data[$z]['corporate_id'] = $params['corporate_id'];
+                    }
+                    if (isset($params['answerkey_path'])) {
+                        if ($params['answerkey_path'] != ' ') {
+                            $data[$z]['answerkey_path'] = json_encode($params['answerkey_path']);
+                        } elseif ($params['answerkey_path'] == '') {
+                            $data[$z]['answerkey_path'] = '';
+                        }
+                    }
+                    $data[$z]['base64_data'] = $this->base64Conversion($params['file_path']);
+                    $data[$z]['content_type'] = $params["file_path"][$i]["resource_type"];
+                    $data[$z]['content_format'] = 1;
+                    $data[$z]['download'] = isset($params['download']) ? $params['download'] : 0;
+                    if (isset($params['links']) && count($params['links']) > 0) {
+                        foreach ($params['links'] as $key => $value) {
+                            $params['links'][$key] = str_replace(',', '', $value);
+                        }
+                        $data[$z]["links"] = implode(',', $params['links']);
+                    } else {
+                        $data[$z]['links'] = "";
+                    }
+                    $data[$z]['access'] = $params['access'];
+                    $data[$z]['status'] = $params['status'];
+                    $data[$z]['created_by'] = $params['user_id'];
+                    $data[$z]['created_date'] = date('Y-m-d H:i:s');
+                    $checkBook = $this->book_model->checkBook($data[$z]);
+                    if (count($checkBook) == 0) {
+                        $content_ids[] = $this->common_model->insert('content', $data[$z]);
+                    } else {
+                        if ($checkBook[0]['status'] != 1) {
+                            $content_ids = array('status' => 1);
+                            $condition = array('content_id' => $checkBook[0]['content_id']);
+                            $this->common_model->update('content', $content_ids, $condition);
+                        } else {
+                            $existsData[] = $data[$z]['name'];
+                        }
+                    }
+                    $z++;
+                }
+                if (isset($params['other_links']) && count($params['other_links']) > 0) {
+                    $z = 0;
+                    for ($i = 0; $i < count($params['other_links']); $i++) {
+                        $content[$z]['publication_code'] = '';
+                        $content[$z]['name'] = $params['other_links'][$i]['name'];
+                        $content[$z]['description'] = '';
+                        $content[$z]['content_type'] = $params['other_links'][$i]['resource_type'];
+                        $content[$z]['content_format'] = 1;
+                        $content[$z]['download'] = isset($params['download']) ? $params['download'] : 0;
+                        $content[$z]['grade'] = implode(',', $params['grade']);
+                        $content[$z]['subject'] = implode(',', $params['subject']);
+                        $content[$z]['school_id'] = $params['school_id'];
+                        $content[$z]['access'] = $params['access'];
+                        $content[$z]['status'] = $params['status'];
+                        $content[$z]['created_by'] = $params['user_id'];
+                        $content[$z]['created_date'] = date('Y-m-d H:i:s');
+                        if ($params['other_links'] != '') {
+                            $content[$z]['file_path'] = json_encode([$params['other_links'][$i]]);
+                        } elseif ($params['file_path'] == '') {
+                            $content[$z]['file_path'] = '';
+                        }
+                        $checkBook = $this->book_model->checkBook($content[$z]);
+                        if (count($checkBook) == 0) {
+                            $content_ids[] = $this->common_model->insert('content', $content[$z]);
+                        } else {
+                            if ($checkBook[0]['status'] != 1) {
+                                $content_ids = array('status' => 1);
+                                $condition = array('content_id' => $checkBook[0]['content_id']);
+                                $this->common_model->update('content', $content_ids, $condition);
+                            } else {
+                                $existsData[] = $content[$z]['name'];
+                            }
+                        }
+                        $z++;
+                    }
+                }
+            }
+            if (isset($params['type']) && $params['type'] == 2) {
+                $classroomContent = [];
+                if (isset($params['batch_id']) && $params['batch_id'] != '') {
+                    foreach ($params['batch_id'] as $key => $value) {
+                        foreach ($content_ids as $key1 => $value1) {
+                            $batchContentExists = $this->content_model->checkBatchContent($value, $value1);
+                            if (count($batchContentExists) == 0) {
+                                $classroomContent[$i]['batch_id'] = $value;
+                                $classroomContent[$i]['school_id'] = $params['school_id'];
+                                $classroomContent[$i]['content_id'] = $value1;
+                                $classroomContent[$i]['status'] = 1;
+                                $classroomContent[$i]['created_by'] = $params['user_id'];
+                                $classroomContent[$i]['created_date'] = date('Y-m-d H:i:s');
+                                $i++;
+                            }
+                        }
+                    }
+                    if (count($classroomContent) > 0) {
+                        $this->common_model->bulkInsert('classroom_content', $classroomContent);
+                    }
+                }
+
+                $implode = implode(',', $existsData);
+                if (count($content_ids) > 0) {
+                    $msg = '';
+                    if ($implode != '') {
+                        $msg = "and $implode already Exists";
+                    }
+                    $this->jsonarr['IsSuccess'] = True;
+                    $this->jsonarr['ResponseObject'] = "Book added Successfully $msg";
+                    $content_detail = [];
+                    $ids = implode(',',$content_ids);
+                    $condition ="WHERE content_id IN ({$ids})";
+                    $getContentList = $this->book_model->getContentList($condition);
+                    foreach($content_ids as $contentKey => $contentValue){
+                        foreach ($getContentList as $key => $value) {
+                            if($value['content_id'] == $contentValue){
+                                array_push($content_detail, $value);
+                            }
+                        }
+                    }
+                    $this->jsonarr['content'] = $content_detail;
+                    
+                } else {
+                    $this->jsonarr['IsSuccess'] = false;
+                    $this->jsonarr['ErrorObject'] = "Book already Exists";
+                }
+            }
+        }
+        $this->common_model->createLog($params, 'v1/book/add', $this->jsonarr, 'add');
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function base64Conversion($filepath)
+    {
+        if ($filepath != '') {
+            if (count($filepath) > 0) {
+                if (isset($filepath[0]['base64_data'])) {
+                    $r = $filepath[0]['base64_data'];
+                } else {
+                    $r = '';
+                }
+            }
+        } else {
+            $r = '';
+        }
+        return $r;
+    }
+
+    public function bulkUpload_post()
+    {
+        $this->benchmark->mark('code_start');
+        $path = "uploads/excel/book.xlsx";
+        $readExcel = $path;
+        $this->load->library('PHPExcel');
+        $file = "../" . $readExcel;
+        if (file_exists($file)) {
+            $objPHPExcel = PHPExcel_IOFactory::load($file);
+            $sheet = $objPHPExcel->getSheet(0);
+            $highestRow = $sheet->getHighestRow();
+            $highestColumn = $sheet->getHighestColumn();
+            $data = [];
+            $i = 0;
+            for ($row = 2; $row <= $highestRow; $row++) {
+                $rowData = $sheet->rangeToArray('A' . $row . ':' . $highestColumn . $row, NULL, TRUE, FALSE);
+                $data[$i]['code'] = $rowData[0][1];
+                $data[$i]['name'] = $rowData[0][2];
+                $data[$i]['description'] = $rowData[0][3];
+                $data[$i]['school_id'] = $rowData[0][4];
+                $data[$i]['status'] = 1;
+                $i++;
+            }
+            $this->benchmark->mark('code_end');
+            $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+            $this->common_model->bulkInsert('book', $data);
+        }
+    }
+
+    private function printjson($jsonarr)
+    {
+        echo json_encode($jsonarr);
+    }
+
+    public function emailNotification($params, $id, $action, $records)
+    {
+        $actionData = array(
+            'user_id' => $params['user_id'],
+            'role_id' => $params['role_id'],
+            'content_id' => $id,
+            'school_id' => $params['school_id'],
+            'action' => 'Content ' . $action,
+            'message_content' => $records,
+            'request_data' => json_encode($params)
+        );
+
+        $insertAction = $this->common_model->insert('teacher_action_notification', $actionData);
+
+        /*
+                if ($insertAction > 0) {
+                    $getAdmin = $this->common_model->getAdmin($params['school_id']);
+                    if (count($getAdmin) > 0) {
+                        if ($getAdmin[0]['name'] == 'teacher_activity_email') {
+                            $emailId = $getAdmin[0]['value'];
+                        }
+                        if ($getAdmin[1]['name'] == 'teacher_notify_email_admin') {
+                            $cc = $getAdmin[1]['value'];
+                        }
+                        $messageTemplates = $this->common_model->smsEmailTemplate('action_notification', 'email');
+                        $subject = $messageTemplates['subject'];
+                        $subject = str_replace('%TYPE%', 'Content', $subject);
+                        $subject = str_replace('%ACTION%', $action, $subject);
+                        $emailMsg = $messageTemplates['template'];
+                        $emailMsg = str_replace('%USER%', 'Admin', $emailMsg);
+                        $emailMsg = str_replace('%ACTION%', $action, $emailMsg);
+                        $emailMsg = str_replace('%TYPE%', 'content', $emailMsg);
+                        $emailMsg = str_replace('%RECORDS%', $records, $emailMsg);
+        //            if ($this->config->item('user_send_email') == true) {
+                        $this->common_model->sendEmail_cc($subject, $emailId, $emailMsg, '', $cc);
+                    }
+        //            }
+                }*/
+    }
+}

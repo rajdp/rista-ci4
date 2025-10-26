@@ -1,0 +1,1 @@
+student answer as image

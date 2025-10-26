@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="315" height="187" viewBox="0 0 315 187">
+  <g id="Group_16911" data-name="Group 16911" transform="translate(-13998 6543)">
+    <rect id="Rectangle_610" data-name="Rectangle 610" width="315" height="187" rx="5" transform="translate(13998 -6543)" fill="#fff"/>
+    <g id="Group_16910" data-name="Group 16910" transform="translate(-11)">
+      <text id="of_the_questions" data-name="of the questions" transform="translate(14021 -6447)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0">of the questions</tspan></text>
+      <g id="Group_16909" data-name="Group 16909">
+        <text id="Answer_can_be_filled_by_selecting" data-name="Answer can be filled by selecting" transform="translate(14021 -6505)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0">Answer can be filled by selecting</tspan></text>
+        <g id="Group_16536" data-name="Group 16536" transform="translate(14205.34 -6520.483)">
+          <g id="Rectangle_730" data-name="Rectangle 730" transform="translate(-0.34 0.483)" fill="#fff" stroke="#c4c4c4" stroke-width="1">
+            <rect width="111" height="22" rx="2" stroke="none"/>
+            <rect x="0.5" y="0.5" width="110" height="21" rx="1.5" fill="none"/>
+          </g>
+          <path id="Icon_ionic-md-arrow-dropdown" data-name="Icon ionic-md-arrow-dropdown" d="M9,13.5l3.445,3.215L15.889,13.5Z" transform="translate(91.419 -3.761)" fill="#7f3486"/>
+        </g>
+      </g>
+      <g id="Group_16908" data-name="Group 16908" transform="translate(0 -5)">
+        <text id="that_is_right_in_the_middle" data-name="that is right in the middle" transform="translate(14162 -6471)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0">that is right in the middle</tspan></text>
+        <text id="and" transform="translate(14021 -6471)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0">and</tspan></text>
+        <g id="Group_16537" data-name="Group 16537" transform="translate(14046 -6485)">
+          <g id="Rectangle_730-2" data-name="Rectangle 730" fill="#fff" stroke="#c4c4c4" stroke-width="1">
+            <rect width="111" height="20" rx="2" stroke="none"/>
+            <rect x="0.5" y="0.5" width="110" height="19" rx="1.5" fill="none"/>
+          </g>
+          <path id="Icon_ionic-md-arrow-dropdown-2" data-name="Icon ionic-md-arrow-dropdown" d="M9,13.5l3.445,3.215L15.889,13.5Z" transform="translate(92.139 -4.977)" fill="#7f3486"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

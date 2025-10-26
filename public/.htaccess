@@ -1,0 +1,38 @@
+# Disable directory browsing
+Options -Indexes
+
+# CORS is handled by CorsFilter in PHP - removed from .htaccess to avoid duplicate headers
+# Header always set Access-Control-Allow-Origin "http://localhost:8211"
+# Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+# Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Origin, Accept, Accesstoken"
+# Header always set Access-Control-Allow-Credentials "true"
+# Header always set Access-Control-Max-Age "3600"
+
+# OPTIONS requests are now handled by CorsFilter in PHP
+# RewriteCond %{REQUEST_METHOD} OPTIONS
+# RewriteRule ^(.*)$ $1 [R=200,L]
+
+# Main rewrite rules
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php/$1 [L]
+
+# Enable PHP error reporting
+php_flag display_errors on
+php_value error_reporting E_ALL
+
+# If mod_rewrite is not available
+<IfModule !mod_rewrite.c>
+	# If we don't have mod_rewrite installed, all 404's
+	# can be sent to index.php, and everything works as normal.
+	ErrorDocument 404 index.php
+</IfModule>
+
+# Disable server signature
+ServerSignature Off
+# CORS is handled by CorsFilter in PHP - removed from .htaccess to avoid duplicate headers
+# <IfModule mod_headers.c>
+#     Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+#     Header always set Access-Control-Allow-Headers "*"
+# </IfModule>

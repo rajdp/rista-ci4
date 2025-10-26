@@ -1,0 +1,2236 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+header('Access-Control-Allow-Origin: *');
+header("Access-Control-Allow-Headers: AccessToken");
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+ini_set('error_reporting', E_ALL & ~E_NOTICE & ~E_STRICT & ~E_DEPRECATED);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+//error_reporting(E_ALL);
+require APPPATH . '/libraries/REST_Controller.php';
+//require APPPATH . '/libraries/ZoomClient.php';
+
+require APPPATH . '/libraries/ZoomMeeting.php';
+
+
+class Common extends REST_Controller
+{
+    protected $jsonarr = array();
+    protected $headers;
+    protected $urlAuth;
+    protected $controller;
+
+    function __construct()
+    {
+        parent::__construct();
+        //$this->load->library('ZoomMeeting');
+
+
+        $this->load->model("common_model");
+        $this->load->model("contentcreator_model");
+        $this->load->model("teacher_model");
+
+        header("Access-Control-Allow-Origin: *");
+        $this->controller = uri_string();
+        $urlAuth = $this->verifyAuthUrl();
+        $headers = $this->input->request_headers();
+        if ($urlAuth) {
+            $excludeurl = $this->excludefunction();
+            if ($excludeurl != 'true') {
+                if (isset($headers['Accesstoken'])) {
+                    $this->output->set_status_header(200);
+                    $headers['Accesstoken'];
+                } else {
+                    $this->jsonarr['ErrorObject'] = "Unauthorized User";
+                    $this->jsonarr['IsSuccess'] = false;
+                    $this->printjson($this->jsonarr);
+                    $this->output->set_status_header(401);
+                    exit();
+                }
+
+            } else {
+                $this->output->set_status_header(200);
+                return true;
+            }
+        } else {
+            $this->output->set_status_header(200);
+            $this->jsonarr['ErrorObject'] = "The requested url is not found.";
+            $this->jsonarr['IsSuccess'] = false;
+            $this->printjson($this->jsonarr);
+            exit();
+        }
+    }
+
+    public function verifyAuthUrl()
+    {
+        $this->allowedRoutes = array(
+            'v1/common/fileUpload',
+            'v1/common/country',
+            'v1/common/state',
+            'v1/common/downloadExcel',
+            'v1/common/bulkUpload',
+            'v1/common/emailInvite',
+            'v1/common/bulkInsert',
+            'v1/common/schoolDetail',
+            'v1/common/tagsList',
+            'v1/common/availabilityTimeCheck',
+            'v1/common/settingList',
+            'v1/common/settingEdit',
+            'v1/common/iosVersion',
+            'v1/common/ZoomMeetingCreate',
+            'v1/common/ZoomMeetingUpdate',
+            'v1/common/zoomrecordings',
+            'v1/common/index',
+            'v1/common/timeZoneList',
+            'v1/common/sendAWSEmail',
+            'v1/common/contentRemoved',
+            'v1/common/saveStudentAnnotation',
+            'v1/common/googleEmail',
+            'v1/common/scratchNotification'
+        );
+
+        foreach ($this->allowedRoutes as $routeString) {
+            if ($this->controller == $routeString) {
+                return true;
+            }
+
+        }
+        return false;
+    }
+
+    public function excludefunction()
+    {
+        $this->excludeRoutes = array(
+            'v1/common/country',
+            'v1/common/state',
+            'v1/common/availabilityTimeCheck',
+            'v1/common/iosVersion',
+            'v1/common/index',
+            'v1/common/sendAWSEmail',
+            'v1/common/contentRemoved',
+            'v1/common/saveStudentAnnotation',
+            'v1/common/googleEmail',
+            'v1/common/scratchNotification'
+
+        );
+        foreach ($this->excludeRoutes as $routeString) {
+            if ($this->controller == $routeString) {
+                return true;
+            }
+        }
+    }
+
+
+
+    public function index_get()
+    {
+        //echo "Version 1.0  Webservice";
+        //        header("Cache-Control: no-store");
+//        header("Content-Type: text/event-stream");
+//
+//        $counter = rand(1, 10); // a random counter
+//
+//        while (1) { // 1 is always true, so repeat the while loop forever (aka event-loop)
+//            $this->jsonarr["IsSuccess"] = false;
+//            $this->jsonarr["data"] = "platform should not be empty";
+//            echo '{"time": "' . $curDate . '"}', "\n\n";
+//            $counter--;
+//            if (!$counter) {
+//                echo 'data: This is a message at time ' . $curDate, "\n\n";
+//                $counter = rand(1, 10); // reset random counter
+//            }
+//            // flush the output buffer and send echoed messages to the browser
+//            while(ob_get_level() > 0) {
+//                ob_end_flush();
+//            }
+//            flush();
+//            // break the loop if the client aborted the connection (closed the page)
+//            if(connection_aborted()) {
+//                break;
+//            }
+//            // sleep for 1 second before running the loop again
+//            sleep(1);
+//        }
+
+
+        $time = date('r');
+        //print_r($time);
+        $this->common_model->sendEmail("Sridhar test", "sridhar.sivichandran@gmail.com,hemaramesh93@gmail.com", 'this is another test msg', '','contact@edquill.com,usharaj99@gmail.com');
+        exit();
+        $output="data: The server time is: {$time}\n\n";
+        $this->output->set_content_type('text/event-stream')->set_output($output);
+        $this->output->set_header('Cache-Control: no-cache');
+        flush();
+
+    }
+
+    public function emailValidation($emailId) {
+        if(filter_var($emailId, FILTER_VALIDATE_EMAIL)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public function fileUpload_post()
+    {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        // $headers = $this->input->request_headers();
+        // $this->common_model->checkPermission($this->controller,$params,$headers);
+        if ($params['platform'] != "web" && $params['platform'] != "ios") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "platform should not be empty";
+        } elseif ($params['role_id'] == '') {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+        } elseif ($params['user_id'] == '') {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "User id should not be empty";
+        } elseif ($params['uploadtype'] == '') {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "uploadtype should not be empty";
+        } else {
+            $this->common_model->createLog($params,'v1/common/fileUpload','only request','fileUpload');
+            $dataFiles = $this->common_model->fileupload($params);
+            if(count($dataFiles) > 0) {
+                if($params['uploadtype'] == 'pdf'  ) {
+                    $fileName = $this->pdftohtml($dataFiles[0]['original_image_url']);
+                    if($fileName == false) {
+                        $this->jsonarr['IsSuccess'] = false;
+                        $this->jsonarr['ResponseObject'] = "Unable to convert pdf to html";
+                    } else {
+                        $this->jsonarr["IsSuccess"] = true;
+                        $this->jsonarr['ResponseObject']['filepath'] = $fileName;
+                    }
+                } else {
+                    $this->jsonarr["IsSuccess"] = true;
+                    $this->jsonarr['ResponseObject']['imagepath'] = $dataFiles;
+                    $this->jsonarr['ResponseObject']['message'] = 'Files uploaded Successfully';
+                }
+            } else {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr['ErrorObject']['message'] = 'Error in fileupload';
+            }
+
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params,'v1/common/fileUpload',$this->jsonarr,'fileUpload');
+        $this->printjson($this->jsonarr);
+    }
+
+    public function pdftohtml($filePath) {
+        chmod('../'.$filePath,0777);
+        $extract = explode('/',$filePath);
+        $extension = explode('.',$extract[3]);
+        $path = '../uploads/content/html/';
+        $newFilePath = '../'.$filePath;
+        $command = 'pdf2htmlEX'.' '.$newFilePath.' --dest-dir'.' '.$path;
+        exec($command.' '.'2>&1',$output, $retval);
+        if(!file_exists($path.$extension[0].'.html')) {
+            return false;
+        } else {
+            return $path . $extension[0] . '.html';
+        }
+    }
+
+    public function downloadExcel_post() {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller,$params,$headers);
+        if($params['platform'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } else if ($params["role_id"] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "Role Id should not be empty";
+        } else if ($params["user_id"] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "User Id should not be empty";
+        } else if ($params["user_type"] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "User Type should not be empty";
+        } else if($params["user_type"] == 'Student') {
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr['ResponseObject']= "uploads/excel/Students_Upload_EdQuill.xlsx";
+        } else if($params["user_type"] == 'Teacher') {
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr['ResponseObject']= "uploads/excel/Teacher_Upload_EdQuill.xlsx";
+        } else if($params["user_type"] == 'Contentcreator') {
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr['ResponseObject']= "uploads/excel/Contentcreator_Upload_EdQuill.xlsx";
+        }
+
+        $this->common_model->createLog($params,'v1/common/downloadExcel',$this->jsonarr,'downloadExcel');
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->printjson($this->jsonarr);
+    }
+
+    public function bulkUpload_post() {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller,$params,$headers);
+        if($params['platform'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } else if ($params["role_id"] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "Role id should not be empty";
+        } else if ($params["user_id"] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "User id should not be empty";
+        } else if ($params["file"] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "File should not be empty";
+        } else if ($params["extension"] == null) {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "Extension should not be empty";
+        } elseif ($params['upload_type'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "Upload Type should not be empty";
+        } elseif ($params['user_type'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "User Type should not be empty";
+        } if ($params['extension'] == 'xlsx' || $params['extension'] == 'ods') {
+            $this->common_model->createLog($params,'v1/common/bulkUpload','only request','bulkUpload');
+            $filePath = $this->common_model->uploadExcel($params);
+            $excelPath = array(
+                'user_id' => $params['user_id'],
+                'path' => $filePath,
+                'format' => $params['upload_type'],
+                'user_type' => $params['user_type'],
+                'status' => 0,
+                'created_date' => date('Y-m-d H:i:s')
+            );
+            $excelPathId = $this->common_model->insert('invite_users',$excelPath);
+            if($excelPathId) {
+                $this->jsonarr["IsSuccess"] = true;
+                $this->jsonarr["ResponseObject"]['Message'] = "File Uploaded Successfully";
+                $this->jsonarr["ResponseObject"]['upload_id']= $excelPathId;
+            } else {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "File Uploaded failed";
+            }
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params,'v1/common/bulkUpload',$this->jsonarr,'bulkUpload');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function emailInvite_post() {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller,$params,$headers);
+        if($params['platform'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "Platform should not be empty";
+        } elseif($params['role_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "Role id should not be empty";
+        } elseif($params['user_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "User Id should not be empty";
+        } elseif($params['email_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "Email Id should not be empty";
+        } elseif($params['format'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "Format should not be empty";
+        } elseif($params['user_type'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "User type should not be empty";
+        } elseif(count($params['email_id']) > 0) {
+            $this->common_model->createLog($params,'v1/common/emailInvite','only request','emailInvite');
+            $emailIds = implode(',', $params['email_id']);
+            $excelPath = array(
+                'user_id' => $params['user_id'],
+                'path' => $emailIds,
+                'format' => $params['format'],
+                'user_type' => $params['user_type'],
+                'status' => 0,
+                'created_date' => date('Y-m-d H:i:s')
+            );
+            $excelPathId = $this->common_model->insert('invite_users',$excelPath);
+            if($excelPathId) {
+                $this->jsonarr["IsSuccess"] = true;
+                $this->jsonarr["ResponseObject"]['Message'] = "File Uploaded Successfully";
+                $this->jsonarr["ResponseObject"]['upload_id'] = $excelPathId;
+                $this->jsonarr["ResponseObject"]['grade_id'] = $params['grade_id'];
+            } else {
+                $this->jsonarr['IsSuccess'] = false;
+                $this->jsonarr['ErrorObject'] = "Invitation failed";
+            }
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params,'v1/common/emailInvite',$this->jsonarr,'emailInvite');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function bulkInsert_post(){
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller,$params,$headers);
+        if($params['platform'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "Platform should not be empty";
+        } elseif($params['role_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "Role id should not be empty";
+        } elseif($params['user_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "User Id should not be empty";
+        } else if ($params["school_id"] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "School Id should not be empty";
+        } else if($params['upload_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "Upload Id should not be empty";
+        } else {
+            $this->common_model->createLog($params,'v1/common/bulkInsert','only request','bulkInsert');
+            $schoolId = $params['school_id'];
+            if (isset($params['grade_id'])) {
+                $gradeId = $params['grade_id'];
+            } else {
+                $gradeId = 0;
+            }
+            $filePath = $this->common_model->invitedRecords($params['upload_id']);
+            $data = array('status' => 1);
+            $this->db->where('id', $filePath[0]['id']);
+            $this->db->update('invite_users', $data);
+            $readExcel = $filePath[0]['path'];
+            $this->load->library('PHPExcel');
+            $file = "../" . $readExcel;
+            if($filePath[0]['user_type'] == 'Teacher' && $filePath[0]['format'] == 'Excel') {
+                $result = $this->insertTeachers($params, $filePath, $file, $schoolId);
+            } else if($filePath[0]['user_type'] == 'Student' && $filePath[0]['format'] == 'Excel') {
+                $result = $this->insertStudents($params, $filePath, $file, $schoolId);
+            } else if($filePath[0]['user_type'] == 'Contentcreator' && $filePath[0]['format'] == 'Excel') {
+                $result = $this->insertContentcreators($params, $filePath, $file, $schoolId);
+            } else if($filePath[0]['user_type'] == 'Teacher' && $filePath[0]['format'] == 'Email') {
+                $result = $this->emailInsertTeachers($params, $filePath, $schoolId);
+            } else if($filePath[0]['user_type'] == 'Student' && $filePath[0]['format'] == 'Email') {
+                $result = $this->emailInsertStudents($params, $filePath, $schoolId, $gradeId);
+            } else if($filePath[0]['user_type'] == 'Contentcreator' && $filePath[0]['format'] == 'Email') {
+                $result = $this->emailInsertContentcreators($params, $filePath, $schoolId);
+            }
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params,'v1/common/bulkInsert',$this->jsonarr,'bulkInsert');
+        return $this->printjson($result);
+    }
+
+    public function insertTeachers($params, $filePath, $file, $schoolId)
+    {
+        if (file_exists($file)) {
+            $userExistsCheck = 0;
+            $emptyExistsCheck = 0;
+            $objPHPExcel = PHPExcel_IOFactory::load($file);
+            $sheet = $objPHPExcel->getSheet(0);
+            $highestRow = $sheet->getHighestRow();
+            $errorList = '<html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                table, th, td{min-width: 100px;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>S.No</th>
+                        <th>FirstName</th>
+                        <th>LastName</th>
+                        <th>Email_Id</th>
+                        <th>Mobile</th>
+                        <th>Add Content Creator</th>
+                        <th>Add Student</th>
+                        <th>Add Subject</th>
+                        <th>Add Books</th>
+                        <th>Add Classroom</th>
+                        <th>Add Content</th>
+                        <th>Add Class</th>
+                        </tr>';
+            $emptyList = '<html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                table, th, td{min-width: 100px;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>S.No</th>
+                        <th>FirstName</th>
+                        <th>LastName</th>
+                        <th>Email_Id</th>
+                        <th>Mobile</th>
+                        <th>Add Content Creator</th>
+                        <th>Add Student</th>
+                        <th>Add Subject</th>
+                        <th>Add Books</th>
+                        <th>Add Classroom</th>
+                        <th>Add Content</th>
+                        <th>Add Class</th>
+                        </tr>';
+            $user = [];
+            $userProfile = [];
+            $userAddress = [];
+            $rowCheck = $sheet->rangeToArray('A1:L1',NULL, TRUE, FALSE);
+            if($rowCheck[0][0] != "S.No" || $rowCheck[0][1] != "First Name" || $rowCheck[0][2] != "Last Name"
+                || $rowCheck[0][3] != "Email Id" || $rowCheck[0][4] != "Mobile" || $rowCheck[0][5] != "Add Content Creator"
+                || $rowCheck[0][6] != "Add Student" || $rowCheck[0][7] != "Add Subject" || $rowCheck[0][8] != "Add Books"
+                || $rowCheck[0][9] != "Add Classroom" || $rowCheck[0][10] != "Add Content" || $rowCheck[0][11] != "Add Class") {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Please Upload Correct format of excel";
+            } else {
+                for ($row = 2; $row <= $highestRow; $row++) {
+                    $rowData = $sheet->rangeToArray('A' . $row . ':' . 'L' . $row, NULL, TRUE, FALSE);
+                    if($rowData[0][1] != "" && $rowData[0][2] != "" && $rowData[0][3] != ""
+                        && $rowData[0][4] != "") {
+                        $emailValidation = $this->emailValidation($rowData[0][3]);
+                        if ($emailValidation == true) {
+                            $data = array('email_id' => $rowData[0][3], 'school_id' => $schoolId, 'role_id' => 4);
+                            $userExists = $this->common_model->checkUser($data);
+                            if (count($userExists) == 0) {
+                                $checkSchool = $this->common_model->checkSchool($data);
+                                if (count($checkSchool) == 0) {
+                                    $user['role_id'] = 4;
+                                    $user['status'] = 1;
+                                    $user['school_id'] = $schoolId;
+                                    $user['login_type'] = 'WEB';
+                                    $user['created_by'] = $filePath[0]['user_id'];
+                                    $user['created_date'] = date('Y-m-d H:i:s');
+                                    $user['email_id'] = $rowData[0][3];
+                                    $user['mobile'] = $rowData[0][4];
+                                    $id = $this->common_model->insert('user', $user);
+                                    if ($id > 0) {
+                                        $userProfile['user_id'] = $id;
+                                        $userProfile['created_date'] = date('Y-m-d');
+                                        $userProfile['first_name'] = $rowData[0][1];
+                                        $userProfile['last_name'] = $rowData[0][2];
+                                        $userProfile['gender'] = "n/a";
+//                                        if ($rowData[0][6] == "") {
+                                        $userProfile['birthday'] = '0000-00-00';
+//                                        } else {
+//                                            $userProfile['birthday'] = date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][6]));
+//                                        }
+                                        $userProfile['created_by'] = $filePath[0]['user_id'];
+                                        $userProfile['created_date'] = date('Y-m-d H:i:s');
+                                        $profileId = $this->common_model->insert('user_profile', $userProfile);
+                                        if ($profileId > 0) {
+                                            $userProfileDetails = [];
+                                            $userProfileDetails['user_id'] = $id;
+                                            $userProfileDetails['school_id'] = $schoolId;
+//                                            if($rowData[0][7] != "") {
+//                                                $userProfileDetails['doj'] = date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][7]));
+//                                            } else {
+                                            $userProfileDetails['doj'] = '0000-00-00';
+//                                            }
+                                            $userProfileDetails['designation'] = "";
+                                            $userProfileDetails['school_idno'] = "";
+                                            $userProfileDetails['edit_status'] = 1;
+                                            $userProfileDetails['created_by'] = $filePath[0]['user_id'];
+                                            $userProfileDetails['created_date'] = date('Y-m-d H:i:s');
+                                            $profileDetailId = $this->common_model->insert('user_profile_details', $userProfileDetails);
+                                            if ($profileDetailId > 0) {
+//                                            $state = $this->common_model->searchState($rowData[0][13]);
+//                                            $country = $this->common_model->searchCountry($rowData[0][14]);
+//                                            if ($state > 0) {
+//                                                $userAddress['state'] = $state['id'];
+//                                            } else {
+//                                                $userAddress['state'] = 0;
+//                                            }
+//                                            if ($country > 0) {
+//                                                $userAddress['country'] = $country['id'];
+//                                            } else {
+//                                                $userAddress['country'] = 0;
+//                                            }
+                                                $userAddress['user_id'] = $id;
+                                                $userAddress['address_type'] = 1;
+                                                $userAddress['name'] = $rowData[0][2];
+//                                            $userAddress['address1'] = $rowData[0][10];
+//                                            $userAddress['address2'] = $rowData[0][11];
+//                                            $userAddress['city'] = $rowData[0][12];
+//                                            $userAddress['postal_code'] = $rowData[0][15];
+                                                $userAddress['created_date'] = date('Y-m-d H:i:s');
+                                                $this->common_model->insert('user_address', $userAddress);
+                                                $userPermission = [];
+                                                $c = 0;
+                                                $getPermissionList = $this->teacher_model->teacherPermissionList();
+                                                if ($rowData[0][5] == "1") {
+                                                    foreach ($getPermissionList as $value) {
+                                                        if ($value['group_name'] == "Content-Creator") {
+                                                            $userPermission[$c]['user_id'] = $id;
+                                                            $userPermission[$c]['role_id'] = 4;
+                                                            $userPermission[$c]['school_id'] = $schoolId;
+                                                            $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                            $c++;
+                                                        }
+                                                    }
+                                                }
+                                                if ($rowData[0][6] == "1") {
+                                                    foreach ($getPermissionList as $value) {
+                                                        if ($value['group_name'] == "Student") {
+                                                            $userPermission[$c]['user_id'] = $id;
+                                                            $userPermission[$c]['role_id'] = 4;
+                                                            $userPermission[$c]['school_id'] = $schoolId;
+                                                            $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                            $c++;
+                                                        }
+                                                    }
+                                                }
+                                                if ($rowData[0][7] == "1") {
+                                                    foreach ($getPermissionList as $value) {
+                                                        if ($value['group_name'] == "Subject") {
+                                                            $userPermission[$c]['user_id'] = $id;
+                                                            $userPermission[$c]['role_id'] = 4;
+                                                            $userPermission[$c]['school_id'] = $schoolId;
+                                                            $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                            $c++;
+                                                        }
+                                                    }
+                                                }
+                                                if ($rowData[0][8] == "1") {
+                                                    foreach ($getPermissionList as $value) {
+                                                        if ($value['group_name'] == "Books") {
+                                                            $userPermission[$c]['user_id'] = $id;
+                                                            $userPermission[$c]['role_id'] = 4;
+                                                            $userPermission[$c]['school_id'] = $schoolId;
+                                                            $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                            $c++;
+                                                        }
+                                                    }
+                                                }
+                                                if ($rowData[0][9] == "1") {
+                                                    foreach ($getPermissionList as $value) {
+                                                        if ($value['group_name'] == "Classroom") {
+                                                            $userPermission[$c]['user_id'] = $id;
+                                                            $userPermission[$c]['role_id'] = 4;
+                                                            $userPermission[$c]['school_id'] = $schoolId;
+                                                            $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                            $c++;
+                                                        }
+                                                    }
+                                                }
+                                                if ($rowData[0][10] == "1") {
+                                                    foreach ($getPermissionList as $value) {
+                                                        if ($value['group_name'] == "Content Repository") {
+                                                            $userPermission[$c]['user_id'] = $id;
+                                                            $userPermission[$c]['role_id'] = 4;
+                                                            $userPermission[$c]['school_id'] = $schoolId;
+                                                            $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                            $c++;
+                                                        }
+                                                    }
+                                                }
+                                                if ($rowData[0][11] == "1") {
+                                                    foreach ($getPermissionList as $value) {
+                                                        if ($value['group_name'] == "Class") {
+                                                            $userPermission[$c]['user_id'] = $id;
+                                                            $userPermission[$c]['role_id'] = 4;
+                                                            $userPermission[$c]['school_id'] = $schoolId;
+                                                            $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                            $c++;
+                                                        }
+                                                    }
+                                                }
+                                                if (count($userPermission) > 0) {
+                                                    $this->common_model->bulkInsert('user_role_permission',$userPermission);
+                                                }
+                                                if ($userAddress > 0) {
+                                                    $messageTemplates = $this->common_model->smsEmailTemplate('password_generate_link', 'email');
+                                                    $emailMsg = $messageTemplates['template'];
+                                                    $userLink = base64_encode($id);
+                                                    $userLink = base64_encode($userLink);
+                                                    $this->load->library('bitly');
+                                                    $url = $this->config->item('user_password_url') . '/' . $userLink;
+                                                    $urlLink = $this->bitly->shorten($url);
+                                                    $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                                                    $emailMsg = str_replace('%USER%', $userProfile['first_name'] . ' ' . $userProfile['last_name'], $emailMsg);
+                                                    if ($this->config->item('user_send_email') == true) {
+                                                        $mailSent = $this->common_model->sendEmail($messageTemplates['subject'], $user['email_id'], $emailMsg, '', '');
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }} elseif (count($checkSchool) > 0) {
+                                    $condition = array('user_id' => $checkSchool[0]['user_id']);
+                                    $school = array();
+                                    $schoolIds = explode(",", $checkSchool[0]['school_id']);
+                                    array_push($schoolIds, $schoolId);
+                                    $school['school_id'] = implode(",", $schoolIds);
+                                    $userProfileDetail = [];
+                                    $userProfileDetail['user_id'] = $checkSchool[0]['user_id'];
+                                    $userProfileDetail['school_id'] = $schoolId;
+                                    //$userProfileDetail['doj'] = date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][7]));
+                                    $userProfileDetail['doj'] = '0000-00-00';
+                                    $userProfileDetail['designation'] = "";
+                                    $userProfileDetail['school_idno'] = "";
+                                    $userProfileDetail['edit_status'] = 1;
+                                    $userProfileDetail['created_by'] = $filePath[0]['user_id'];
+                                    $userProfileDetail['created_date'] = date('Y-m-d H:i:s');
+                                    $update1 = $this->common_model->update('user', $school, $condition);
+                                    $update2 = $this->common_model->insert('user_profile_details', $userProfileDetail);
+                                    $userPermission = [];
+                                    $c = 0;
+                                    $getPermissionList = $this->teacher_model->teacherPermissionList();
+                                    if ($rowData[0][5] == "1") {
+                                        foreach ($getPermissionList as $value) {
+                                            if ($value['group_name'] == "Content-Creator") {
+                                                $userPermission[$c]['user_id'] = $checkSchool[0]['user_id'];
+                                                $userPermission[$c]['role_id'] = 4;
+                                                $userPermission[$c]['school_id'] = $schoolId;
+                                                $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                $c++;
+                                            }
+                                        }
+                                    }
+                                    if ($rowData[0][6] == "1") {
+                                        foreach ($getPermissionList as $value) {
+                                            if ($value['group_name'] == "Student") {
+                                                $userPermission[$c]['user_id'] = $checkSchool[0]['user_id'];
+                                                $userPermission[$c]['role_id'] = 4;
+                                                $userPermission[$c]['school_id'] = $schoolId;
+                                                $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                $c++;
+                                            }
+                                        }
+                                    }
+                                    if ($rowData[0][7] == "1") {
+                                        foreach ($getPermissionList as $value) {
+                                            if ($value['group_name'] == "Subject") {
+                                                $userPermission[$c]['user_id'] = $checkSchool[0]['user_id'];
+                                                $userPermission[$c]['role_id'] = 4;
+                                                $userPermission[$c]['school_id'] = $schoolId;
+                                                $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                $c++;
+                                            }
+                                        }
+                                    }
+                                    if ($rowData[0][8] == "1") {
+                                        foreach ($getPermissionList as $value) {
+                                            if ($value['group_name'] == "Books") {
+                                                $userPermission[$c]['user_id'] = $checkSchool[0]['user_id'];
+                                                $userPermission[$c]['role_id'] = 4;
+                                                $userPermission[$c]['school_id'] = $schoolId;
+                                                $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                $c++;
+                                            }
+                                        }
+                                    }
+                                    if ($rowData[0][9] == "1") {
+                                        foreach ($getPermissionList as $value) {
+                                            if ($value['group_name'] == "Classroom") {
+                                                $userPermission[$c]['user_id'] = $checkSchool[0]['user_id'];
+                                                $userPermission[$c]['role_id'] = 4;
+                                                $userPermission[$c]['school_id'] = $schoolId;
+                                                $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                $c++;
+                                            }
+                                        }
+                                    }
+                                    if ($rowData[0][10] == "1") {
+                                        foreach ($getPermissionList as $value) {
+                                            if ($value['group_name'] == "Content Repository") {
+                                                $userPermission[$c]['user_id'] = $checkSchool[0]['user_id'];
+                                                $userPermission[$c]['role_id'] = 4;
+                                                $userPermission[$c]['school_id'] = $schoolId;
+                                                $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                $c++;
+                                            }
+                                        }
+                                    }
+                                    if ($rowData[0][11] == "1") {
+                                        foreach ($getPermissionList as $value) {
+                                            if ($value['group_name'] == "Class") {
+                                                $userPermission[$c]['user_id'] = $checkSchool[0]['user_id'];
+                                                $userPermission[$c]['role_id'] = 4;
+                                                $userPermission[$c]['school_id'] = $schoolId;
+                                                $userPermission[$c]['user_permission_id'] = $value['id'];
+                                                $c++;
+                                            }
+                                        }
+                                    }
+                                    if (count($userPermission) > 0) {
+                                        $this->common_model->bulkInsert('user_role_permission',$userPermission);
+                                    }
+                                    $messageTemplates = $this->common_model->smsEmailTemplate('existing_user', 'email');
+                                    $schoolName = $this->common_model->schoolName($params['school_id']);
+                                    $emailMsg = $messageTemplates['template'];
+                                    $this->load->library('bitly');
+                                    $url = $this->config->item('teacher_login_url');
+                                    $urlLink = $this->bitly->shorten($url);
+                                    $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                                    $emailMsg = str_replace('%USER%', $params['first_name'] . ' ' . $params['last_name'], $emailMsg);
+                                    $emailMsg = str_replace('%SCHOOL%', $schoolName['name'], $emailMsg);
+                                    if ($this->config->item('user_send_email') == true) {
+                                        $mailSent = $this->common_model->sendEmail($messageTemplates['subject'], $params['email_id'], $emailMsg, '', '');
+                                    }
+                                }
+                            } else {
+                                $userExistsCheck++;
+                                $errorList .= "<tr>";
+                                for ($i = 0; $i < count($rowData[0]); $i++) {
+//                                    if ($i == 6) {
+//                                        $errorList .= "<td>" . date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][$i])) . "</td>";
+//                                    } else if ($i == 7) {
+//                                        $errorList .= "<td>" . date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][$i])) . "</td>";
+//                                    } else {
+                                    $errorList .= "<td>" . $rowData[0][$i] . "</td>";
+//                                    }
+                                }
+                                $errorList .= "</tr>";
+                            }
+                        } else {
+                            $emptyExistsCheck++;
+                            $emptyList .= "<tr>";
+                            for ($i = 0; $i < count($rowData[0]); $i++) {
+                                $emptyList .= "<td>" . $rowData[0][$i] . "</td>";
+                            }
+                            $emptyList .= "</tr>";
+                        }
+                    } elseif($rowData[0][1] != "" || $rowData[0][2] != "" || $rowData[0][3] != ""
+                        || $rowData[0][4] != "") {
+                        $emptyExistsCheck++;
+                        $emptyList .= "<tr>";
+                        for ($i = 0; $i < count($rowData[0]); $i++) {
+                            $emptyList .= "<td>" . $rowData[0][$i] . "</td>";
+                        }
+                        $emptyList .= "</tr>";
+                    }
+                }
+                $errorList .= '</table></body></html>';
+                $emptyList .= '</table></body></html>';
+                if ($userExistsCheck > 0) {
+                    $schoolName = $this->common_model->schoolName($schoolId);
+                    $emailId = $this->common_model->emailId($params);
+                    $messageTemplates = $this->common_model->smsEmailTemplate('invitation_failure', 'email');
+                    $emailMsg = $messageTemplates['template'];
+                    $emailSubject = $messageTemplates['subject'];
+                    $emailMsg = str_replace('%USER%', 'Super Admin', $emailMsg);
+                    $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+                    $emailMsg = str_replace('%RECORDS%', $errorList, $emailMsg);
+                    $emailSubject = str_replace('%INVITATION_TYPE%', 'Bulk Upload', $emailSubject);
+                    $emailSubject = str_replace('%TYPE%', 'Teacher', $emailSubject);
+                    $mail = $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+                }
+                if ($emptyExistsCheck > 0) {
+                    $schoolName = $this->common_model->schoolName($schoolId);
+                    $emailId = $this->common_model->emailId($params);
+                    $messageTemplates = $this->common_model->smsEmailTemplate('invitation_data_missing', 'email');
+                    $emailMsg = $messageTemplates['template'];
+                    $emailSubject = $messageTemplates['subject'];
+                    $emailMsg = str_replace('%USER%', 'Super Admin', $emailMsg);
+                    $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+                    $emailMsg = str_replace('%RECORDS%', $emptyList, $emailMsg);
+                    $emailSubject = str_replace('%INVITATION_TYPE%', 'Bulk Upload', $emailSubject);
+                    $emailSubject = str_replace('%TYPE%', 'Teacher', $emailSubject);
+                    $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+                }
+                $this->jsonarr["IsSuccess"] = true;
+                $this->jsonarr["ResponseObject"] = "Excel Uploaded Successfully";
+            }
+        }
+        return $this->jsonarr;
+    }
+
+    public function insertStudents($params, $filePath, $file, $schoolId) {
+        if (file_exists($file)) {
+            $userExistsCheck= 0;
+            $userGradeCheck = 0;
+            $emptyExistsCheck = 0;
+            $objPHPExcel = PHPExcel_IOFactory::load($file);
+            $sheet = $objPHPExcel->getSheet(0);
+            $highestRow = $sheet->getHighestRow();
+            $errorList = '<html>
+                        <html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                table, th, td{min-width: 100px;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>FirstName</th>
+                        <th>LastName</th>
+                        <th>Grade</th>
+                        <th>ParentFirstName</th>
+                        <th>ParentLastName</th>                       
+                        <th>Email_1</th>
+                        <th>Email_2</th>
+                        <th>Student_Email</th>
+                        <th>Phone1</th>
+                        <th>Phone2</th>
+                        <th>Phone3</th>
+                        <th>Street</th>
+                        <th>City</th>
+                        <th>State</th>
+                        <th>Zipcode</th>
+                        <th>DateOfBirth</th>
+                        <th>Status</th>
+                        <th>RegistrationDate</th>
+                        <th>DroppedDate</th>
+                        <th>LocationName</th>
+                        </tr>';
+            $gradeError = '<html>
+                        <html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                table, th, td{min-width: 100px;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>FirstName</th>
+                        <th>LastName</th>
+                        <th>Grade</th>
+                        <th>ParentFirstName</th>
+                        <th>ParentLastName</th>                       
+                        <th>Email_1</th>
+                        <th>Email_2</th>
+                        <th>Student_Email</th>
+                        <th>Phone1</th>
+                        <th>Phone2</th>
+                        <th>Phone3</th>
+                        <th>Street</th>
+                        <th>City</th>
+                        <th>State</th>
+                        <th>Zipcode</th>
+                        <th>DateOfBirth</th>
+                        <th>Status</th>
+                        <th>RegistrationDate</th>
+                        <th>DroppedDate</th>
+                        <th>LocationName</th>
+                        </tr>';
+            $emptyList = '<html>
+                        <html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                table, th, td{min-width: 100px;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>FirstName</th>
+                        <th>LastName</th>
+                        <th>Grade</th>
+                        <th>ParentFirstName</th>
+                        <th>ParentLastName</th>                       
+                        <th>Email_1</th>
+                        <th>Email_2</th>
+                        <th>Student_Email</th>
+                        <th>Phone1</th>
+                        <th>Phone2</th>
+                        <th>Phone3</th>
+                        <th>Street</th>
+                        <th>City</th>
+                        <th>State</th>
+                        <th>Zipcode</th>
+                        <th>DateOfBirth</th>
+                        <th>Status</th>
+                        <th>RegistrationDate</th>
+                        <th>DroppedDate</th>
+                        <th>LocationName</th>
+                        </tr>';
+            $user = [];
+            $userProfile = [];
+            $userAddress1 = [];
+            $userProfileDetails = [];
+            $upgradeDetails = [];
+            $rowCheck = $sheet->rangeToArray('A1:T1',NULL,TRUE,FALSE);
+            if($rowCheck[0][0] != "FirstName" || $rowCheck[0][1] != "LastName" || $rowCheck[0][2] != "Grade"
+                || $rowCheck[0][3] != "ParentFirstName" || $rowCheck[0][4] != "ParentLastName" || $rowCheck[0][5] != "Email_1"
+                || $rowCheck[0][6] != "Email_2" || $rowCheck[0][7] != "Student_Email" || $rowCheck[0][8] != "Phone1"
+                || $rowCheck[0][9] != "Phone2" || $rowCheck[0][10] != "Phone3" || $rowCheck[0][11] != "Street" || $rowCheck[0][12] != "City"
+                || $rowCheck[0][13] != "State" || $rowCheck[0][14] != "Zipcode" || $rowCheck[0][15] != "DateOfBirth" || $rowCheck[0][16] != "Status"
+                || $rowCheck[0][17] != "RegistrationDate" || $rowCheck[0][18] != "DroppedDate" || $rowCheck[0][19] != "LocationName") {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Please Upload Correct format of Excel Records";
+            } else {
+                for ($row = 2; $row <= $highestRow; $row++) {
+                    $rowData = $sheet->rangeToArray('A' . $row . ':' . 'T' . $row, NULL, TRUE, FALSE);
+                    if($rowData[0][0] != "" && $rowData[0][1] != "" && $rowData[0][2] != "" && $rowData[0][7] != "" && $rowData[0][16] != "") {
+                        $emailValidation = $this->emailValidation($rowData[0][7]);
+                        if ($emailValidation == true) {
+                            $data = array('email_id' => $rowData[0][7], 'school_id' => $schoolId, 'role_id' => 5);
+                            $userExists = $this->common_model->checkUser($data);
+                            if (count($userExists) == 0) {
+                                $checkSchool = $this->common_model->checkSchool($data);
+                                if (count($checkSchool) == 0) {
+                                    $user['role_id'] = 5;
+                                    if (strtolower($rowData[0][16]) == "active") {
+                                        $user['status'] = 1;
+                                    } elseif (strtolower($rowData[0][16]) == "inactive") {
+                                        $user['status'] = 2;
+                                    } else {
+                                        $user['status'] = 1;
+                                    }
+                                    $user['school_id'] = $schoolId;
+                                    $user['login_type'] = 'WEB';
+                                    $user['created_by'] = $filePath[0]['user_id'];
+                                    $user['created_date'] = date('Y-m-d H:i:s');
+                                    $user['email_id'] = $rowData[0][7];
+                                    if ($rowData[0][8] != "" && $rowData[0][9] != "" && $rowData[0][10] != "") {
+                                        $user['mobile'] = $rowData[0][8].",".$rowData[0][9].",".$rowData[0][10];
+                                    } elseif($rowData[0][8] != "" && $rowData[0][9] != "") {
+                                        $user['mobile'] = $rowData[0][8].",".$rowData[0][9].",";
+                                    } elseif($rowData[0][8] != "") {
+                                        $user['mobile'] = $rowData[0][8].",".",";
+                                    } elseif ($rowData[0][8] == "" && $rowData[0][9] == "" && $rowData[0][10] == "") {
+                                        $user['mobile'] = ",".",";
+                                    }
+                                    $id = $this->common_model->insert('user', $user);
+                                    if ($id > 0) {
+                                        $userProfile['user_id'] = $id;
+                                        $userProfile['created_date'] = date('Y-m-d H:i:s');
+                                        $userProfile['first_name'] = $rowData[0][0];
+                                        $userProfile['last_name'] = $rowData[0][1];
+                                        if ($rowData[0][15] != "") {
+                                            $date = explode("-",date("d-m-Y", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][15])));
+                                            $birthday = $date[2]."-".$date[1]."-".$date[0];
+                                            $userProfile['birthday'] = $birthday;
+                                        } else {
+                                            $userProfile['birthday'] = '0000-00-00';
+                                        }
+                                        $userProfile['created_by'] = $filePath[0]['user_id'];
+                                        $userProfile['created_date'] = date('Y-m-d H:i:s');
+                                        $profileId = $this->common_model->insert('user_profile', $userProfile);
+                                        if ($profileId > 0) {
+                                            $userProfileDetails['user_id'] = $id;
+                                            $userProfileDetails['school_id'] = $schoolId;
+                                            $userProfileDetails['edit_status'] = 1;
+                                            if($rowData[0][17] != ""){
+                                                $date = explode("-",date("d-m-Y", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][17])));
+                                                $doj = $date[2]."-".$date[1]."-".$date[0];
+                                                $userProfileDetails['doj'] = $doj;
+                                            }
+                                            if($rowData[0][18] != "") {
+                                                $date = explode("-",date("d-m-Y", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][18])));
+                                                $dropped = $date[2]."-".$date[1]."-".$date[0];
+                                                $userProfileDetails['dropped_date'] = $dropped;
+                                            }
+                                            $grade = $this->common_model->searchGrade($rowData[0][2],$schoolId);
+                                            if (count($grade) > 0) {
+                                                $upgradeDetails['grade_id'] = $grade[0]['grade_id'];
+                                                $userProfileDetails['grade_id'] = $grade[0]['grade_id'];
+                                            } elseif ($rowData[0][2] != "") {
+                                                $userProfileDetails['grade_id'] = 0;
+                                                $upgradeDetails['grade_id'] = 0;
+                                                $userGradeCheck++;
+                                                $gradeError .= "<tr>";
+                                                for ($i = 0; $i < count($rowData[0]); $i++) {
+                                                    if($i == 15 || $i == 17 || $i == 18) {
+                                                        if($rowData[0][$i] != "") {
+                                                            $gradeError .= "<td>" . date("d-m-Y", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][$i])) . "</td>";
+                                                        }
+                                                    }
+                                                    else {
+                                                        $gradeError .= "<td>" . $rowData[0][$i] . "</td>";
+                                                    }
+                                                }
+                                                $gradeError .= "</tr>";
+                                            } else {
+                                                $userProfileDetails['grade_id'] = 0;
+                                                $upgradeDetails['grade_id'] = 0;
+                                            }
+                                            $userProfileDetails['created_by'] = $filePath[0]['user_id'];
+                                            $userProfileDetails['created_date'] = date('Y-m-d H:i:s');
+                                            $profileDetailId = $this->common_model->insert('user_profile_details', $userProfileDetails);
+                                            $upgradeDetails['school_id'] = $schoolId;
+                                            $upgradeDetails['student_id'] = $id;
+                                            $upgradeDetails['active_date'] = date('Y-m-d H:i:s');
+                                            $upgradeDetails['created_by'] = $filePath[0]['user_id'];
+                                            $upgradeDetails['created_date'] = date('Y-m-d H:i:s');
+                                            $this->common_model->insert('upgrade', $upgradeDetails);
+                                            if ($profileDetailId > 0) {
+                                                $state = $this->common_model->searchState($rowData[0][13]);
+                                                if ($state['id'] != 0) {
+                                                    $country = $this->common_model->searchCountry1($state['id']);
+                                                } else {
+                                                    $country = 0;
+                                                }
+                                                if ($state > 0) {
+                                                    $userAddress1['state'] = $state['id'];
+                                                } else {
+                                                    $userAddress1['state'] = 0;
+                                                }
+                                                if ($country > 0) {
+                                                    $userAddress1['country'] = $country['country_id'];
+                                                } else {
+                                                    $userAddress1['country'] = 0;
+                                                }
+                                                $userAddress1['user_id'] = $id;
+                                                $userAddress1['address_type'] = 2;
+                                                $userAddress1['name'] = $rowData[0][9];
+                                                $userAddress1['address1'] = $rowData[0][11];
+                                                $userAddress1['address2'] = $rowData[0][19];
+                                                $userAddress1['city'] = $rowData[0][12];
+                                                $userAddress1['postal_code'] = $rowData[0][14];
+                                                $userAddress1['created_date'] = date('Y-m-d H:i:s');
+                                                $this->common_model->insert('user_address', $userAddress1);
+                                                $messageTemplates = $this->common_model->smsEmailTemplate('password_generate_link', 'email');
+                                                $emailMsg = $messageTemplates['template'];
+                                                $userLink = base64_encode($id);
+                                                $userLink = base64_encode($userLink);
+                                                $this->load->library('bitly');
+                                                $url = $this->config->item('user_password_url') . '/' . $userLink;
+                                                $urlLink = $this->bitly->shorten($url);
+                                                $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                                                $emailMsg = str_replace('%USER%', $userProfile['first_name'] . ' ' . $userProfile['last_name'], $emailMsg);
+                                                if ($this->config->item('user_send_email') == true) {
+                                                    $mailSent = $this->common_model->sendEmail($messageTemplates['subject'], $user['email_id'], $emailMsg, '', '');
+                                                }
+                                            }
+                                        }
+                                    }
+                                } elseif (count($checkSchool) > 0) {
+                                    $condition = array('user_id' => $checkSchool[0]['user_id']);
+                                    $school = array();
+                                    $schoolIds = explode(",", $checkSchool[0]['school_id']);
+                                    array_push($schoolIds, $schoolId);
+                                    $school['school_id'] = implode(",", $schoolIds);
+                                    $userProfileDetail = [];
+                                    $userProfileDetail['user_id'] = $checkSchool[0]['user_id'];
+                                    $userProfileDetail['school_id'] = $schoolId;
+                                    $grade = $this->common_model->searchGrade($rowData[0][2],$schoolId);
+                                    if(count($grade) > 0) {
+                                        $upgradeDetails['grade_id'] = $grade[0]['grade_id'];
+                                        $userProfileDetail['grade_id'] = $grade[0]['grade_id'];
+                                    } elseif ($rowData[0][2] != "") {
+                                        $upgradeDetails['grade_id'] = 0;
+                                        $userProfileDetail['grade_id'] = 0;
+                                        $userGradeCheck++;
+                                        $gradeError .= "<tr>";
+                                        for ($i = 0; $i < count($rowData[0]); $i++) {
+                                            if ($i == 15 || $i == 17 || $i == 18) {
+                                                $gradeError .= "<td>" . date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][$i])) . "</td>";
+                                            } else {
+                                                $gradeError .= "<td>" . $rowData[0][$i] . "</td>";
+                                            }
+                                        }
+                                        $gradeError .= "</tr>";
+                                    } else {
+                                        $upgradeDetails['grade_id'] = 0;
+                                        $userProfileDetail['grade_id'] = 0;
+                                    }
+                                    $userProfileDetail['school_idno'] = $rowData[0][6];
+                                    $userProfileDetail['edit_status'] = 1;
+                                    if($rowData[0][17] != ""){
+                                        $date = explode("-",date("d-m-Y", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][17])));
+                                        $doj = $date[2]."-".$date[1]."-".$date[0];
+                                        $userProfileDetail['doj'] = $doj;
+                                    }
+                                    if($rowData[0][18] != "") {
+                                        $date = explode("-",date("d-m-Y", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][18])));
+                                        $dropped = $date[2]."-".$date[1]."-".$date[0];
+                                        $userProfileDetail['dropped_date'] = $dropped;
+                                    }
+                                    $userProfileDetail['created_by'] = $filePath[0]['user_id'];
+                                    $userProfileDetail['created_date'] = date('Y-m-d H:i:s');
+                                    $upgradeDetails['school_id'] = $schoolId;
+                                    $upgradeDetails['student_id'] = $checkSchool[0]['user_id'];
+                                    $upgradeDetails['active_date'] = date('Y-m-d H:i:s');
+                                    $upgradeDetails['created_by'] = $filePath[0]['user_id'];
+                                    $upgradeDetails['created_date'] = date('Y-m-d H:i:s');
+                                    $this->common_model->insert('upgrade', $upgradeDetails);
+                                    $update1 = $this->common_model->update('user', $school, $condition);
+                                    $update2 = $this->common_model->insert('user_profile_details', $userProfileDetail);
+                                    $messageTemplates = $this->common_model->smsEmailTemplate('existing_user', 'email');
+                                    $schoolName = $this->common_model->schoolName($params['school_id']);
+                                    $emailMsg = $messageTemplates['template'];
+                                    $this->load->library('bitly');
+                                    $url = $this->config->item('student_login_url');
+                                    $urlLink = $this->bitly->shorten($url);
+                                    $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                                    $emailMsg = str_replace('%USER%', $params['first_name'] . ' ' . $params['last_name'], $emailMsg);
+                                    $emailMsg = str_replace('%SCHOOL%', $schoolName['name'], $emailMsg);
+                                    if ($this->config->item('user_send_email') == true) {
+                                        $mailSent = $this->common_model->sendEmail($messageTemplates['subject'], $params['email_id'], $emailMsg, '', '');
+                                    }
+                                }
+                            } else {
+                                $userExistsCheck++;
+                                $errorList .= "<tr>";
+                                for ($i = 0; $i < count($rowData[0]); $i++) {
+                                    if ($i ==15 || $i == 17 || $i == 18 ) {
+                                        $errorList .= "<td>" . date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][$i])) . "</td>";
+                                    } else {
+                                        $errorList .= "<td>" . $rowData[0][$i] . "</td>";
+                                    }
+                                }
+                                $errorList .= "</tr>";
+                            }
+                        } else {
+                            $emptyExistsCheck++;
+                            $emptyList .= "<tr>";
+                            for ($i = 0; $i < count($rowData[0]); $i++) {
+                                $emptyList .= "<td>" . $rowData[0][$i] . "</td>";
+                            }
+                            $emptyList .= "</tr>";
+                        }
+                    } elseif($rowData[0][0] != "" || $rowData[0][1] != "" || $rowData[0][2] != "" || $rowData[0][7] != "" || $rowData[0][16] != "") {
+                        $emptyExistsCheck++;
+                        $emptyList .= "<tr>";
+                        for ($i = 0; $i < count($rowData[0]); $i++) {
+                            $emptyList .= "<td>" . $rowData[0][$i] . "</td>";
+                        }
+                        $emptyList .= "</tr>";
+                    }
+                }
+                $errorList .= '</table></body></html>';
+                $emptyList .= '</table></body></html>';
+                $gradeError .= '</table></body></html>';
+                if($userExistsCheck > 0) {
+                    $schoolName = $this->common_model->schoolName($schoolId);
+                    $emailId = $this->common_model->emailId($params);
+                    $messageTemplates = $this->common_model->smsEmailTemplate('invitation_failure', 'email');
+                    $emailMsg = $messageTemplates['template'];
+                    $emailSubject = $messageTemplates['subject'];
+                    $emailMsg = str_replace('%USER%', 'Super Admin', $emailMsg);
+                    $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+                    $emailMsg = str_replace('%RECORDS%', $errorList, $emailMsg);
+                    $emailSubject = str_replace('%INVITATION_TYPE%', 'Bulk Upload', $emailSubject);
+                    $emailSubject = str_replace('%TYPE%', 'Student', $emailSubject);
+                    $mail = $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+                }
+                if ($userGradeCheck > 0) {
+                    $schoolName = $this->common_model->schoolName($schoolId);
+                    $emailId = $this->common_model->emailId($params);
+                    $messageTemplates = $this->common_model->smsEmailTemplate('invitation_grade_failure', 'email');
+                    $emailMsg = $messageTemplates['template'];
+                    $emailSubject = $messageTemplates['subject'];
+                    $emailMsg = str_replace('%USER%', 'Super Admin', $emailMsg);
+                    $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+                    $emailMsg = str_replace('%RECORDS%', $gradeError, $emailMsg);
+                    $emailSubject = str_replace('%INVITATION_TYPE%', 'Bulk Upload', $emailSubject);
+                    $emailSubject = str_replace('%TYPE%', 'Student', $emailSubject);
+                    $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+                }
+                if ($emptyExistsCheck > 0) {
+                    $schoolName = $this->common_model->schoolName($schoolId);
+                    $emailId = $this->common_model->emailId($params);
+                    $messageTemplates = $this->common_model->smsEmailTemplate('invitation_data_missing', 'email');
+                    $emailMsg = $messageTemplates['template'];
+                    $emailSubject = $messageTemplates['subject'];
+                    $emailMsg = str_replace('%USER%', 'Super Admin', $emailMsg);
+                    $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+                    $emailMsg = str_replace('%RECORDS%', $emptyList, $emailMsg);
+                    $emailSubject = str_replace('%INVITATION_TYPE%', 'Bulk Upload', $emailSubject);
+                    $emailSubject = str_replace('%TYPE%', 'Student', $emailSubject);
+                    $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+                }
+                $this->jsonarr["IsSuccess"] = true;
+                $this->jsonarr["ResponseObject"] = "Excel Uploaded Successfully";
+            }
+        }
+        return $this->jsonarr;
+    }
+
+    public function insertContentcreators($params, $filePath, $file, $schoolId)
+    {
+        if (file_exists($file)) {
+            $userExistsCheck = 0;
+            $emptyExistsCheck = 0;
+            $objPHPExcel = PHPExcel_IOFactory::load($file);
+            $sheet = $objPHPExcel->getSheet(0);
+            $highestRow = $sheet->getHighestRow();
+            $errorList = '<html>
+                        <html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                table, th, td{min-width: 100px;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>S.No</th>
+                        <th>FirstName</th>
+                        <th>LastName</th>
+                        <th>Email_Id</th>
+                        <th>Mobile</th>
+                        </tr>';
+            $emptyList = '<html>
+                        <html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                table, th, td{min-width: 100px;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>S.No</th>
+                        <th>FirstName</th>
+                        <th>LastName</th>
+                        <th>Email_Id</th>
+                        <th>Mobile</th>
+                        </tr>';
+            $user = [];
+            $userProfile = [];
+            $userAddress = [];
+            $rowCheck = $sheet->rangeToArray('A1:E1',NULL, TRUE, FALSE);
+            if($rowCheck[0][0] != "S.No" || $rowCheck[0][1] != "First Name" || $rowCheck[0][2] != "Last Name"
+                || $rowCheck[0][3] != "Email Id" || $rowCheck[0][4] != "Mobile") {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Please Upload Correct format of excel";
+            } else {
+                for ($row = 2; $row <= $highestRow; $row++) {
+                    $rowData = $sheet->rangeToArray('A' . $row . ':' . 'E' . $row, NULL, TRUE, FALSE);
+                    if($rowData[0][1] != "" && $rowData[0][2] != "" && $rowData[0][3] != ""
+                        && $rowData[0][4] != "") {
+                        $emailValidation = $this->emailValidation($rowData[0][3]);
+                        if ($emailValidation == true) {
+                            $data = array('email_id' => $rowData[0][3], 'school_id' => $schoolId, 'role_id' => 3);
+                            $userExists = $this->contentcreator_model->checkUser($data,'add','');
+                            if (count($userExists) == 0) {
+                                $checkSchool = $this->common_model->checkSchool($data);
+                                if (count($checkSchool) == 0) {
+                                    $user['role_id'] = 3;
+                                    $user['status'] = 1;
+                                    $user['school_id'] = $schoolId;
+                                    $user['login_type'] = 'WEB';
+                                    $user['created_by'] = $filePath[0]['user_id'];
+                                    $user['created_date'] = date('Y-m-d H:i:s');
+                                    $user['email_id'] = $rowData[0][3];
+                                    $user['mobile'] = $rowData[0][4];
+                                    $id = $this->common_model->insert('user', $user);
+                                    if ($id > 0) {
+                                        $userProfile['user_id'] = $id;
+                                        $userProfile['created_date'] = date('Y-m-d');
+                                        $userProfile['first_name'] = $rowData[0][1];
+                                        $userProfile['last_name'] = $rowData[0][2];
+                                        $userProfile['gender'] = 'n/a';
+//                                        if ($rowData[0][6] != "") {
+//                                            $userProfile['birthday'] = date("Y-m-d",PHPExcel_Shared_Date::ExcelToPHP($rowData[0][6]));
+//                                        } else {
+                                        $userProfile['birthday'] = '0000-00-00';
+//                                        }
+                                        $userProfile['created_by'] = $filePath[0]['user_id'];
+                                        $userProfile['created_date'] = date('Y-m-d H:i:s');
+                                        $profileId = $this->common_model->insert('user_profile', $userProfile);
+                                        if ($profileId > 0) {
+                                            $userProfileDetails = [];
+                                            $userProfileDetails['user_id'] = $id;
+                                            $userProfileDetails['school_id'] = $schoolId;
+//                                            if($rowData[0][7] != "") {
+//                                                $userProfileDetails['doj'] = date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][7]));
+//                                            } else {
+                                            $userProfileDetails['doj'] = '0000-00-00';
+//                                            }
+                                            $userProfileDetails['designation'] = "";
+                                            $userProfileDetails['school_idno'] = "";
+                                            $userProfileDetails['edit_status'] = 0;
+                                            $userProfileDetails['created_by'] = $filePath[0]['user_id'];
+                                            $userProfileDetails['created_date'] = date('Y-m-d H:i:s');
+                                            $profileDetailId = $this->common_model->insert('user_profile_details', $userProfileDetails);
+                                            if ($profileDetailId > 0) {
+//                                            $state = $this->common_model->searchState($rowData[0][13]);
+//                                            $country = $this->common_model->searchCountry($rowData[0][14]);
+//                                            if ($state > 0) {
+//                                                $userAddress['state'] = $state['id'];
+//                                            } else {
+//                                                $userAddress['state'] = 0;
+//                                            }
+//                                            if ($country > 0) {
+//                                                $userAddress['country'] = $country['id'];
+//                                            } else {
+//                                                $userAddress['country'] = 0;
+//                                            }
+                                                $userAddress['user_id'] = $id;
+                                                $userAddress['address_type'] = 4;
+                                                $userAddress['name'] = $rowData[0][2];
+//                                            $userAddress['address1'] = $rowData[0][10];
+//                                            $userAddress['address2'] = $rowData[0][11];
+//                                            $userAddress['city'] = $rowData[0][12];
+//                                            $userAddress['postal_code'] = $rowData[0][15];
+                                                $userAddress['created_date'] = date('Y-m-d H:i:s');
+                                                $this->common_model->insert('user_address', $userAddress);
+                                            }
+                                            if ($userAddress > 0) {
+                                                $messageTemplates = $this->common_model->smsEmailTemplate('password_generate_link', 'email');
+                                                $emailMsg = $messageTemplates['template'];
+                                                $userLink = base64_encode($id);
+                                                $userLink = base64_encode($userLink);
+                                                $this->load->library('bitly');
+                                                $url = $this->config->item('user_password_url') . '/' . $userLink;
+                                                $urlLink = $this->bitly->shorten($url);
+                                                $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                                                $emailMsg = str_replace('%USER%', $userProfile['first_name'] . ' ' . $userProfile['last_name'], $emailMsg);
+                                                if ($this->config->item('user_send_email') == true) {
+                                                    $mailSent = $this->common_model->sendEmail($messageTemplates['subject'], $user['email_id'], $emailMsg, '', '');
+                                                }
+                                            }
+                                        }
+                                    }
+                                } elseif (count($checkSchool) > 0) {
+                                    $condition = array('user_id' => $checkSchool[0]['user_id']);
+                                    $school = array();
+                                    $schoolIds = explode(",", $checkSchool[0]['school_id']);
+                                    array_push($schoolIds, $schoolId);
+                                    $school['school_id'] = implode(",", $schoolIds);
+                                    $userProfileDetail = [];
+                                    $userProfileDetail['user_id'] = $checkSchool[0]['user_id'];
+                                    $userProfileDetail['school_id'] = $schoolId;
+                                    //$userProfileDetail['doj'] = date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][7]));
+                                    $userProfileDetail['doj'] = '0000-00-00';
+                                    $userProfileDetail['designation'] = "";
+                                    $userProfileDetail['school_idno'] = "";
+                                    $userProfileDetail['edit_status'] = 0;
+                                    $userProfileDetail['created_by'] = $filePath[0]['user_id'];
+                                    $userProfileDetail['created_date'] = date('Y-m-d H:i:s');
+                                    $update1 = $this->common_model->update('user', $school, $condition);
+                                    $update2 = $this->common_model->insert('user_profile_details', $userProfileDetail);
+                                }
+
+                            } else {
+                                $userExistsCheck++;
+                                $errorList .= "<tr>";
+                                for ($i = 0; $i < count($rowData[0]); $i++) {
+//                                    if ($i == 6) {
+//                                        $errorList .= "<td>" . date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][$i])) . "</td>";
+//                                    } else if ($i == 7) {
+//                                        $errorList .= "<td>" . date("Y-m-d", PHPExcel_Shared_Date::ExcelToPHP($rowData[0][$i])) . "</td>";
+//                                    } else {
+                                    $errorList .= "<td>" . $rowData[0][$i] . "</td>";
+//                                    }
+                                }
+                                $errorList .= "</tr>";
+                            }
+                        } else {
+                            $emptyExistsCheck++;
+                            $emptyList .= "<tr>";
+                            for ($i = 0; $i < count($rowData[0]); $i++) {
+                                $emptyList .= "<td>" . $rowData[0][$i] . "</td>";
+                            }
+                            $emptyList .= "</tr>";
+                        }
+                    } elseif($rowData[0][1] != "" || $rowData[0][2] != "" || $rowData[0][3] != ""
+                        && $rowData[0][4] != "") {
+                        $emptyExistsCheck++;
+                        $emptyList .= "<tr>";
+                        for ($i = 0; $i < count($rowData[0]); $i++) {
+                            $emptyList .= "<td>" . $rowData[0][$i] . "</td>";
+                        }
+                        $emptyList .= "</tr>";
+                    }
+                }
+                $errorList .= '</table></body></html>';
+                $emptyList .= '</table></body></html>';
+                if($userExistsCheck > 0) {
+                    $schoolName = $this->common_model->schoolName($schoolId);
+                    $emailId = $this->common_model->emailId($params);
+                    $messageTemplates = $this->common_model->smsEmailTemplate('invitation_failure', 'email');
+                    $emailMsg = $messageTemplates['template'];
+                    $emailSubject = $messageTemplates['subject'];
+                    $emailMsg = str_replace('%USER%', 'Super Admin', $emailMsg);
+                    $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+                    $emailMsg = str_replace('%RECORDS%', $errorList, $emailMsg);
+                    $emailSubject = str_replace('%INVITATION_TYPE%', 'Bulk Upload', $emailSubject);
+                    $emailSubject = str_replace('%TYPE%', 'Contentcreator', $emailSubject);
+                    $mail = $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+                }
+                if ($emptyExistsCheck > 0) {
+                    $schoolName = $this->common_model->schoolName($schoolId);
+                    $emailId = $this->common_model->emailId($params);
+                    $messageTemplates = $this->common_model->smsEmailTemplate('invitation_data_missing', 'email');
+                    $emailMsg = $messageTemplates['template'];
+                    $emailSubject = $messageTemplates['subject'];
+                    $emailMsg = str_replace('%USER%', 'Super Admin', $emailMsg);
+                    $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+                    $emailMsg = str_replace('%RECORDS%', $emptyList, $emailMsg);
+                    $emailSubject = str_replace('%INVITATION_TYPE%', 'Bulk Upload', $emailSubject);
+                    $emailSubject = str_replace('%TYPE%', 'Contentcreator', $emailSubject);
+                    $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+                }
+            }
+            $this->jsonarr['IsSuccess'] = true;
+            $this->jsonarr['ResponseObject'] = "Excel Uploaded Successfully";
+        }
+        return $this->jsonarr;
+    }
+
+    public function emailInsertTeachers($params, $filePath, $schoolId) {
+        $user = [];
+        $userProfile = [];
+        $userAddress = [];
+        $userProfileDetails = [];
+        $userExistsCheck = 0;
+        $emailIds = explode(',', $filePath[0]['path']);
+        $errorList = '<html>
+                        <html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                th, td{min-width: 50%;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>S.No</th>
+                        <th>Email_Id</th>
+                        </tr>';
+        for($i = 0; $i < count($emailIds); $i++) {
+            $data = array('email_id' => $emailIds[$i], 'school_id' => $schoolId, 'role_id' => 4);
+            $userExists = $this->common_model->checkUser($data);
+            if(count($userExists) == 0){
+                $checkSchool = $this->common_model->checkSchool($data);
+                if (count($checkSchool) == 0) {
+                    $user[$i]['role_id'] = 4;
+                    $user[$i]['school_id'] = $schoolId;
+                    $user[$i]['email_id'] = $emailIds[$i];
+                    $user[$i]['status'] = 1;
+                    $user[$i]['login_type'] = 'WEB';
+                    $user[$i]['created_by'] = $params['user_id'];
+                    $user[$i]['created_date'] = date('Y-m-d H:i:s');
+                    $userId = $this->common_model->insert('user',$user[$i]);
+                    if($userId > 0) {
+                        $userProfile[$i]['user_id'] = $userId;
+                        $userProfile[$i]['created_by'] = $params['user_id'];
+                        $userProfile[$i]['created_date'] = date('Y-m-d H:i:s');
+                        $userProfileId = $this->common_model->insert('user_profile', $userProfile[$i]);
+                        if ($userProfileId > 0) {
+                            $userProfileDetails[$i]['user_id'] = $userId;
+                            $userProfileDetails[$i]['school_id'] = $schoolId;
+                            $userProfileDetails[$i]['edit_status'] = 1;
+                            $userProfileDetails[$i]['created_by'] = $params['user_id'];
+                            $userProfileDetails[$i]['created_date'] = date('Y-m-d H:i:s');
+                            $profileDetailId = $this->common_model->insert('user_profile_details', $userProfileDetails[$i]);
+                            if ($profileDetailId > 0) {
+                                $userAddress[$i]['user_id'] = $userId;
+                                $userAddress[$i]['address_type'] = 1;
+                                $userAddress[$i]['created_date'] = date('Y-m-d H:i:s');
+                                $userAddressId = $this->common_model->insert('user_address', $userAddress[$i]);
+                                if ($userAddressId > 0) {
+                                    $messageTemplates = $this->common_model->smsEmailTemplate('invitation_link', 'email');
+                                    $emailMsg = $messageTemplates['template'];
+                                    $userLink = base64_encode($userId);
+                                    $userLink = base64_encode($userLink);
+                                    $this->load->library('bitly');
+                                    $url = $this->config->item('teacher_invite_url') . '/' . $userLink;
+                                    $urlLink = $this->bitly->shorten($url);
+                                    $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                                    if ($this->config->item('user_send_email') == true) {
+                                        $this->common_model->sendEmail($messageTemplates['subject'], $emailIds[$i], $emailMsg, '', '');
+                                    }
+                                }
+                            }
+                        }
+                    }
+            } elseif (count($checkSchool) > 0) {
+                    $condition = array('user_id' => $checkSchool[0]['user_id']);
+                    $school = array();
+                    $schoolIds = explode(",", $checkSchool[0]['school_id']);
+                    array_push($schoolIds, $schoolId);
+                    $school['school_id'] = implode(",", $schoolIds);
+                    $userProfileDetails[$i]['user_id'] = $condition['user_id'];
+                    $userProfileDetails[$i]['school_id'] = $schoolId;
+                    $userProfileDetails[$i]['edit_status'] = 1;
+                    $userProfileDetails[$i]['created_by'] = $params['user_id'];
+                    $userProfileDetails[$i]['created_date'] = date('Y-m-d H:i:s');
+                    $update1 = $this->common_model->insert('user_profile_details', $userProfileDetails[$i]);
+                    $update2 = $this->common_model->update('user', $school, $condition);
+                    $messageTemplates = $this->common_model->smsEmailTemplate('existing_user', 'email');
+                    $schoolName = $this->common_model->schoolName($params['school_id']);
+                    $emailMsg = $messageTemplates['template'];
+                    $this->load->library('bitly');
+                    $url = $this->config->item('teacher_login_url');
+                    $urlLink = $this->bitly->shorten($url);
+                    $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                    $emailMsg = str_replace('%USER%', $params['first_name'] . ' ' . $params['last_name'], $emailMsg);
+                    $emailMsg = str_replace('%SCHOOL%', $schoolName['name'], $emailMsg);
+                    if ($this->config->item('user_send_email') == true) {
+                        $mailSent = $this->common_model->sendEmail($messageTemplates['subject'], $params['email_id'], $emailMsg, '', '');
+                    }
+                }} else {
+                $userExistsCheck++;
+                $errorList .= "<tr>";
+                if($i == 0) {
+                    $errorList .= "<td>" . 1 . "</td>";
+                    $errorList .= "<td>" . $emailIds[$i] . "</td>";
+                    $errorList .= "</tr>";
+                } else {
+                    $errorList .= "<td>" . ($i+1) . "</td>";
+                    $errorList .= "<td>" . $emailIds[$i] . "</td>";
+                    $errorList .= "</tr>";
+                }
+            }
+        }
+        $errorList .= '</table></body></html>';
+        if($userExistsCheck > 0) {
+            $schoolName = $this->common_model->schoolName($schoolId);
+            $emailId = $this->common_model->emailId($params);
+            $messageTemplates = $this->common_model->smsEmailTemplate('invitation_failure', 'email');
+            $emailMsg = $messageTemplates['template'];
+            $emailSubject = $messageTemplates['subject'];
+            $emailMsg = str_replace('%USER%', 'Admin', $emailMsg);
+            $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+            $emailMsg = str_replace('%RECORDS%', $errorList, $emailMsg);
+            $emailSubject = str_replace('%INVITATION_TYPE%', 'Email', $emailSubject);
+            $emailSubject = str_replace('%TYPE%', 'Teacher', $emailSubject);
+            $mail = $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+        }
+        $this->jsonarr['IsSuccess'] = true;
+        $this->jsonarr['ResponseObject'] = "Teachers Invited Successfully";
+        return $this->jsonarr;
+    }
+
+    public function emailInsertStudents($params, $filePath, $schoolId, $gradeId) {
+        $user = [];
+        $userProfile = [];
+        $userAddress1 = [];
+        $userAddress2 = [];
+        $userProfileDetails = [];
+        $upgradeDetails = [];
+        $userExistsCheck = 0;
+        $emailIds = explode(',', $filePath[0]['path']);
+        $errorList = '<html>
+                        <html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                table, th, td{min-width: 100px;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>S.No</th>
+                        <th>Email_Id</th>
+                        </tr>';
+        for($i = 0; $i < count($emailIds); $i++) {
+            $data = array('email_id' => $emailIds[$i], 'school_id' => $schoolId, 'role_id' => 5);
+            $userExists = $this->common_model->checkUser($data);
+            if(count($userExists) == 0){
+                $checkSchool = $this->common_model->checkSchool($data);
+                if (count($checkSchool) == 0) {
+                $user[$i]['role_id'] = 5;
+                $user[$i]['email_id'] = $emailIds[$i];
+                $user[$i]['school_id'] = $schoolId;
+                $user[$i]['mobile'] = ",".",";
+                $user[$i]['status'] = 1;
+                $user[$i]['login_type'] = 'WEB';
+                $user[$i]['created_by'] = $params['user_id'];
+                $user[$i]['created_date'] = date('Y-m-d H:i:s');
+                $userId = $this->common_model->insert('user',$user[$i]);
+                if($userId > 0) {
+                    $userProfile[$i]['user_id'] = $userId;
+                    $userProfile[$i]['created_by'] = $params['user_id'];
+                    $userProfile[$i]['created_date'] = date('Y-m-d');
+                    $userProfileId = $this->common_model->insert('user_profile', $userProfile[$i]);
+                    if ($userProfileId > 0) {
+                        $userProfileDetails[$i]['user_id'] = $userId;
+                        $userProfileDetails[$i]['school_id'] = $schoolId;
+                        $userProfileDetails[$i]['grade_id'] = $gradeId;
+                        $userProfileDetails[$i]['edit_status'] = 1;
+                        $userProfileDetails[$i]['created_by'] = $params['user_id'];
+                        $userProfileDetails[$i]['created_date'] = date('Y-m-d H:i:s');
+                        $profileDetailId = $this->common_model->insert('user_profile_details', $userProfileDetails[$i]);
+                        if ($profileDetailId > 0) {
+                            $upgradeDetails[$i]['school_id'] = $schoolId;
+                            $upgradeDetails[$i]['student_id'] = $userId;
+                            $upgradeDetails[$i]['grade_id'] = $gradeId;
+                            $upgradeDetails[$i]['active_date'] = date('Y-m-d H:i:s');
+                            $upgradeDetails[$i]['created_by'] = $params['user_id'];
+                            $upgradeDetails[$i]['created_date'] = date('Y-m-d H:i:s');
+                            $this->common_model->insert('upgrade', $upgradeDetails[$i]);
+                            $userAddress1[$i]['user_id'] = $userId;
+                            $userAddress1[$i]['address_type'] = 2;
+                            $userAddress1[$i]['created_date'] = date('Y-m-d H:i:s');
+                            $userAddress1Id = $this->common_model->insert('user_address', $userAddress1[$i]);
+                            $userAddress2[$i]['user_id'] = $userId;
+                            $userAddress2[$i]['address_type'] = 3;
+                            $userAddress2[$i]['created_date'] = date('Y-m-d H:i:s');
+                            $userAddress2Id = $this->common_model->insert('user_address', $userAddress2[$i]);
+                            if ($userAddress1Id > 0 && $userAddress2Id > 0) {
+                                $messageTemplates = $this->common_model->smsEmailTemplate('invitation_link', 'email');
+                                $emailMsg = $messageTemplates['template'];
+                                $userLink = base64_encode($userId);
+                                $userLink = base64_encode($userLink);
+                                $this->load->library('bitly');
+                                $url = $this->config->item('student_invite_url') . '/' . $userLink;
+                                $urlLink = $this->bitly->shorten($url);
+                                $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                                if ($this->config->item('user_send_email') == true) {
+                                    $this->common_model->sendEmail($messageTemplates['subject'], $emailIds[$i], $emailMsg, '', '');
+                                }
+                            }
+                        }
+                    }
+                }
+            } elseif (count($checkSchool) > 0) {
+                    $condition = array('user_id' => $checkSchool[0]['user_id']);
+                    $school = array();
+                    $schoolIds = explode(",", $checkSchool[0]['school_id']);
+                    array_push($schoolIds, $schoolId);
+                    $school['school_id'] = implode(",", $schoolIds);
+                    $userProfileDetails[$i]['user_id'] = $condition['user_id'];
+                    $userProfileDetails[$i]['school_id'] = $schoolId;
+                    $userProfileDetails[$i]['grade_id'] = $gradeId;
+                    $userProfileDetails[$i]['edit_status'] = 1;
+                    $userProfileDetails[$i]['created_by'] = $params['user_id'];
+                    $userProfileDetails[$i]['created_date'] = date('Y-m-d H:i:s');
+                    $upgradeDetails[$i]['school_id'] = $schoolId;
+                    $upgradeDetails[$i]['student_id'] = $condition['user_id'];
+                    $upgradeDetails[$i]['grade_id'] = $gradeId;
+                    $upgradeDetails[$i]['active_date'] = date('Y-m-d H:i:s');
+                    $upgradeDetails[$i]['created_by'] = $params['user_id'];
+                    $upgradeDetails[$i]['created_date'] = date('Y-m-d H:i:s');
+                    $this->common_model->insert('upgrade', $upgradeDetails[$i]);
+                    $update1 = $this->common_model->insert('user_profile_details', $userProfileDetails[$i]);
+                    $update2 = $this->common_model->update('user', $school, $condition);
+                    $messageTemplates = $this->common_model->smsEmailTemplate('existing_user', 'email');
+                    $schoolName = $this->common_model->schoolName($params['school_id']);
+                    $emailMsg = $messageTemplates['template'];
+                    $this->load->library('bitly');
+                    $url = $this->config->item('student_login_url');
+                    $urlLink = $this->bitly->shorten($url);
+                    $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                    $emailMsg = str_replace('%USER%', $params['first_name'] . ' ' . $params['last_name'], $emailMsg);
+                    $emailMsg = str_replace('%SCHOOL%', $schoolName['name'], $emailMsg);
+                    if ($this->config->item('user_send_email') == true) {
+                        $mailSent = $this->common_model->sendEmail($messageTemplates['subject'], $params['email_id'], $emailMsg, '', '');
+                    }
+                }
+            } else {
+                $userExistsCheck++;
+                $errorList .= "<tr>";
+                if($i == 0) {
+                    $errorList .= "<td>" . 1 . "</td>";
+                    $errorList .= "<td>" . $emailIds[$i] . "</td>";
+                    $errorList .= "</tr>";
+                } else {
+                    $errorList .= "<td>" . ($i+1) . "</td>";
+                    $errorList .= "<td>" . $emailIds[$i] . "</td>";
+                    $errorList .= "</tr>";
+                }
+            }
+        }
+        $errorList .= '</table></body></html>';
+        if($userExistsCheck > 0) {
+            $schoolName = $this->common_model->schoolName($schoolId);
+            $emailId = $this->common_model->emailId($params);
+            $messageTemplates = $this->common_model->smsEmailTemplate('invitation_failure', 'email');
+            $emailMsg = $messageTemplates['template'];
+            $emailSubject = $messageTemplates['subject'];
+            $emailMsg = str_replace('%USER%', 'Admin', $emailMsg);
+            $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+            $emailMsg = str_replace('%RECORDS%', $errorList, $emailMsg);
+            $emailSubject = str_replace('%INVITATION_TYPE%', 'Email', $emailSubject);
+            $emailSubject = str_replace('%TYPE%', 'Student', $emailSubject);
+            $mail = $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+        }
+        $this->jsonarr['IsSuccess'] = true;
+        $this->jsonarr['ResponseObject'] = "Students Invited Successfully";
+        return $this->jsonarr;
+    }
+
+    public function emailInsertContentcreators($params, $filePath, $schoolId) {
+        $user = [];
+        $userProfile = [];
+        $userAddress = [];
+        $userProfileDetails = [];
+        $userExistsCheck = 0;
+        $emailIds = explode(',', $filePath[0]['path']);
+        $errorList = '<html>
+                        <html><head>
+                            <style>
+                                table{border-collapse: collapse}
+                                table, th, td{min-width: 100px;}
+                                table,th,td,tr{border: 1px solid black;text-align: center;}
+                                th{height: 30px;}
+                            </style></head>
+                        <body><table>
+                        <tr>
+                        <th>S.No</th>
+                        <th>Email_Id</th>
+                        </tr>';
+        for($i = 0; $i < count($emailIds); $i++) {
+            $data = array('email_id' => $emailIds[$i], 'school_id' => $schoolId, 'role_id' => 3);
+            $userExists = $this->contentcreator_model->checkUser($data,'add','');
+            if(count($userExists) == 0){
+                $checkSchool = $this->common_model->checkSchool($data);
+                if (count($checkSchool) == 0) {
+                $user[$i]['role_id'] = 3;
+                $user[$i]['school_id'] = $schoolId;
+                $user[$i]['email_id'] = $emailIds[$i];
+                $user[$i]['status'] = 1;
+                $user[$i]['login_type'] = 'WEB';
+                $user[$i]['created_by'] = $params['user_id'];
+                $user[$i]['created_date'] = date('Y-m-d H:i:s');
+                $userId = $this->common_model->insert('user',$user[$i]);
+                if($userId > 0) {
+                    $userProfile[$i]['user_id'] = $userId;
+                    $userProfile[$i]['created_by'] = $params['user_id'];
+                    $userProfile[$i]['created_date'] = date('Y-m-d H:i:s');
+                    $userProfileId = $this->common_model->insert('user_profile', $userProfile[$i]);
+                    if ($userProfileId > 0) {
+                        $userProfileDetails[$i]['user_id'] = $userId;
+                        $userProfileDetails[$i]['school_id'] = $schoolId;
+                        $userProfileDetails[$i]['edit_status'] = 1;
+                        $userProfileDetails[$i]['created_by'] = $params['user_id'];
+                        $userProfileDetails[$i]['created_date'] = date('Y-m-d H:i:s');
+                        $profileDetailId = $this->common_model->insert('user_profile_details', $userProfileDetails[$i]);
+                        if ($profileDetailId > 0) {
+                            $userAddress[$i]['user_id'] = $userId;
+                            $userAddress[$i]['address_type'] = 4;
+                            $userAddress[$i]['created_date'] = date('Y-m-d H:i:s');
+                            $userAddressId = $this->common_model->insert('user_address', $userAddress[$i]);
+                            if ($userAddressId > 0) {
+                                $messageTemplates = $this->common_model->smsEmailTemplate('invitation_link', 'email');
+                                $emailMsg = $messageTemplates['template'];
+                                $userLink = base64_encode($userId);
+                                $userLink = base64_encode($userLink);
+                                $this->load->library('bitly');
+                                $url = $this->config->item('contentcreator_invite_url') . '/' . $userLink;
+                                $urlLink = $this->bitly->shorten($url);
+                                $emailMsg = str_replace('%URL%', $urlLink, $emailMsg);
+                                if ($this->config->item('user_send_email') == true) {
+                                    $this->common_model->sendEmail($messageTemplates['subject'], $emailIds[$i], $emailMsg, '', '');
+                                }
+                            }
+                        }
+                    }
+                }
+            } elseif (count($checkSchool) > 0) {
+                    $condition = array('user_id' => $checkSchool[0]['user_id']);
+                    $school = array();
+                    $schoolIds = explode(",", $checkSchool[0]['school_id']);
+                    array_push($schoolIds, $schoolId);
+                    $school['school_id'] = implode(",", $schoolIds);
+                    $userProfileDetails[$i]['user_id'] = $condition['user_id'];
+                    $userProfileDetails[$i]['school_id'] = $schoolId;
+                    $userProfileDetails[$i]['edit_status'] = 1;
+                    $userProfileDetails[$i]['created_by'] = $params['user_id'];
+                    $userProfileDetails[$i]['created_date'] = date('Y-m-d H:i:s');
+                    $update1 = $this->common_model->insert('user_profile_details', $userProfileDetails[$i]);
+                    $update2 = $this->common_model->update('user', $school, $condition);
+                }
+            } else {
+                $userExistsCheck++;
+                $errorList .= "<tr>";
+                if($i == 0) {
+                    $errorList .= "<td>" . 1 . "</td>";
+                    $errorList .= "<td>" . $emailIds[$i] . "</td>";
+                    $errorList .= "</tr>";
+                } else {
+                    $errorList .= "<td>" . ($i+1) . "</td>";
+                    $errorList .= "<td>" . $emailIds[$i] . "</td>";
+                    $errorList .= "</tr>";
+                }
+            }
+        }
+        $errorList .= '</table></body></html>';
+        if($userExistsCheck > 0) {
+            $schoolName = $this->common_model->schoolName($schoolId);
+            $emailId = $this->common_model->emailId($params);
+            $messageTemplates = $this->common_model->smsEmailTemplate('invitation_failure', 'email');
+            $emailMsg = $messageTemplates['template'];
+            $emailSubject = $messageTemplates['subject'];
+            $emailMsg = str_replace('%USER%', 'Admin', $emailMsg);
+            $emailMsg = str_replace('%SCHOOLNAME%', $schoolName['name'], $emailMsg);
+            $emailMsg = str_replace('%RECORDS%', $errorList, $emailMsg);
+            $emailSubject = str_replace('%INVITATION_TYPE%', 'Email', $emailSubject);
+            $emailSubject = str_replace('%TYPE%', 'Contentcreator', $emailSubject);
+            $mail = $this->common_model->sendEmail($emailSubject, $emailId['email_id'], $emailMsg, '', '');
+        }
+        $this->jsonarr['IsSuccess'] = true;
+        $this->jsonarr['ResponseObject'] = "Contentcreator Invited Successfully";
+        return $this->jsonarr;
+    }
+
+    public function country_post()
+    {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        // $headers = $this->input->request_headers();
+        if ($params['platform'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } else {
+            $this->common_model->createLog($params,'v1/common/country','only request','country');
+            $countryList = array();
+            $countryList = $this->common_model->countryList();
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr["ResponseObject"] = $countryList;
+            $this->benchmark->mark('code_end');
+            $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+            $this->common_model->createLog($params,'v1/common/country',$this->jsonarr,'country');
+            return $this->printjson($this->jsonarr);
+        }
+    }
+
+    public function state_post()
+    {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+//      $headers = $this->input->request_headers();
+        if ($params['platform'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } elseif ($params['country_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Country id should not be empty";
+        } else {
+            $this->common_model->createLog($params,'v1/common/state','only request','state');
+            $stateList = array();
+            $stateList = $this->common_model->stateList($params['country_id']);
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr["ResponseObject"] = $stateList;
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params,'v1/common/state',$this->jsonarr,'state');
+        return $this->printjson($this->jsonarr);
+    }
+
+//    public function resize($originalPath, $fileResizePath, $width, $height) {
+//        $config['image_library'] = 'gd2';
+//        $config['source_image'] = $_SERVER['DOCUMENT_ROOT'].'/evtmgmt/'.$originalPath;
+//        $config['new_image'] = $_SERVER['DOCUMENT_ROOT'].'/evtmgmt/'.$fileResizePath;
+//        $config['create_thumb'] = TRUE;
+//        $config['maintain_ratio'] = TRUE;
+//        $config['width'] = $width;
+//        $config['height'] = $height;
+//        $this->load->library('image_lib', $config);
+//        $this->image_lib->initialize($config);
+//        if ( ! $this->image_lib->resize())
+//        {
+//            $this->image_lib->display_errors();
+//            return false;
+//        }
+//        return true;
+//
+//
+//
+//    }
+
+    public function schoolDetail_post() {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        if ($params['platform'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } elseif ($params['school_id']=="") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "School id should not be empty";
+        } elseif(count($params['school_id']) > 1) {
+            $this->common_model->createLog($params,'v1/common/schoolDetail','only request','schoolDetail');
+            $schoolIds = implode(",",$params['school_id']);
+            $schoolIds1 = explode(",",$schoolIds);
+            $school = array();
+            for($i = 0 ; $i < count($params['school_id']);$i++) {
+                $school['school'][$i] = $this->common_model->schoolDetail($schoolIds1[$i]);
+            }
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr["ResponseObject"] = $school['school'];
+        } elseif(count($params['school_id']) == 1) {
+            $school = $this->common_model->schoolDetail($params['school_id'][0]);
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr["ResponseObject"] = $school;
+        }
+        $this->common_model->createLog($params,'v1/common/schoolDetail',$this->jsonarr,'schoolDetail');
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function tagsList_post(){
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller, $params, $headers);
+        if ($params['platform'] != "web" && $params['platform'] != "ios") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } elseif ($params['role_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+        } elseif ($params['user_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "User Id should not be empty";
+        } else {
+            $this->common_model->createLog($params,'v1/common/tagsList','only request','tagsList');
+            $tagsList = $this->common_model->tagsList($params);
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr["ResponseObject"] = $tagsList;
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params,'v1/common/tagsList',$this->jsonarr,'tagsList');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function settingList_post(){
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'),true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller,$params,$headers);
+        if ($params['platform'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+        } elseif ($params['role_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+        } elseif ($params['user_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "User Id should not be empty";
+        }elseif ($params['school_id'] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "School Id should not be empty";
+        } else {
+            $this->common_model->createLog($params,'v1/common/settingList','only request','settingList');
+            $settingList = $this->common_model->settingList($params);
+            for ($a = 0; $a < count($settingList); $a++) {
+                $settingList[$a]['date'] = '';
+                 if ($settingList[$a]['name'] == 'date_format') {
+                     $dateFormat = $this->common_model->dateFormat($settingList[$a]['value']);
+                     $settingList[$a]['date'] = $dateFormat != '' ? $dateFormat[0]['date_format'] : '';
+                 }
+                 if(isset($settingList[$a]['name']) && $settingList[$a]['name'] == 'zoom_user_email') {
+                     $settingList[$a]['value'] = explode(',', $settingList[$a]['value']);
+                 }
+            }
+            $this->jsonarr['IsSuccess'] = true;
+            $this->jsonarr['ResponseObject'] = $settingList;
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params,'v1/common/settingList',$this->jsonarr,'settingList');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function settingEdit_post()
+    {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller,$params,$headers);
+        if ($params['platform'] != "web") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "platform should not be empty";
+        } elseif ($params['role_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "role id should not be empty";
+        } elseif ($params['user_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "user id should not be empty";
+        }elseif ($params['id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "Id should not be empty";
+        } else {
+            $this->common_model->createLog($params,'v1/common/settingEdit','only request','settingEdit');
+            $data = array(
+                'description'=>$params['description'],
+                'value'=>is_array($params['value']) ? implode(',',$params['value']) : $params['value'],
+                'modified_date' => date('Y-m-d H:i:s')
+            );
+            $condition = "id = {$params['id']}";
+            $update = $this->common_model->update('admin_settings_school',$data,$condition);
+            if ($update) {
+                $this->jsonarr["IsSuccess"] = true;
+                $this->jsonarr["ResponseObject"] = "Settings Updated Successfully";
+            } else {
+                $this->jsonarr["IsSuccess"] = true;
+                $this->jsonarr["ErrorObject"] = "Failed to update";
+            }
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params,'v1/common/settingEdit',$this->jsonarr,'settingEdit');
+        return $this->printjson($this->jsonarr);
+    }
+
+    private function printjson($jsonarr)
+    {
+        echo json_encode($jsonarr);
+    }
+
+    public function availabilityTimeCheck_post() {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $this->common_model->createLog($params,'v1/common/availabilityTimeCheck','only request','availabilityTimeCheck');
+        $error = array();
+        $i = 0;
+        if (count($params['selected_availabilityDate']) > 0 && count($params['previous_availabilityDate']) > 0) {
+          foreach ($params['previous_availabilityDate'] as $key1 => $previous) {
+              foreach ($params['selected_availabilityDate'] as $key2 => $selected) {
+                  if ($previous['slotday'] == $selected['slotday']) {
+                      if (strtotime($previous['slotstarttime']) <= strtotime($selected['slotstarttime'])
+                            && strtotime($previous['slotendtime']) >= strtotime($selected['slotstarttime'])
+                            || strtotime($previous['slotstarttime']) <= strtotime($selected['slotsendtime'])
+                            && strtotime($previous['slotendtime']) >= strtotime($selected['slotsendtime'])
+                            || strtotime($previous['slotstarttime']) >= strtotime($selected['slotstarttime'])
+                            && strtotime($previous['slotendtime']) <= strtotime($selected['slotsendtime']))
+                      {
+                      $error[$i] = " " . $selected['slotstarttime'] . " - " . $selected['slotendtime'] . " for " . $this->getDay($selected['slotday']);
+                      $i++;
+                    }
+                  }
+              }
+            }
+        }
+        if (count($error) == 0) {
+            $this->jsonarr['IsSuccess'] = true;
+            $this->jsonarr['ResponseObject'] = "Time Slot Added Successfully";
+        } else {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ResponseObject'] = "Schedule for".implode(",", $error). " - Slot time already exists";
+        }
+        $this->common_model->createLog($params,'v1/common/availabilityTimeCheck',$this->jsonarr,'availabilityTimeCheck');
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function getDay($day_number)
+    {
+        $day_array = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+        return $day_array[$day_number - 1];
+    }
+
+    public function iosVersion_post() {
+        $params = json_decode(file_get_contents('php://input'), true);
+
+        if ($params["platform"] == "") {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr['ErrorObject'] = "Platform should not be empty";
+        } else{
+            $getVersion = $this->common_model->iosVersion();
+            $this->jsonarr["IsSuccess"] = true;
+            $this->jsonarr['ResponseObject'] = $getVersion;
+        }
+        $this->printjson($this->jsonarr);
+    }
+
+    public function timeZoneList_post(){
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        $headers = $this->input->request_headers();
+        $this->common_model->checkPermission($this->controller,$params,$headers);
+        if ($params['platform'] != "web") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "platform should not be empty";
+        } elseif ($params['role_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "role id should not be empty";
+        } elseif ($params['user_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "user id should not be empty";
+        } else {
+            $this->common_model->createLog($params,'v1/common/timeZoneList','only request','timeZoneList');
+            $timezoneList = $this->common_model->timezoneList();
+            $this->jsonarr['IsSuccess'] = true;
+            $this->jsonarr['ResponseObject'] = $timezoneList;
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        $this->common_model->createLog($params,'v1/common/timeZoneList',$this->jsonarr,'timeZoneList');
+        return $this->printjson($this->jsonarr);
+    }
+
+    public function sendAWSEmail_get() {
+
+        $this->load->library('Mail');
+        $sender = 'contact@edquill.com';
+        $senderName = 'Edquill';
+        $recipient = 'sridhar.sivichandran@gmail.com';
+        $usernameSmtp = 'AKIAV5YQG3UKYM2UN3TH';
+        $passwordSmtp = 'BO0r4eWCSe0KN7B99f7ByhPAPKm4DupRxh3mP0WI0MRk';
+        $host = 'email-smtp.us-east-1.amazonaws.com';
+        $port = 587;
+        $subject = 'Amazon SES test (SMTP interface accessed using PHP)';
+        $bodyText =  "Email Test\r\nThis email was sent through the
+            Amazon SES SMTP interface using the PHPMailer class.";
+        $bodyHtml = '<h1>Email Test</h1>
+            <p>This email was sent through the
+            <a href="https://aws.amazon.com/ses">Amazon SES</a> SMTP
+            interface using the <a href="https://github.com/PHPMailer/PHPMailer">
+            PHPMailer</a> class.</p>';
+        $mail = new PHPMailer(true);
+
+        try {
+            // Specify the SMTP settings.
+            $mail->isSMTP();
+            $mail->setFrom($sender, $senderName);
+            $mail->Username   = $usernameSmtp;
+            $mail->Password   = $passwordSmtp;
+            $mail->Host       = $host;
+            $mail->Port       = $port;
+            $mail->SMTPAuth   = true;
+            $mail->SMTPSecure = 'tls';
+            //$mail->addCustomHeader('X-SES-CONFIGURATION-SET', $configurationSet);
+            $mail->addCustomHeader('X-SES-CONFIGURATION-SET');
+
+            // Specify the message recipients.
+            $mail->addAddress($recipient);
+            // You can also add CC, BCC, and additional To recipients here.
+
+            // Specify the content of the message.
+            $mail->isHTML(true);
+            $mail->Subject    = $subject;
+            $mail->Body       = $bodyHtml;
+            $mail->AltBody    = $bodyText;
+            $mail->Send();
+            echo "Email sent!" , PHP_EOL;
+        } catch (phpmailerException $e) {
+            echo "An error occurred. {$e->errorMessage()}", PHP_EOL; //Catch errors from PHPMailer.
+        } catch (Exception $e) {
+            echo "Email not sent. {$mail->ErrorInfo}", PHP_EOL; //Catch errors from Amazon SES.
+        }
+    }
+
+    public function contentRemoved_get(){
+        $fromDate = $_GET['from_date'];
+        $toDate = $_GET['to_date'];
+        $content = $this->common_model->getClassContent($fromDate,$toDate);
+        if ($content) {
+            for ($a = 0; $a < count($content); $a++) {
+                $condition = array(
+                    'content_id' => $content[$a]['content_id'],
+                    'student_id' => $content[$a]['student_id'],
+                    'class_id' => $content[$a]['class_id']
+                );
+                $this->common_model->delete('student_content', $condition);
+            }
+            print_r("Student's content removed successfully");
+        } else {
+            print_r("No data");
+        }
+
+    }
+
+    public function scratchNotification_post()
+    {
+        $this->benchmark->mark('code_start');
+        $params = json_decode(file_get_contents('php://input'), true);
+        if ($params['platform'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "platform should not be empty";
+        } elseif ($params['role_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "role id should not be empty";
+        } elseif ($params['user_id'] == "") {
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = "user id should not be empty";
+        } else {
+            $this->jsonarr['IsSuccess'] = true;
+            $this->jsonarr['ResponseObject'] = "You can route out of scratch questions";
+        }
+        $this->benchmark->mark('code_end');
+        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+        return $this->printjson($this->jsonarr);
+    }
+
+
+}

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="315" height="187" viewBox="0 0 315 187">
+  <g id="Group_16896" data-name="Group 16896" transform="translate(-397 -154)">
+    <g id="Group_16516" data-name="Group 16516" transform="translate(397 154)">
+      <rect id="Rectangle_610" data-name="Rectangle 610" width="315" height="187" rx="5" fill="#fff"/>
+      <g id="Group_16907" data-name="Group 16907">
+        <text id="and" transform="translate(148 63)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0">and</tspan></text>
+        <text id="Answer_can_be_filled_by_Typing_in_to_the_textboxes" data-name="Answer can be filled by Typing in to the  textboxes" transform="translate(11 38)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0" xml:space="preserve">Answer can be filled by Typing in to the  textboxes</tspan></text>
+        <text id="that_is_right_in_the_middle_of_the_questions" data-name="that is right in the middle of the questions" transform="translate(11 88)" fill="#707070" font-size="12" font-family="SFProDisplay-Medium, SF Pro Display" font-weight="500"><tspan x="0" y="0">that is right in the middle of the questions</tspan></text>
+        <g id="Rectangle_730" data-name="Rectangle 730" transform="translate(189 49)" fill="#fff" stroke="#c4c4c4" stroke-width="1">
+          <rect width="118" height="20" rx="2" stroke="none"/>
+          <rect x="0.5" y="0.5" width="117" height="19" rx="1.5" fill="none"/>
+        </g>
+        <g id="Rectangle_730-2" data-name="Rectangle 730" transform="translate(11 49)" fill="#fff" stroke="#c4c4c4" stroke-width="1">
+          <rect width="118" height="20" rx="2" stroke="none"/>
+          <rect x="0.5" y="0.5" width="117" height="19" rx="1.5" fill="none"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

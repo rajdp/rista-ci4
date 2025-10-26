@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="315" height="187" viewBox="0 0 315 187">
+  <g id="Group_16893" data-name="Group 16893" transform="translate(-14687 6886)">
+    <g id="Group_16516" data-name="Group 16516" transform="translate(14687 -6886)">
+      <rect id="Rectangle_610" data-name="Rectangle 610" width="315" height="187" rx="5" fill="#fff"/>
+    </g>
+    <g id="Group_16890" data-name="Group 16890" transform="translate(0 2)">
+      <g id="Group_16891" data-name="Group 16891">
+        <text id="Yes" transform="translate(14891 -6855)" fill="#707070" font-size="14" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">Yes</tspan></text>
+        <text id="No" transform="translate(14957 -6855)" fill="#707070" font-size="14" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">No</tspan></text>
+      </g>
+      <g id="Group_16887" data-name="Group 16887" transform="translate(0 3)">
+        <text id="_A_Is_he_busy_" data-name=" A )  Is he busy ?" transform="translate(14707 -6817)" font-size="12" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0" xml:space="preserve"> A )  Is he busy ?</tspan></text>
+        <path id="Icon_ionic-md-radio-button-on" data-name="Icon ionic-md-radio-button-on" d="M12.375,7.875a4.5,4.5,0,1,0,4.5,4.5A4.513,4.513,0,0,0,12.375,7.875Zm0-4.5a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14890.625 -6833.375)" fill="#7f3486"/>
+        <path id="Icon_ionic-md-radio-button-off" data-name="Icon ionic-md-radio-button-off" d="M12.375,3.375a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14955.625 -6833.375)" fill="#c4c4c4"/>
+      </g>
+      <g id="Group_16888" data-name="Group 16888" transform="translate(0 3)">
+        <text id="B_Am_I_at_the_correct_location_" data-name="B) Am I at the correct location ?" transform="translate(14707 -6774)" font-size="12" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">B) Am I at the correct location ?</tspan></text>
+        <path id="Icon_ionic-md-radio-button-on-2" data-name="Icon ionic-md-radio-button-on" d="M12.375,7.875a4.5,4.5,0,1,0,4.5,4.5A4.513,4.513,0,0,0,12.375,7.875Zm0-4.5a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14955.625 -6790.375)" fill="#7f3486"/>
+        <path id="Icon_ionic-md-radio-button-off-2" data-name="Icon ionic-md-radio-button-off" d="M12.375,3.375a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14890.625 -6790.375)" fill="#c4c4c4"/>
+      </g>
+      <g id="Group_16889" data-name="Group 16889" transform="translate(0 3)">
+        <text id="C_Was_it_raining_today_" data-name="C) Was it raining today ?" transform="translate(14707 -6731)" font-size="12" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">C) Was it raining today ?</tspan></text>
+        <path id="Icon_ionic-md-radio-button-on-3" data-name="Icon ionic-md-radio-button-on" d="M12.375,7.875a4.5,4.5,0,1,0,4.5,4.5A4.513,4.513,0,0,0,12.375,7.875Zm0-4.5a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14890.625 -6747.375)" fill="#7f3486"/>
+        <path id="Icon_ionic-md-radio-button-off-3" data-name="Icon ionic-md-radio-button-off" d="M12.375,3.375a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14955.625 -6747.375)" fill="#c4c4c4"/>
+      </g>
+    </g>
+  </g>
+</svg>

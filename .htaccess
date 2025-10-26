@@ -1,0 +1,20 @@
+# CI4 Root Directory .htaccess
+# This prevents access to the root directory
+
+# Redirect all requests to public folder
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Deny access to sensitive files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "(^#.*#|\.(bak|conf|dist|fla|in[ci]|log|psd|sh|sql|sw[op])|~)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+

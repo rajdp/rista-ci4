@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="315" height="187" viewBox="0 0 315 187">
+  <g id="Group_16906" data-name="Group 16906" transform="translate(-14687 6886)">
+    <rect id="Rectangle_610" data-name="Rectangle 610" width="315" height="187" rx="5" transform="translate(14687 -6886)" fill="#fff"/>
+    <g id="Group_16905" data-name="Group 16905">
+      <g id="Group_16904" data-name="Group 16904">
+        <text id="True" transform="translate(14902 -6853)" fill="#707070" font-size="14" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">True</tspan></text>
+        <text id="False" transform="translate(14953 -6853)" fill="#707070" font-size="14" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">False</tspan></text>
+      </g>
+      <g id="Group_16901" data-name="Group 16901">
+        <text id="Shakespeare_is_famous_Play_write" data-name="Shakespeare is famous Play write" transform="translate(14707 -6812)" font-size="12" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">Shakespeare is famous Play write</tspan></text>
+        <path id="Icon_ionic-md-radio-button-on" data-name="Icon ionic-md-radio-button-on" d="M12.375,7.875a4.5,4.5,0,1,0,4.5,4.5A4.513,4.513,0,0,0,12.375,7.875Zm0-4.5a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14902.625 -6828.375)" fill="#7f3486"/>
+        <path id="Icon_ionic-md-radio-button-off" data-name="Icon ionic-md-radio-button-off" d="M12.375,3.375a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14955.625 -6828.375)" fill="#c4c4c4"/>
+      </g>
+      <g id="Group_16902" data-name="Group 16902">
+        <text id="Canada_is_in_Equator" data-name="Canada is in Equator" transform="translate(14707 -6769)" font-size="12" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">Canada is in Equator</tspan></text>
+        <path id="Icon_ionic-md-radio-button-on-2" data-name="Icon ionic-md-radio-button-on" d="M12.375,7.875a4.5,4.5,0,1,0,4.5,4.5A4.513,4.513,0,0,0,12.375,7.875Zm0-4.5a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14955.625 -6785.375)" fill="#7f3486"/>
+        <path id="Icon_ionic-md-radio-button-off-2" data-name="Icon ionic-md-radio-button-off" d="M12.375,3.375a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14902.625 -6785.375)" fill="#c4c4c4"/>
+      </g>
+      <g id="Group_16903" data-name="Group 16903">
+        <text id="A_Dozen_means_12" data-name="A Dozen means 12" transform="translate(14707 -6726)" font-size="12" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">A Dozen means 12</tspan></text>
+        <path id="Icon_ionic-md-radio-button-on-3" data-name="Icon ionic-md-radio-button-on" d="M12.375,7.875a4.5,4.5,0,1,0,4.5,4.5A4.513,4.513,0,0,0,12.375,7.875Zm0-4.5a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14902.625 -6742.375)" fill="#7f3486"/>
+        <path id="Icon_ionic-md-radio-button-off-3" data-name="Icon ionic-md-radio-button-off" d="M12.375,3.375a9,9,0,1,0,9,9A9.027,9.027,0,0,0,12.375,3.375Zm0,16.2a7.2,7.2,0,1,1,7.2-7.2A7.221,7.221,0,0,1,12.375,19.575Z" transform="translate(14955.625 -6742.375)" fill="#c4c4c4"/>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="315" height="187" viewBox="0 0 315 187">
+  <g id="Group_16886" data-name="Group 16886" transform="translate(-14346 6886)">
+    <rect id="Rectangle_610" data-name="Rectangle 610" width="315" height="187" rx="5" transform="translate(14346 -6886)" fill="#fff"/>
+    <g id="Group_16885" data-name="Group 16885">
+      <text id="Which_city_are_located_in_United_States_" data-name="Which city are  located in United States?" transform="translate(14366 -6855)" font-size="12" font-family="SFProDisplay-Heavy, SF Pro Display" font-weight="800"><tspan x="0" y="0" xml:space="preserve">Which city are  located in United States?</tspan></text>
+      <g id="Group_16882" data-name="Group 16882" transform="translate(0 8)">
+        <g id="Group_15552" data-name="Group 15552" transform="translate(14362 -6844)">
+          <g id="Ellipse_34" data-name="Ellipse 34" transform="translate(4 4)" fill="#fff" stroke="#707070" stroke-width="1">
+            <ellipse cx="12.5" cy="12.5" rx="12.5" ry="12.5" stroke="none"/>
+            <ellipse cx="12.5" cy="12.5" rx="12" ry="12" fill="none"/>
+          </g>
+          <text id="A" transform="translate(13 20)" font-size="12" font-family="SFProDisplay-Bold, SF Pro Display" font-weight="700"><tspan x="0" y="0">A</tspan></text>
+        </g>
+        <text id="Toronto" transform="translate(14410 -6823)" fill="#707070" font-size="14" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">Toronto</tspan></text>
+      </g>
+      <g id="Group_16883" data-name="Group 16883" transform="translate(0 8)">
+        <g id="Group_15554" data-name="Group 15554" transform="translate(14366 -6796)">
+          <circle id="Ellipse_35" data-name="Ellipse 35" cx="12.5" cy="12.5" r="12.5" transform="translate(0 0)" fill="#7f3486"/>
+          <text id="B" transform="translate(9 17)" fill="#fff" font-size="12" font-family="SFProDisplay-Bold, SF Pro Display" font-weight="700"><tspan x="0" y="0">B</tspan></text>
+        </g>
+        <text id="Seattle" transform="translate(14410 -6779)" fill="#707070" font-size="14" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">Seattle</tspan></text>
+      </g>
+      <g id="Group_16884" data-name="Group 16884" transform="translate(0 8)">
+        <g id="Group_15556" data-name="Group 15556" transform="translate(14366 -6752)">
+          <g id="Group_16515" data-name="Group 16515">
+            <path id="Path_2680" data-name="Path 2680" d="M12.5,0A12.5,12.5,0,1,1,0,12.5,12.5,12.5,0,0,1,12.5,0Z" fill="#7f3486"/>
+            <text id="C" transform="translate(8 17)" fill="#fff" font-size="12" font-family="SFProDisplay-Heavy, SF Pro Display" font-weight="800"><tspan x="0" y="0">C</tspan></text>
+          </g>
+        </g>
+        <text id="Houston" transform="translate(14409 -6735)" fill="#707070" font-size="14" font-family="SFProDisplay-Semibold, SF Pro Display" font-weight="600"><tspan x="0" y="0">Houston</tspan></text>
+      </g>
+    </g>
+  </g>
+</svg>
