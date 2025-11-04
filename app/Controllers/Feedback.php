@@ -170,7 +170,7 @@ class Feedback extends BaseController
     /**
      * Delete feedback/note
      */
-    public function delete(): ResponseInterface
+    public function delete($id = null): ResponseInterface
     {
         try {
             $params = $this->request->getJSON(true) ?? [];
@@ -179,8 +179,11 @@ class Feedback extends BaseController
                 $params = $this->request->getPost() ?? [];
             }
 
+            // Use $id parameter if provided, otherwise get from request body
+            $feedbackId = $id ?? ($params['id'] ?? null);
+
             // Validation
-            if (empty($params['id'])) {
+            if (empty($feedbackId)) {
                 return $this->respond([
                     'IsSuccess' => false,
                     'ResponseObject' => null,
@@ -190,7 +193,7 @@ class Feedback extends BaseController
 
             $db = \Config\Database::connect();
             $builder = $db->table('student_content_feedback');
-            $deleteFeedback = $builder->delete(['id' => $params['id']]);
+            $deleteFeedback = $builder->delete(['id' => $feedbackId]);
             
             if ($deleteFeedback) {
                 return $this->respond([

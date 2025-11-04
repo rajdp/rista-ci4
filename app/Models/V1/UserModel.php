@@ -104,7 +104,18 @@ class UserModel extends BaseModel
         
         $accessToken = \App\Libraries\Authorization::generateToken($tokenPayload);
         
-        // Save token to user_token table
+        // Role-based multiple login control
+        // Students (role_id = 5) should only have ONE active session
+        // Admin & Teachers (role_id = 1, 2, 4, 6, 7) can have multiple sessions
+        if ($user['role'] == 5) {
+            // For students: Invalidate all previous tokens (single session only)
+            $db->table('user_token')
+                ->where('user_id', $user['user_id'])
+                ->update(['status' => 0, 'modified_date' => date('Y-m-d H:i:s')]);
+        }
+        // For admin/teachers: Keep all tokens active (multiple sessions allowed)
+        
+        // Save new token to user_token table
         $db->table('user_token')->insert([
             'user_id' => $user['user_id'],
             'access_token' => $accessToken,
@@ -412,6 +423,52 @@ class UserModel extends BaseModel
         }
         
         return $this->getResult($builder);
+    }
+
+    /**
+     * Change user password
+     * @param int $userId User ID
+     * @param string $oldPassword Old password (plain text)
+     * @param string $newPassword New password (plain text)
+     * @return bool|string Returns true on success, error message on failure
+     */
+    public function changePassword($userId, $oldPassword, $newPassword)
+    {
+        $db = \Config\Database::connect();
+        $salt = 'ristainternational';
+        
+        // Get current user password
+        $query = $db->table('user')
+            ->select('password')
+            ->where('user_id', $userId)
+            ->get();
+        
+        $user = $query->getRowArray();
+        
+        if (!$user) {
+            return 'User not found';
+        }
+        
+        // Verify old password (using same salting as login)
+        $saltedOldPassword = md5($salt . $oldPassword . $salt);
+        
+        if ($user['password'] !== $saltedOldPassword) {
+            return 'Old password is incorrect';
+        }
+        
+        // Hash new password with salt
+        $saltedNewPassword = md5($salt . $newPassword . $salt);
+        
+        // Update password
+        $updated = $db->table('user')
+            ->where('user_id', $userId)
+            ->update([
+                'password' => $saltedNewPassword,
+                'default_password' => 0, // Mark that password has been changed from default
+                'modified_date' => date('Y-m-d H:i:s')
+            ]);
+        
+        return $updated ? true : 'Failed to update password';
     }
 }
 

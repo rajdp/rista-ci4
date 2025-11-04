@@ -23,7 +23,15 @@ class Content extends ResourceController
         try {
             $data = $this->request->getJSON();
             
-            $sortList = $this->contentModel->getSortMaster($data ?? (object)[]);
+            // Convert object to array if needed
+            if (is_object($data)) {
+                $data = (array) $data;
+            }
+            
+            log_message('debug', '🔍 PAGINATION - Content::sortMaster received params: page_no=' . ($data['page_no'] ?? 'NOT SET') . ', records_per_page=' . ($data['records_per_page'] ?? 'NOT SET'));
+            log_message('debug', '🔍 PAGINATION - All params: ' . json_encode($data));
+            
+            $sortList = $this->contentModel->sortMaster($data ?? []);
             
             return $this->respond([
                 'IsSuccess' => true,
@@ -37,6 +45,77 @@ class Content extends ResourceController
                 'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Get test types
+     */
+    public function testType(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+            
+            log_message('debug', '📋 Content::testType called with params: ' . json_encode($params));
+            
+            $testTypes = $this->contentModel->getTestTypes($params);
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $testTypes,
+                'ErrorObject' => ''
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '❌ Content::testType error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get content list
+     */
+    public function list(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+            
+            log_message('debug', '📋 Content::list called with params: ' . json_encode($params));
+            
+            $contentList = $this->contentModel->contentList($params);
+            
+            // Process links and tags
+            $processedList = [];
+            foreach ($contentList as $content) {
+                $links = !empty($content['links']) ? array_filter(explode(',', $content['links'])) : [];
+                $tags = !empty($content['tags']) ? array_filter(explode(',', $content['tags'])) : [];
+                
+                $content['links'] = $links;
+                $content['tags'] = $tags;
+                $processedList[] = $content;
+            }
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $processedList,
+                'ErrorObject' => ''
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '❌ Content::list error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -79,6 +158,10 @@ class Content extends ResourceController
                 } else {
                     $contentList['answerkey_path'] = [];
                 }
+                
+                // Get answers for the content
+                $answers = $this->contentModel->answerList($params);
+                $contentList['answers'] = is_array($answers) ? $answers : [];
                 
                 // Check if all questions are auto-gradable (for students)
                 if (isset($params['role_id']) && $params['role_id'] == 5) {
@@ -305,7 +388,7 @@ class Content extends ResourceController
                                      WHERE up.user_id = upd.user_id) AS name 
                                     FROM user_profile_details upd
                                     WHERE upd.school_id = '{$params['school_id']}' AND upd.status = 1 
-                                    AND user_id IN ((SELECT GROUP_CONCAT(user_id) FROM user WHERE role_id = 5 AND user_id = upd.user_id))");
+                                    AND upd.user_id IN (SELECT user_id FROM user WHERE role_id = 5 AND status = 1)");
                 $classList = $query->getResultArray();
             }
 
@@ -520,20 +603,115 @@ class Content extends ResourceController
                     $startDate = $details['start_date'] ?? date('Y-m-d');
                     $endDate = !empty($details['end_date']) ? $details['end_date'] : '0000-00-00';
                     
+                    $startTime = $this->normalizeTimeValue($details['start_time'] ?? null, '00:00:00');
+                    $endTime = $this->normalizeTimeValue($details['end_time'] ?? null, '23:59:00');
+                    
                     // Insert assignment data
                     $assignmentData = [
                         'class_id' => $details['class_id'] ?? null,
                         'content_id' => $details['content_id'] ?? null,
                         'start_date' => $startDate,
                         'end_date' => $endDate,
-                        'start_time' => $details['start_time'] ?? '00:00:00',
-                        'end_time' => $details['end_time'] ?? '23:59:00',
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
                         'status' => 1,
                         'created_by' => $params['user_id'] ?? null,
                         'created_date' => date('Y-m-d H:i:s')
                     ];
                     
-                    $assignmentBuilder->insert($assignmentData);
+                    $classId = (int) ($details['class_id'] ?? 0);
+                    $contentId = (int) ($details['content_id'] ?? 0);
+
+                    if ($classId === 0 || $contentId === 0) {
+                        log_message('error', '❌ Content::add missing class_id or content_id in assignment details: ' . json_encode($details));
+                        continue;
+                    }
+
+                    // Ensure single student_assign_content per class/content
+                    $existingAssignment = $db->table('student_assign_content')
+                        ->where('class_id', $classId)
+                        ->where('content_id', $contentId)
+                        ->get()
+                        ->getRowArray();
+
+                    if ($existingAssignment) {
+                        $db->table('student_assign_content')
+                            ->where('id', $existingAssignment['id'])
+                            ->update([
+                                'start_date' => $startDate,
+                                'end_date' => $endDate,
+                                'start_time' => $startTime,
+                                'end_time' => $endTime,
+                                'status' => 1,
+                            ]);
+                    } else {
+                        $assignmentBuilder->insert($assignmentData);
+                    }
+
+                    // Mirror into class_content so curriculum views stay in sync
+                    $classContentData = [
+                        'class_id' => $classId,
+                        'content_id' => $contentId,
+                        'school_id' => $params['school_id'] ?? null,
+                        'status' => 1,
+                        'all_student' => isset($details['all_student']) ? (int) $details['all_student'] : 1,
+                        'release_score' => isset($details['release_score']) ? (int) $details['release_score'] : 0,
+                        'auto_review' => isset($details['auto_review']) ? (int) $details['auto_review'] : 0,
+                        'start_date' => $startDate,
+                        'end_date' => $endDate,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                        'notes' => $details['notes'] ?? null,
+                        'downloadable' => isset($details['download']) ? (int) $details['download'] : 0,
+                        'topic_id' => isset($details['topic_id']) && $details['topic_id'] !== '' ? (int) $details['topic_id'] : 0,
+                        'is_accessible' => isset($details['allow_workspace']) ? (int) $details['allow_workspace'] : 0,
+                        'created_by' => $params['user_id'] ?? null,
+                        'created_date' => date('Y-m-d H:i:s'),
+                        'modified_by' => $params['user_id'] ?? null,
+                        'modified_date' => date('Y-m-d H:i:s')
+                    ];
+                    
+                    // If updating an existing class_content record, respect the provided id
+                    $classContentTable = $db->table('class_content');
+                    $existingClassContent = null;
+
+                    if (!empty($details['class_content_id'])) {
+                        $existingClassContent = $classContentTable
+                            ->where('id', $details['class_content_id'])
+                            ->get()
+                            ->getRowArray();
+                    }
+
+                    if (!$existingClassContent) {
+                        $existingClassContent = $classContentTable
+                            ->where('class_id', $classId)
+                            ->where('content_id', $contentId)
+                            ->where('status !=', 2)
+                            ->orderBy('id', 'ASC')
+                            ->get()
+                            ->getRowArray();
+                    }
+
+                    if ($existingClassContent) {
+                        $updateData = $classContentData;
+                        unset($updateData['created_by'], $updateData['created_date']);
+
+                        // Preserve existing topic if none provided
+                        if (empty($details['topic_id']) && isset($existingClassContent['topic_id'])) {
+                            $updateData['topic_id'] = $existingClassContent['topic_id'];
+                        }
+
+                        // Maintain all_student flag unless explicitly provided
+                        if (!isset($details['all_student'])) {
+                            unset($updateData['all_student']);
+                        }
+
+                        $classContentTable
+                            ->where('id', $existingClassContent['id'])
+                            ->update($updateData);
+                    } else {
+                        $classContentTable->insert($classContentData);
+                    }
                 }
 
                 return $this->respond([
@@ -556,5 +734,523 @@ class Content extends ResourceController
                 'ErrorObject' => $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Get question types list
+     */
+    public function questionTypes(): ResponseInterface
+    {
+        try {
+            $questionTypes = $this->contentModel->questionTypeList();
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $questionTypes
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Student views content (lazy creation trigger)
+     */
+    public function viewContent(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON();
+            
+            if (is_object($data)) {
+                $data = (array) $data;
+            }
+            
+            $studentId = $data['student_id'] ?? null;
+            $contentId = $data['content_id'] ?? null;
+            $classContentId = $data['class_content_id'] ?? null;
+            $classId = $data['class_id'] ?? null;
+            $userId = session()->get('user_id') ?? 1; // Fallback for testing
+            
+            if (!$studentId || !$contentId || !$classContentId || !$classId) {
+                throw new \Exception('Missing required parameters');
+            }
+            
+            // Get or create student_content record
+            $studentContent = $this->contentModel->getOrCreateStudentContent(
+                $studentId,
+                $contentId,
+                $classContentId,
+                $classId,
+                $userId
+            );
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $studentContent,
+                'ErrorObject' => ''
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get class curriculum (consolidated view)
+     */
+    public function getClassCurriculum(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON();
+            
+            if (is_object($data)) {
+                $data = (array) $data;
+            }
+            
+            $classId = $data['class_id'] ?? null;
+            
+            if (!$classId) {
+                throw new \Exception('Class ID is required');
+            }
+            
+            $curriculum = $this->contentModel->getClassCurriculumConsolidated($classId);
+            
+            // Format assignment scope for display
+            foreach ($curriculum as &$item) {
+                if ($item['has_class_assignment'] == 1 && $item['individual_count'] > 0) {
+                    $item['assignment_scope'] = "Class + Individual ({$item['individual_count']})";
+                    $item['assignment_detail'] = "Class-wide + " . $item['individual_students'];
+                } elseif ($item['has_class_assignment'] == 1) {
+                    $item['assignment_scope'] = "Class-wide";
+                    $item['assignment_detail'] = "All students";
+                } else {
+                    $item['assignment_scope'] = "Individual ({$item['individual_count']})";
+                    $item['assignment_detail'] = $item['individual_students'];
+                }
+            }
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $curriculum,
+                'ErrorObject' => ''
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get student's available content
+     */
+    public function getStudentAvailableContent(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON();
+            
+            if (is_object($data)) {
+                $data = (array) $data;
+            }
+            
+            $studentId = $data['student_id'] ?? null;
+            
+            if (!$studentId) {
+                throw new \Exception('Student ID is required');
+            }
+            
+            $content = $this->contentModel->getStudentAvailableContent($studentId);
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $content,
+                'ErrorObject' => ''
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get teacher's gradable content
+     */
+    public function getTeacherGradableContent(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON();
+            
+            if (is_object($data)) {
+                $data = (array) $data;
+            }
+            
+            $teacherId = $data['teacher_id'] ?? session()->get('user_id');
+            $classId = $data['class_id'] ?? null;
+            
+            if (!$classId) {
+                throw new \Exception('Class ID is required');
+            }
+            
+            $content = $this->contentModel->getTeacherGradableContent($teacherId, $classId);
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $content,
+                'ErrorObject' => ''
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Update content
+     */
+    public function updateContent(): ResponseInterface
+    {
+        try {
+            $params = json_decode(file_get_contents('php://input'), true);
+            
+            if (empty($params)) {
+                $params = $this->request->getPost();
+            }
+            
+            if (empty($params)) {
+                $params = $this->request->getJSON(true) ?? [];
+            }
+
+            // Validation
+            if (empty($params['content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Content Id should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            
+            // Prepare update data
+            $updateData = [];
+            if (isset($params['name'])) $updateData['name'] = $params['name'];
+            if (isset($params['description'])) $updateData['description'] = $params['description'];
+            if (isset($params['grade'])) {
+                $updateData['grade'] = is_array($params['grade']) ? implode(',', $params['grade']) : $params['grade'];
+            }
+            if (isset($params['subject'])) {
+                $updateData['subject'] = is_array($params['subject']) ? implode(',', $params['subject']) : $params['subject'];
+            }
+            if (isset($params['tags'])) {
+                $updateData['tags'] = is_array($params['tags']) ? implode(',', $params['tags']) : $params['tags'];
+            }
+            if (isset($params['content_type'])) $updateData['content_type'] = $params['content_type'];
+            if (isset($params['content_format'])) $updateData['content_format'] = $params['content_format'];
+            if (isset($params['file_path'])) $updateData['file_path'] = json_encode($params['file_path']);
+            if (isset($params['file_text'])) $updateData['file_text'] = $params['file_text'];
+            if (isset($params['links'])) $updateData['links'] = json_encode($params['links']);
+            if (isset($params['access'])) $updateData['access'] = $params['access'];
+            if (isset($params['status'])) $updateData['status'] = $params['status'];
+            if (isset($params['download'])) $updateData['download'] = $params['download'];
+            
+            $updateData['modified_date'] = date('Y-m-d H:i:s');
+
+            // Update content
+            $builder = $db->table('content');
+            $builder->where('content_id', $params['content_id']);
+            $result = $builder->update($updateData);
+
+            if ($result) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Content updated successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update content'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Remove/Delete content
+     */
+    public function remove(): ResponseInterface
+    {
+        try {
+            $params = json_decode(file_get_contents('php://input'), true);
+            
+            if (empty($params)) {
+                $params = $this->request->getPost();
+            }
+            
+            if (empty($params)) {
+                $params = $this->request->getJSON(true) ?? [];
+            }
+
+            // Validation
+            if (empty($params['content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Content Id should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            
+            // Soft delete - set status to 0 instead of actually deleting
+            $builder = $db->table('content');
+            $builder->where('content_id', $params['content_id']);
+            $result = $builder->update([
+                'status' => 0,
+                'modified_date' => date('Y-m-d H:i:s')
+            ]);
+
+            if ($result) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Content removed successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to remove content'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Remove content assignment from a class (soft delete class_content links)
+     */
+    public function deleteClassContent(): ResponseInterface
+    {
+        try {
+            $params = json_decode(file_get_contents('php://input'), true);
+
+            log_message('debug', '📥 deleteClassContent raw payload: ' . json_encode($params));
+
+            if (empty($params)) {
+                $params = $this->request->getPost();
+            }
+
+            if (empty($params)) {
+                $params = $this->request->getJSON(true) ?? [];
+            }
+
+            log_message('debug', '📥 deleteClassContent normalized params: ' . json_encode($params));
+
+            $classContentIds = $params['class_content_id'] ?? [];
+            if (empty($classContentIds) || !is_array($classContentIds)) {
+                log_message('error', '❌ deleteClassContent missing class_content_id: ' . json_encode($params));
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'class_content_id should not be empty'
+                ]);
+            }
+
+            if (empty($params['user_id'])) {
+                log_message('error', '❌ deleteClassContent missing user_id');
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            $classContentTable = $db->table('class_content');
+            $classContentLogTable = $db->table('class_content_log');
+            $studentContentTable = $db->table('student_content');
+            $studentWorkTable = $db->table('student_work');
+            $logFields = [];
+            if ($db->tableExists('class_content_log')) {
+                try {
+                    $logFields = array_flip($db->getFieldNames('class_content_log'));
+                } catch (\Throwable $e) {
+                    log_message('error', 'Failed to fetch class_content_log fields: ' . $e->getMessage());
+                }
+            }
+
+            $success = false;
+            foreach ($classContentIds as $id) {
+                $id = (int) $id;
+                if ($id <= 0) {
+                    log_message('warning', '⚠️ deleteClassContent skipping invalid id: ' . $id);
+                    continue;
+                }
+
+                log_message('debug', '🔍 deleteClassContent processing class_content_id: ' . $id);
+
+                $classContent = $classContentTable
+                    ->where('id', $id)
+                    ->get()
+                    ->getRowArray();
+
+                if (!$classContent) {
+                    log_message('warning', '⚠️ deleteClassContent: class_content not found for id ' . $id);
+                    continue;
+                }
+
+                // Log existing record if log table exists
+                if (!empty($logFields)) {
+                    $logInsert = array_intersect_key($classContent, $logFields);
+                    if (!empty($logInsert)) {
+                        try {
+                            $classContentLogTable->insert($logInsert);
+                        } catch (\Throwable $e) {
+                            log_message('error', 'Failed to insert class_content_log: ' . $e->getMessage());
+                        }
+                    }
+                }
+
+                // Soft delete class_content entry
+                $updateData = [
+                    'status' => 2,
+                    'modified_by' => $params['user_id'],
+                    'modified_date' => date('Y-m-d H:i:s')
+                ];
+
+                $updated = $classContentTable
+                    ->where('id', $id)
+                    ->update($updateData);
+
+                if ($updated) {
+                    $success = true;
+
+                    log_message('debug', '✅ deleteClassContent soft-deleted class_content ' . $id);
+
+                    // Remove student_content links for this class_content
+                    $deletedStudentContent = $studentContentTable
+                        ->where('class_content_id', $id)
+                        ->delete();
+
+                    log_message('debug', '🗑 deleteClassContent removed student_content rows: ' . $deletedStudentContent);
+
+                    // Deactivate related student_work entries
+                    $updatedStudentWork = $studentWorkTable
+                        ->where('class_id', $classContent['class_id'])
+                        ->where('content_id', $classContent['content_id'])
+                        ->update([
+                            'status' => 0,
+                            'modified_by' => $params['user_id'],
+                            'modified_date' => date('Y-m-d H:i:s')
+                        ]);
+
+                    log_message('debug', '🛠 deleteClassContent updated student_work rows: ' . ($updatedStudentWork ? '1+' : '0'));
+                } else {
+                    log_message('error', '❌ deleteClassContent failed to update class_content ' . $id . ' - DB error: ' . $db->error()['message'] ?? 'unknown');
+                }
+            }
+
+            if ($success) {
+                log_message('debug', '✅ deleteClassContent completed successfully for ids: ' . implode(',', $classContentIds));
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Content deleted successfully',
+                    'ErrorObject' => ''
+                ]);
+            }
+
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'Failed to delete content from class'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'deleteClassContent error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Normalize mixed time payloads from the UI into HH:MM:SS strings for SQL inserts.
+     */
+    private function normalizeTimeValue($value, string $default): string
+    {
+        if (empty($value) && $value !== '0' && $value !== 0) {
+            return $default;
+        }
+
+        if (is_object($value)) {
+            $value = (array) $value;
+        }
+
+        if (is_array($value)) {
+            $hour = isset($value['hour']) ? (int) $value['hour'] : 0;
+            $minute = isset($value['minute']) ? (int) $value['minute'] : 0;
+            $second = isset($value['second']) ? (int) $value['second'] : 0;
+            return sprintf('%02d:%02d:%02d', $hour, $minute, $second);
+        }
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed === '') {
+                return $default;
+            }
+
+            // Handle HH:MM payloads by adding seconds
+            if (preg_match('/^\d{1,2}:\d{2}$/', $trimmed)) {
+                return $trimmed . ':00';
+            }
+
+            // Assume already HH:MM:SS or SQL-friendly
+            return $trimmed;
+        }
+
+        if (is_int($value)) {
+            // Treat integer as hour value (legacy payloads)
+            $hour = max(0, min(23, $value));
+            return sprintf('%02d:00:00', $hour);
+        }
+
+        return $default;
     }
 }

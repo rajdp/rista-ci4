@@ -35,6 +35,7 @@ $routes->group('', function($routes) {
     
     // User registration and password reset
     $routes->match(['POST', 'OPTIONS'], 'user/login', 'User::login');
+    $routes->match(['POST', 'OPTIONS'], 'user/logout', 'User::logout');
     $routes->match(['POST', 'OPTIONS'], 'user/register', 'User::register');
     $routes->match(['POST', 'OPTIONS'], 'user/forgotPassword', 'User::forgotPassword');
     $routes->match(['POST', 'OPTIONS'], 'user/resetPassword', 'User::resetPassword');
@@ -65,9 +66,16 @@ $routes->group('', function($routes) {
     
     // Content endpoints
     $routes->post('content/sortMaster', 'Content::sortMaster');
+    $routes->post('content/testType', 'Content::testType');
+    $routes->post('content/list', 'Content::list');
     $routes->post('content/contentDetail', 'Content::contentDetail');
+    $routes->post('content/detail', 'Content::contentDetail'); // Alias for frontend compatibility
     $routes->post('content/listPassage', 'Content::listPassage');
     $routes->post('content/specifiedClassList', 'Content::specifiedClassList');
+    $routes->post('content/question_types', 'Content::questionTypes');
+
+    // CRM public endpoints
+    $routes->get('crm/report/view/(:segment)', 'Admin\ReportCards::viewByToken/$1');
 });
 
 // Protected routes (authentication required)
@@ -89,6 +97,9 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('user/records', 'User::records');
     $routes->post('user/content', 'User::content');
     $routes->post('user/myProfile', 'User::myProfile');
+
+    // Common endpoints
+    $routes->post('common/settingList', 'Common::settingList');
     
     // Student endpoints
     $routes->get('student', 'Student::index');
@@ -101,24 +112,54 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('student/detail', 'Student::detail');
     $routes->post('student/curriculumList', 'Student::curriculumList');
     $routes->post('student/classList', 'Student::classList');
+    $routes->post('student/assessmentList', 'Student::assessmentList');
+    $routes->post('student/assignmentList', 'Student::assignmentList');
+    $routes->post('student/resourcesList', 'Student::resourcesList');
     $routes->post('student/studentAllClassList', 'Student::studentAllClassList');
     $routes->post('student/attendanceDetail', 'Student::attendanceDetail');
+    
+    // CRM - Guardian management
+    $routes->post('crm/guardians/list', 'Admin\Guardians::list');
+    $routes->post('crm/guardians/save', 'Admin\Guardians::save');
+    $routes->post('crm/guardians/assign', 'Admin\Guardians::assign');
+    $routes->post('crm/guardians/remove', 'Admin\Guardians::remove');
     
     // Teacher endpoints
     $routes->get('teacher', 'Teacher::index');
     $routes->post('teacher', 'Teacher::create');
     $routes->post('teacher/list', 'Teacher::list');
+    $routes->post('teacher/classList', 'Teacher::classList');
     $routes->post('teacher/add', 'Teacher::add');
     $routes->post('teacher/edit', 'Teacher::edit');
     $routes->post('teacher/update', 'Teacher::update');
     $routes->post('teacher/remove', 'Teacher::remove');
     $routes->post('teacher/detail', 'Teacher::detail');
     $routes->post('teacher/assignStudent', 'Teacher::assignStudent');
-    $routes->post('teacher/teacherassignStudentPrint', 'Teacher::teacherassignStudentPrint');
+$routes->post('teacher/teacherassignStudent', 'Teacher::teacherassignStudent');
+$routes->post('teacher/teacherassignStudentPrint', 'Teacher::teacherassignStudentPrint');
+$routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('teacher/studentAssessment', 'Teacher::studentAssessment');
     $routes->post('teacher/assessmentList', 'Teacher::assessmentList');
     $routes->post('teacher/assignmentList', 'Teacher::assignmentList');
     $routes->post('teacher/studentCorrectionList', 'Teacher::studentCorrectionList');
+    $routes->post('teacher/studentAnswerList', 'Teacher::studentAnswerList');
+
+    // Teacher availability endpoints
+    $routes->group('availability', function($routes) {
+        $routes->get('/', 'Availability::index');
+        $routes->post('/', 'Availability::create');
+        $routes->put('(:num)', 'Availability::update/$1');
+        $routes->delete('(:num)', 'Availability::delete/$1');
+        $routes->get('admin-view', 'Availability::adminView');
+    });
+
+    // CRM - Fees & billing
+    $routes->post('crm/fees/plans', 'Admin\Fees::listPlans');
+    $routes->post('crm/fees/plan/save', 'Admin\Fees::savePlan');
+    $routes->post('crm/fees/assign', 'Admin\Fees::assignPlan');
+    $routes->post('crm/fees/payment', 'Admin\Fees::recordPayment');
+    $routes->post('crm/fees/student-overview', 'Admin\Fees::studentOverview');
+    $routes->post('crm/fees/invoice', 'Admin\Fees::generateInvoice');
     
     // School endpoints
     $routes->get('school', 'School::index');
@@ -130,6 +171,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('school/remove', 'School::remove');
     $routes->post('school/detail', 'School::detail');
     $routes->post('school/addAdmin', 'School::addAdmin');
+    $routes->post('school/studentGradeList', 'School::studentGradeList');
     $routes->post('school/announcementList', 'School::announcementList');
     $routes->post('school/addAnnouncement', 'School::addAnnouncement');
     
@@ -151,6 +193,14 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('classes/delete', 'Classes::deleteClass');
     $routes->post('classes/curriculumList', 'Classes::curriculumList');
     $routes->post('classes/topicList', 'Classes::topicList');
+    $routes->post('classes/addTopic', 'Classes::addTopic');
+    $routes->post('classes/updateTopic', 'Classes::updateTopic');
+    $routes->post('classes/addCurriculumTopic', 'Classes::addCurriculumTopic');
+    $routes->post('classes/getClassNotes', 'Classes::getClassNotes');
+    $routes->post('classes/classAddNotes', 'Classes::classAddNotes');
+    $routes->post('classes/enrollStudent', 'Classes::enrollStudent');
+    $routes->post('classes/slotList', 'Classes::slotList');
+    $routes->post('classes/edit', 'Classes::edit');
     $routes->post('class/edit', 'Classes::edit');
     $routes->post('class/update', 'Classes::update');
     $routes->post('class/remove', 'Classes::remove');
@@ -168,6 +218,13 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('sitecontent/seoList', 'SitecontentCI4::seoList');
     $routes->post('sitecontent/addSeo', 'SitecontentCI4::addSeo');
     $routes->post('sitecontent/editSeo', 'SitecontentCI4::editSeo');
+
+    // CRM - Notifications
+    $routes->post('crm/notifications/templates', 'Admin\Notifications::templates');
+    $routes->post('crm/notifications/template/save', 'Admin\Notifications::saveTemplate');
+    $routes->post('crm/notifications/queue', 'Admin\Notifications::queue');
+    $routes->post('crm/notifications/list', 'Admin\Notifications::list');
+    $routes->post('crm/notifications/optout', 'Admin\Notifications::setOptout');
 
     // Course endpoints
     $routes->get('course', 'Course::index');
@@ -207,12 +264,13 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     // Content endpoints
     $routes->get('content', 'Content::index');
     $routes->post('content', 'Content::create');
-    $routes->post('content/list', 'Content::list');
-    $routes->post('content/add', 'Content::add');
-    $routes->post('content/edit', 'Content::getEditContent');
-    $routes->post('content/update', 'Content::update');
-    $routes->post('content/remove', 'Content::remove');
-    $routes->post('content/detail', 'Content::detail');
+$routes->post('content/list', 'Content::list');
+$routes->post('content/add', 'Content::add');
+$routes->post('content/edit', 'Content::getEditContent');
+$routes->post('content/update', 'Content::updateContent');
+$routes->post('content/remove', 'Content::remove');
+$routes->post('content/deleteContent', 'Content::deleteClassContent'); // Legacy alias for class content removal
+$routes->post('content/detail', 'Content::detail');
     
     // Grade endpoints
     $routes->get('grade', 'Grade::index');
@@ -267,8 +325,20 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('report/studentReportClassPrint', 'Report::studentReportClassPrint');
     $routes->post('report/classPerformanceList', 'Report::classPerformanceList');
     $routes->post('report/classList', 'Report::classList');
+    $routes->post('report/assessmentList', 'Report::assessmentList');
+    $routes->post('report/assignmentList', 'Report::assignmentList');
+    $routes->post('report/assessmentReports', 'Report::assessmentReports');
+    $routes->post('report/assignmentReports', 'Report::assignmentReports');
     $routes->post('report/gradeReport', 'Report::gradeReport');
     $routes->post('report/studentPerformanceContent', 'Report::studentPerformanceContent');
+    
+    // CRM - Report cards
+    $routes->post('crm/report/exams', 'Admin\ReportCards::listExams');
+    $routes->post('crm/report/exam/save', 'Admin\ReportCards::saveExam');
+    $routes->post('crm/report/scores', 'Admin\ReportCards::scores');
+    $routes->post('crm/report/scores/save', 'Admin\ReportCards::saveScores');
+    $routes->post('crm/report/generate', 'Admin\ReportCards::generate');
+    $routes->post('crm/report/share', 'Admin\ReportCards::share');
     
     // Feedback endpoints
     $routes->get('feedback', 'Feedback::index');
@@ -283,7 +353,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('mailbox', 'Mailbox::index');
     $routes->post('mailbox', 'Mailbox::create');
     $routes->post('mailbox/listMessages', 'Mailbox::listMessages');
-    $routes->post('mailbox/getMessageCount', 'Mailbox::getMessageCount');
+    $routes->post('mailbox/getMessageCount', 'MailboxCI4::getMessageCount');  // Use CI4 controller
     $routes->post('mailbox/send', 'Mailbox::send');
     $routes->post('mailbox/reply', 'Mailbox::reply');
     

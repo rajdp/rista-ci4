@@ -297,6 +297,147 @@ class Mailbox extends REST_Controller
         }
     }
 
+    // CI4-compatible method - returns SSE format for real-time updates
+    public function getMessageCount()
+    {
+        // Write to error log to confirm method is being called
+        error_log('🚀 Mailbox::getMessageCount() called at ' . date('Y-m-d H:i:s'));
+        
+        // Log start
+        log_message('debug', '📥 Mailbox::getMessageCount START');
+        
+        // Suppress any error output that could corrupt SSE stream
+        @ini_set('display_errors', '0');
+        error_reporting(0);
+        
+        // Clear all output buffers FIRST
+        $bufferCount = 0;
+        while (ob_get_level()) {
+            ob_end_clean();
+            $bufferCount++;
+        }
+        error_log('🧹 Cleared ' . $bufferCount . ' output buffers');
+        log_message('debug', '🧹 Cleared ' . $bufferCount . ' output buffers');
+        
+        // Remove any headers that might have been set by CI3 constructor
+        if (function_exists('header_remove')) {
+            header_remove();
+            log_message('debug', '🧹 Removed all existing headers');
+        }
+        
+        $params = json_decode(file_get_contents('php://input'), true);
+        log_message('debug', '📦 Params: ' . json_encode($params));
+        
+        // Set CORS headers (needed since we cleared all headers)
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, Accesstoken');
+        
+        // Set SSE headers
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        header('X-Accel-Buffering: no');
+        
+        // Disable output buffering completely
+        @ini_set('output_buffering', 'off');
+        @ini_set('zlib.output_compression', '0');
+        
+        log_message('debug', '✅ Headers set for SSE');
+        
+        // Validation
+        if (empty($params['platform']) || ($params['platform'] != "web" && $params['platform'] != "ios")) {
+            log_message('error', '❌ Validation failed: Platform empty');
+            echo 'data: ' . json_encode([
+                "IsSuccess" => false,
+                "ResponseObject" => null,
+                "ErrorObject" => "Platform should not be empty"
+            ]) . "\n\n";
+            flush();
+            exit;
+        }
+        
+        if (empty($params['role_id'])) {
+            log_message('error', '❌ Validation failed: Role ID empty');
+            echo 'data: ' . json_encode([
+                "IsSuccess" => false,
+                "ResponseObject" => null,
+                "ErrorObject" => "Role ID should not be empty"
+            ]) . "\n\n";
+            flush();
+            exit;
+        }
+        
+        if (empty($params['user_id'])) {
+            log_message('error', '❌ Validation failed: User ID empty');
+            echo 'data: ' . json_encode([
+                "IsSuccess" => false,
+                "ResponseObject" => null,
+                "ErrorObject" => "User ID should not be empty"
+            ]) . "\n\n";
+            flush();
+            exit;
+        }
+        
+        if (empty($params['class_id']) || !is_array($params['class_id']) || count($params['class_id']) == 0) {
+            log_message('error', '❌ Validation failed: Class ID empty or not array');
+            echo 'data: ' . json_encode([
+                "IsSuccess" => false,
+                "ResponseObject" => null,
+                "ErrorObject" => "Class ID should not be empty"
+            ]) . "\n\n";
+            flush();
+            exit;
+        }
+
+        log_message('debug', '✅ All validations passed');
+
+        try {
+            $messageCount = [];
+            $classId = implode(',', $params['class_id']);
+            $condition = "WHERE m.class_id IN ({$classId}) AND md.user_id = {$params['user_id']} AND md.is_read = 0";
+            
+            log_message('debug', '📊 Querying mailbox with condition: ' . $condition);
+            
+            $getMessageCount = $this->mailbox_model->getMailBox($condition);
+            
+            log_message('debug', '📦 Retrieved ' . count($getMessageCount) . ' messages');
+
+            foreach ($params['class_id'] as $key => $classId) {
+                $messageCount[$key] = [
+                    'class_id' => $classId,
+                    'newMessage' => 0
+                ];
+                
+                foreach ($getMessageCount as $key1 => $value) {
+                    if ($value['class_id'] == $classId) {
+                        if (!isset($messageCount[$key]['newMessage'])) {
+                            $messageCount[$key]['newMessage'] = 0;
+                        }
+                        $messageCount[$key]['newMessage']++;
+                    }
+                }
+            }
+
+            $response = array_values($messageCount);
+            log_message('debug', '✅ Prepared response: ' . json_encode($response));
+            
+            // Return SSE format
+            echo 'data: ' . json_encode($response) . "\n\n";
+            flush();
+            
+            log_message('debug', '✅ SSE response sent successfully');
+            exit;
+        } catch (Exception $e) {
+            log_message('error', '❌ Exception in getMessageCount: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            echo 'data: ' . json_encode([
+                "error" => $e->getMessage()
+            ]) . "\n\n";
+            flush();
+            exit;
+        }
+    }
+
 
     private function printjson($jsonarr)
     {

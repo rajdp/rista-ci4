@@ -84,11 +84,89 @@ class Classes extends BaseController
                 $builder->where('c.school_id', $params['school_id']);
             }
             
+            // Unified search: search for class name OR student name
+            $searchTerm = '';
+            $hasSearch = false;
+            
+            if (isset($params['search']) && !empty(trim($params['search']))) {
+                $searchTerm = trim($params['search']);
+                $hasSearch = true;
+            } elseif (isset($params['student_search']) && !empty(trim($params['student_search']))) {
+                $searchTerm = trim($params['student_search']);
+                $hasSearch = true;
+            }
+            
+            if ($hasSearch) {
+                // Join student tables for unified search
+                $builder->join('student_class sc_search', 'sc_search.class_id = c.class_id', 'left');
+                $builder->join('user_profile up_student', 'sc_search.student_id = up_student.user_id', 'left');
+                
+                // Use OR logic to search both class name and student name
+                $builder->groupStart();
+                    $builder->like('c.class_name', $searchTerm);
+                    $builder->orLike('up_student.first_name', $searchTerm);
+                    $builder->orLike('up_student.last_name', $searchTerm);
+                $builder->groupEnd();
+                
+                // Only include active students or classes without students
+                $builder->where('(sc_search.student_id IS NULL OR sc_search.status NOT IN (0, 3))', null, false);
+            }
+            
+            // Add grade filter
+            if (isset($params['grade']) && is_array($params['grade']) && count($params['grade']) > 0) {
+                $builder->groupStart();
+                foreach ($params['grade'] as $gradeId) {
+                    $builder->orWhere("FIND_IN_SET('$gradeId', c.grade) >", 0);
+                }
+                $builder->groupEnd();
+            }
+            
+            // Add subject filter
+            if (isset($params['subject']) && is_array($params['subject']) && count($params['subject']) > 0) {
+                $builder->groupStart();
+                foreach ($params['subject'] as $subjectId) {
+                    $builder->orWhere("FIND_IN_SET('$subjectId', c.subject) >", 0);
+                }
+                $builder->groupEnd();
+            }
+            
+            // Add classroom/batch filter
+            if (isset($params['classroom']) && !empty($params['classroom']) && $params['classroom'] != '0') {
+                $builder->where("FIND_IN_SET('{$params['classroom']}', c.batch_id) >", 0);
+            }
+            
+            // Add teacher filter
+            if (isset($params['teacher_id']) && !empty($params['teacher_id']) && $params['teacher_id'] != '0') {
+                $builder->join('class_schedule cs_teacher', 'cs_teacher.class_id = c.class_id', 'left');
+                $builder->where("FIND_IN_SET('{$params['teacher_id']}', cs_teacher.teacher_id) >", 0);
+            }
+            
+            // Add course filter
+            if (isset($params['course_id']) && is_array($params['course_id']) && count($params['course_id']) > 0) {
+                $builder->whereIn('c.course_id', $params['course_id']);
+            }
+            
             if (isset($params['type']) && !empty($params['type'])) {
                 // Type filtering logic from CI3
                 $builder->where('c.status', '1');
+                
+                // Type 2: Upcoming classes
+                if ($params['type'] == 2) {
+                    $builder->where('c.start_date >', date('Y-m-d'));
+                }
+                // Type 3: In progress classes
+                elseif ($params['type'] == 3) {
+                    $builder->where('c.start_date <=', date('Y-m-d'));
+                    $builder->where('c.end_date >=', date('Y-m-d'));
+                }
+                // Type 4: Completed classes
+                elseif ($params['type'] == 4) {
+                    $builder->where('c.end_date <', date('Y-m-d'));
+                }
             }
 
+            // Add distinct to avoid duplicates from joins
+            $builder->distinct();
             $builder->orderBy('c.class_id', 'DESC');
             
             // Pagination
@@ -116,6 +194,7 @@ class Classes extends BaseController
 
         } catch (\Exception $e) {
             log_message('error', 'Class list error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            log_message('error', 'SQL Query: ' . $db->getLastQuery());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => [],
@@ -147,6 +226,68 @@ class Classes extends BaseController
                     'ErrorObject' => 'Failed to create class'
                 ]);
             }
+
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get class details for editing
+     */
+    public function edit($id = null): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON();
+            
+            // Accept class_id from either URL parameter or POST data
+            $classId = $id ?? $data->class_id ?? null;
+            
+            if (empty($classId)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class ID is required'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            
+            // Get class details for editing
+            $builder = $db->table('class c');
+            $builder->select('c.*, g.grade_name, g.grade_id, s.subject_name, s.subject_id');
+            $builder->join('grade g', 'c.grade = g.grade_id', 'left');
+            $builder->join('subject s', 'c.subject = s.subject_id', 'left');
+            $builder->where('c.class_id', $classId);
+            $classData = $builder->get()->getRowArray();
+
+            if (empty($classData)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class not found'
+                ]);
+            }
+
+            // Process the data for editing
+            $classData['tags'] = !empty($classData['tags']) ? explode(',', $classData['tags']) : [];
+            $classData['batch_id'] = !empty($classData['batch_id']) ? explode(',', $classData['batch_id']) : [];
+            $classData['video_link'] = !empty($classData['video_link']) ? json_decode($classData['video_link'], true) : [];
+            $classData['teacher_ids'] = !empty($classData['teacher_ids']) ? explode(',', $classData['teacher_ids']) : [];
+            
+            if (!is_array($classData['video_link'])) {
+                $classData['video_link'] = [];
+            }
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $classData,
+                'ErrorObject' => ''
+            ]);
 
         } catch (\Exception $e) {
             return $this->respond([
@@ -1097,22 +1238,44 @@ class Classes extends BaseController
             }
 
             $db = \Config\Database::connect();
+
+            log_message('debug', '📥 Classes::curriculumList params: ' . json_encode($params));
             
             // Get class contents/curriculum
             $builder = $db->table('class_content cc');
-            $builder->select('cc.*, c.name as content_name, c.content_type, c.content_format, c.file_path,
+            $builder->select('cc.*, cc.id as class_content_id, c.name as content_name, c.content_type, c.content_format, c.file_path,
                              CASE 
                                 WHEN cc.start_date > CURDATE() THEN "1"
                                 WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN "2"
                                 WHEN cc.end_date < CURDATE() THEN "3"
                                 ELSE "2"
-                             END as content_date_status');
+                             END as content_date_status,
+                             CASE WHEN cc.all_student = 0 THEN
+                                GROUP_CONCAT(DISTINCT CONCAT_WS(" ", up.first_name, up.last_name) ORDER BY up.first_name SEPARATOR ", ")
+                             END AS individual_students,
+                             CASE WHEN cc.all_student = 0 THEN COUNT(DISTINCT sc.student_id) ELSE 0 END AS individual_count');
             $builder->join('content c', 'cc.content_id = c.content_id', 'left');
+            $builder->join('student_content sc', 'sc.class_content_id = cc.id', 'left');
+            $builder->join('user_profile up', 'sc.student_id = up.user_id', 'left');
             $builder->where('cc.class_id', $params['class_id']);
             $builder->where('cc.status', 1);
             $builder->orderBy('cc.start_date', 'ASC');
+            $builder->groupBy('cc.id');
+
+            // Log the compiled query for debugging
+            log_message('debug', '📝 Classes::curriculumList SQL: ' . $builder->getCompiledSelect(false));
             
             $list = $builder->get()->getResultArray();
+
+            foreach ($list as &$item) {
+                $item['individual_students'] = $item['individual_students'] ?? '';
+                $item['individual_count'] = isset($item['individual_count']) ? (int) $item['individual_count'] : 0;
+            }
+
+            log_message('debug', '📦 Classes::curriculumList fetched ' . count($list) . ' row(s)');
+            if (!empty($list)) {
+                log_message('debug', '📄 Classes::curriculumList sample row: ' . json_encode($list[0]));
+            }
 
             // Process file paths
             foreach ($list as &$item) {
@@ -1167,15 +1330,25 @@ class Classes extends BaseController
             }
 
             $db = \Config\Database::connect();
+
+            log_message('debug', '📥 Classes::topicList params: ' . json_encode($params));
             
-            // Get class topics
-            $builder = $db->table('class_topic');
-            $builder->select('*');
+            // Get class topics from legacy `topic` table
+            $builder = $db->table('topic');
+            $builder->select('topic_id, class_id, topic, start_date, end_date, display_order, status, created_by, created_date, modified_by, modified_date');
             $builder->where('class_id', $params['class_id']);
             $builder->where('status', 1);
+            $builder->orderBy('display_order', 'ASC');
             $builder->orderBy('topic_id', 'ASC');
+
+            log_message('debug', '📝 Classes::topicList SQL: ' . $builder->getCompiledSelect(false));
             
             $topics = $builder->get()->getResultArray();
+
+            log_message('debug', '📦 Classes::topicList fetched ' . count($topics) . ' row(s)');
+            if (!empty($topics)) {
+                log_message('debug', '📄 Classes::topicList sample row: ' . json_encode($topics[0]));
+            }
 
             return $this->respond([
                 'IsSuccess' => true,
@@ -1188,6 +1361,180 @@ class Classes extends BaseController
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => [],
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Add a new topic to a class
+     */
+    public function addTopic(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📥 Classes::addTopic params: ' . json_encode($params));
+
+            // Validation
+            if (empty($params['class_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['topic'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Topic should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Check if display_order is provided, otherwise get the next order
+            $displayOrder = $params['display_order'] ?? null;
+            if ($displayOrder === null) {
+                $builder = $db->table('topic');
+                $builder->selectMax('display_order');
+                $builder->where('class_id', $params['class_id']);
+                $result = $builder->get()->getRowArray();
+                $displayOrder = ($result['display_order'] ?? 0) + 1;
+            }
+
+            // Prepare data for insertion
+            $topicData = [
+                'class_id' => $params['class_id'],
+                'topic' => $params['topic'],
+                'start_date' => $params['start_date'] ?? null,
+                'end_date' => $params['end_date'] ?? null,
+                'display_order' => $displayOrder,
+                'status' => $params['status'] ?? 1,
+                'created_by' => $params['user_id'] ?? null,
+                'created_date' => date('Y-m-d H:i:s')
+            ];
+
+            // Insert the topic
+            $builder = $db->table('topic');
+            $insertSuccess = $builder->insert($topicData);
+
+            if ($insertSuccess) {
+                log_message('debug', '✅ Classes::addTopic successfully inserted topic');
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Topic Added Successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                log_message('error', '❌ Classes::addTopic failed to insert topic');
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to add topic'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Add topic error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Update an existing topic
+     */
+    public function updateTopic(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📥 Classes::updateTopic params: ' . json_encode($params));
+
+            // Validation
+            if (empty($params['topic_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Topic Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['class_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['topic'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Topic should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Prepare data for update
+            $topicData = [
+                'topic' => $params['topic'],
+                'start_date' => $params['start_date'] ?? null,
+                'end_date' => $params['end_date'] ?? null,
+                'display_order' => $params['display_order'] ?? null,
+                'status' => $params['status'] ?? 1,
+                'modified_by' => $params['user_id'] ?? null,
+                'modified_date' => date('Y-m-d H:i:s')
+            ];
+
+            // Remove null values to avoid overwriting with null
+            $topicData = array_filter($topicData, function($value) {
+                return $value !== null;
+            });
+
+            // Update the topic
+            $builder = $db->table('topic');
+            $builder->where('topic_id', $params['topic_id']);
+            $builder->where('class_id', $params['class_id']);
+            $updateSuccess = $builder->update($topicData);
+
+            if ($updateSuccess) {
+                log_message('debug', '✅ Classes::updateTopic successfully updated topic');
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Topic Updated Successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                log_message('error', '❌ Classes::updateTopic failed to update topic');
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update topic'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Update topic error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
             ]);
         }
@@ -1362,5 +1709,499 @@ class Classes extends BaseController
             ]);
         }
     }
-}
 
+    /**
+     * Get slot list for schedule calendar view
+     */
+    public function slotList(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            $db = \Config\Database::connect();
+            
+            // Get date range
+            $fromDate = $params['from_date'] ?? date('Y-m-d');
+            $toDate = $params['to_date'] ?? date('Y-m-d', strtotime('+1 month'));
+            
+            // Build query for class schedules
+            $builder = $db->table('class_schedule cs');
+            $builder->select('cs.*, c.class_id, c.class_name, c.start_date as class_start_date, 
+                             c.end_date as class_end_date, c.status as class_status');
+            $builder->join('class c', 'cs.class_id = c.class_id', 'left');
+            $builder->where('cs.school_id', $params['school_id'] ?? 0);
+            $builder->where('c.status', 1);
+            
+            // Filter by teacher if provided
+            if (isset($params['teacher_id']) && $params['teacher_id'] != '0' && $params['teacher_id'] != '') {
+                $builder->where("FIND_IN_SET('{$params['teacher_id']}', cs.teacher_id) >", 0);
+            }
+            
+            // Filter by class if provided
+            if (isset($params['class_id']) && $params['class_id'] != '') {
+                $builder->where('cs.class_id', $params['class_id']);
+            }
+            
+            // For teacher role, filter by their user_id
+            if (isset($params['role_id']) && $params['role_id'] > 2 && $params['role_id'] != 6) {
+                $builder->where("FIND_IN_SET('{$params['user_id']}', cs.teacher_id) >", 0);
+            }
+            
+            $schedules = $builder->get()->getResultArray();
+            
+            // Build date-based events
+            $dateEvents = [];
+            $daysMap = [
+                1 => 'Monday',
+                2 => 'Tuesday',
+                3 => 'Wednesday',
+                4 => 'Thursday',
+                5 => 'Friday',
+                6 => 'Saturday',
+                7 => 'Sunday'
+            ];
+            
+            // Generate dates between from_date and to_date
+            $currentDate = strtotime($fromDate);
+            $endDate = strtotime($toDate);
+            
+            while ($currentDate <= $endDate) {
+                $dateStr = date('Y-m-d', $currentDate);
+                $dayOfWeek = date('N', $currentDate); // 1=Monday, 7=Sunday
+                
+                $dateEvents[$dateStr] = [
+                    'date' => $dateStr,
+                    'slotday' => $dayOfWeek,
+                    'slotselected' => '',
+                    'event_details' => []
+                ];
+                
+                // Find schedules that match this day of week
+                foreach ($schedules as $schedule) {
+                    if ($schedule['slot_days'] == $dayOfWeek) {
+                        // Check if this date falls within the class date range
+                        $classStartDate = $schedule['class_start_date'];
+                        $classEndDate = $schedule['class_end_date'];
+                        
+                        if ($dateStr >= $classStartDate && ($classEndDate == '0000-00-00' || $dateStr <= $classEndDate)) {
+                            // Get teacher names
+                            $teacherIds = explode(',', $schedule['teacher_id'] ?? '');
+                            $teacherNames = [];
+                            
+                            foreach ($teacherIds as $teacherId) {
+                                $teacherId = trim($teacherId);
+                                if (!empty($teacherId)) {
+                                    $teacherResult = $db->table('user_profile')
+                                        ->select('CONCAT_WS(" ", first_name, last_name) as name')
+                                        ->where('user_id', $teacherId)
+                                        ->get()
+                                        ->getRowArray();
+                                    
+                                    if ($teacherResult) {
+                                        $teacherNames[] = $teacherResult['name'];
+                                    }
+                                }
+                            }
+                            
+                            $dateEvents[$dateStr]['event_details'][] = [
+                                'class_id' => $schedule['class_id'],
+                                'message' => $schedule['class_name'],
+                                'slotstarttime' => $schedule['start_time'] ?? '',
+                                'slotendtime' => $schedule['end_time'] ?? '',
+                                'teacher_id' => $schedule['teacher_id'] ?? '',
+                                'teacher_name' => implode(', ', $teacherNames),
+                                'meeting_link' => $schedule['meeting_link'] ?? '',
+                                'meeting_id' => $schedule['meeting_id'] ?? '',
+                                'passcode' => $schedule['passcode'] ?? '',
+                                'telephone_number' => $schedule['telephone_number'] ?? '',
+                                'status' => 1
+                            ];
+                        }
+                    }
+                }
+                
+                $currentDate = strtotime('+1 day', $currentDate);
+            }
+            
+            // Convert to array and filter out dates with no events (optional)
+            $responseData = array_values($dateEvents);
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $responseData,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Slot list error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => [],
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * View assignments for a class
+     */
+    public function viewAssignments(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+            
+            log_message('debug', '📥 Classes::viewAssignments called with params: ' . json_encode($params));
+            
+            $assignments = $this->classesModel->viewAssignments($params);
+            
+            log_message('debug', '✅ Classes::viewAssignments returning ' . count($assignments) . ' assignments');
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $assignments,
+                'ErrorObject' => ''
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '❌ Classes::viewAssignments error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Add or update curriculum topic assignment
+     */
+    public function addCurriculumTopic(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📥 Classes::addCurriculumTopic params: ' . json_encode($params));
+
+            // Validation
+            if (empty($params['class_content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class content ID should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Prepare update data
+            $updateData = [
+                'topic_id' => $params['topic_id'] ?? '0',
+                'modified_by' => $params['user_id'] ?? null,
+                'modified_date' => date('Y-m-d H:i:s')
+            ];
+
+            // Add position if provided
+            if (isset($params['position']) && $params['position'] !== '') {
+                $updateData['position'] = $params['position'];
+            }
+
+            // Remove null values
+            $updateData = array_filter($updateData, function($value) {
+                return $value !== null;
+            });
+
+            // Update the class_content record
+            $builder = $db->table('class_content');
+            $builder->where('id', $params['class_content_id']);
+            $updateSuccess = $builder->update($updateData);
+
+            if ($updateSuccess !== false) {
+                log_message('debug', '✅ Classes::addCurriculumTopic successfully updated');
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Curriculum topic updated successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                log_message('error', '❌ Classes::addCurriculumTopic failed to update');
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update curriculum topic'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Add curriculum topic error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get class notes/announcements for one or more classes
+     */
+    public function getClassNotes(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📥 Classes::getClassNotes params: ' . json_encode($params));
+
+            $db = \Config\Database::connect();
+
+            // Build query for class notes
+            $builder = $db->table('class_notes');
+            $builder->select('*');
+            
+            // Handle both single class_id and array of class_ids
+            if (isset($params['class_id'])) {
+                if (is_array($params['class_id'])) {
+                    $builder->whereIn('class_id', $params['class_id']);
+                } else {
+                    $builder->where('class_id', $params['class_id']);
+                }
+            }
+
+            // Only get active notes
+            $builder->where('status', '1');
+            $builder->orderBy('class_id', 'ASC');
+            $builder->orderBy('id', 'DESC');
+
+            $notes = $builder->get()->getResultArray();
+
+            log_message('debug', '📦 Classes::getClassNotes fetched ' . count($notes) . ' notes');
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $notes,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Get class notes error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => [],
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Enroll a student in a class using class code
+     */
+    public function enrollStudent(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📥 Classes::enrollStudent params: ' . json_encode($params));
+
+            // Validation
+            if (empty($params['student_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student ID should not be empty'
+                ]);
+            }
+
+            if (empty($params['class_code'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class code should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Find the class by class code
+            $classBuilder = $db->table('class');
+            $classBuilder->select('class_id, class_name, start_date, end_date, status');
+            $classBuilder->where('class_code', $params['class_code']);
+            $classBuilder->where('status', '1');
+            $class = $classBuilder->get()->getRowArray();
+
+            if (empty($class)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid class code or class is not active'
+                ]);
+            }
+
+            // Check if student is already enrolled
+            $enrollmentBuilder = $db->table('student_class');
+            $enrollmentBuilder->where('class_id', $class['class_id']);
+            $enrollmentBuilder->where('student_id', $params['student_id']);
+            $existing = $enrollmentBuilder->get()->getRowArray();
+
+            if ($existing) {
+                if ($existing['status'] == '1') {
+                    return $this->respond([
+                        'IsSuccess' => false,
+                        'ResponseObject' => null,
+                        'ErrorObject' => 'You are already enrolled in this class'
+                    ]);
+                } else {
+                    // Reactivate enrollment
+                    $db->table('student_class')
+                        ->where('class_id', $class['class_id'])
+                        ->where('student_id', $params['student_id'])
+                        ->update([
+                            'status' => '1',
+                            'joining_date' => date('Y-m-d'),
+                            'modified_by' => $params['user_id'] ?? null,
+                            'modified_date' => date('Y-m-d H:i:s')
+                        ]);
+                }
+            } else {
+                // Create new enrollment
+                $enrollmentData = [
+                    'class_id' => $class['class_id'],
+                    'student_id' => $params['student_id'],
+                    'status' => '1',
+                    'joining_date' => date('Y-m-d'),
+                    'validity' => $class['end_date'] != '0000-00-00' ? $class['end_date'] : '2099-12-31',
+                    'class_type' => 1,
+                    'created_by' => $params['user_id'] ?? null,
+                    'created_date' => date('Y-m-d H:i:s')
+                ];
+
+                $db->table('student_class')->insert($enrollmentData);
+            }
+
+            // Get schedule_id if available
+            $scheduleBuilder = $db->table('class_schedule');
+            $scheduleBuilder->select('id');
+            $scheduleBuilder->where('class_id', $class['class_id']);
+            $scheduleBuilder->orderBy('id', 'ASC');
+            $scheduleBuilder->limit(1);
+            $schedule = $scheduleBuilder->get()->getRowArray();
+
+            log_message('debug', '✅ Classes::enrollStudent successfully enrolled student in class: ' . $class['class_id']);
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => [
+                    'Message' => 'Successfully enrolled in ' . $class['class_name'],
+                    'class_id' => $class['class_id'],
+                    'schedule_id' => $schedule['id'] ?? null
+                ],
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Enroll student error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Add a new class note/announcement
+     */
+    public function classAddNotes(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📥 Classes::classAddNotes params: ' . json_encode($params));
+
+            // Validation
+            if (empty($params['class_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class ID should not be empty'
+                ]);
+            }
+
+            if (empty($params['notes'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Notes content should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Prepare data for insertion
+            $noteData = [
+                'class_id' => $params['class_id'],
+                'notes' => $params['notes'],
+                'status' => $params['status'] ?? '1',
+                'created_by' => $params['user_id'] ?? null,
+                'created_date' => date('Y-m-d H:i:s')
+            ];
+
+            // Remove null values
+            $noteData = array_filter($noteData, function($value) {
+                return $value !== null;
+            });
+
+            // Insert the note
+            $builder = $db->table('class_notes');
+            $insertSuccess = $builder->insert($noteData);
+
+            if ($insertSuccess) {
+                $noteId = $db->insertID();
+                log_message('debug', '✅ Classes::classAddNotes successfully inserted note with ID: ' . $noteId);
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => [
+                        'id' => $noteId,
+                        'message' => 'Note added successfully'
+                    ],
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                log_message('error', '❌ Classes::classAddNotes failed to insert note');
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to add note'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Add class notes error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+}

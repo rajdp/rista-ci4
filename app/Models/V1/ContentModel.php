@@ -18,6 +18,242 @@ class ContentModel extends BaseModel
         'status'
     ];
 
+    public function sortMaster($params)
+    {
+        $db = \Config\Database::connect();
+        
+        // Build the base query
+        // Performance Note: For optimal query performance, ensure the following indexes exist:
+        // - content: (school_id, status, created_date)
+        // - content: (created_by, status)
+        // - content: (name) for search queries
+        $builder = $db->table('content c');
+        
+        // Optimized SELECT - only fetch essential fields for listing
+        // Details can be loaded on-demand when viewing individual items
+        $builder->select('c.content_id, c.name, c.subject, c.grade, c.content_format, c.content_type, c.status, 
+                         c.created_by, c.created_date,
+                         c.file_path, c.tags,
+                         COALESCE((SELECT GROUP_CONCAT(grade_name) FROM grade 
+                                  WHERE FIND_IN_SET(grade_id, c.grade)), \'\') AS grade_name,
+                         COALESCE((SELECT GROUP_CONCAT(subject_name) FROM subject 
+                                  WHERE FIND_IN_SET(subject_id, c.subject)), \'\') AS subject_name');
+        
+        // Apply school filter
+        if (isset($params['school_id']) && !empty($params['school_id'])) {
+            $builder->where('c.school_id', $params['school_id']);
+        }
+        
+        // Apply search filter
+        if (isset($params['search_name']) && !empty($params['search_name'])) {
+            $searchTerm = $params['search_name'];
+            if (isset($params['exact_search']) && $params['exact_search'] == 1) {
+                $builder->where('c.name', $searchTerm);
+            } else {
+                $builder->like('c.name', $searchTerm);
+            }
+        }
+        
+        // Apply grade filter
+        if (isset($params['grade']) && !empty($params['grade']) && is_array($params['grade'])) {
+            $gradeConditions = [];
+            foreach ($params['grade'] as $gradeId) {
+                $gradeConditions[] = "FIND_IN_SET('{$gradeId}', c.grade)";
+            }
+            if (!empty($gradeConditions)) {
+                $builder->where('(' . implode(' OR ', $gradeConditions) . ')');
+            }
+        }
+        
+        // Apply subject filter
+        if (isset($params['subject']) && !empty($params['subject']) && is_array($params['subject'])) {
+            $subjectConditions = [];
+            foreach ($params['subject'] as $subjectId) {
+                $subjectConditions[] = "FIND_IN_SET('{$subjectId}', c.subject)";
+            }
+            if (!empty($subjectConditions)) {
+                $builder->where('(' . implode(' OR ', $subjectConditions) . ')');
+            }
+        }
+        
+        // Apply library filter (content type)
+        if (isset($params['library']) && !empty($params['library'])) {
+            switch ($params['library']) {
+                case 'Resource':
+                    $builder->where('c.content_format', 'resource');
+                    break;
+                case 'Assignment':
+                    $builder->where('c.content_format', 'assignment');
+                    break;
+                case 'Assessment':
+                    $builder->where('c.content_format', 'assessment');
+                    break;
+            }
+        }
+        
+        // Apply filter (authored by me, my draft, etc.)
+        if (isset($params['filter']) && !empty($params['filter'])) {
+            switch ($params['filter']) {
+                case 'authored_by_me':
+                    $builder->where('c.created_by', $params['user_id']);
+                    break;
+                case 'my_draft':
+                    $builder->where('c.status', '0'); // Draft status
+                    $builder->where('c.created_by', $params['user_id']);
+                    break;
+            }
+        }
+        
+        // Apply sorting
+        if (isset($params['sort']) && !empty($params['sort'])) {
+            switch ($params['sort']) {
+                case 'A - Z':
+                    $builder->orderBy('c.name', 'ASC');
+                    break;
+                case 'Z - A':
+                    $builder->orderBy('c.name', 'DESC');
+                    break;
+                case 'Popularity':
+                    $builder->orderBy('c.content_id', 'DESC'); // Simplified popularity
+                    break;
+                case 'Recent':
+                default:
+                    $builder->orderBy('c.created_date', 'DESC');
+                    break;
+            }
+        } else {
+            $builder->orderBy('c.created_date', 'DESC');
+        }
+        
+        // Apply pagination
+        if (isset($params['page_no']) && isset($params['records_per_page'])) {
+            $offset = ($params['page_no'] - 1) * $params['records_per_page'];
+            $builder->limit($params['records_per_page'], $offset);
+            log_message('debug', '🔍 PAGINATION - Backend applying LIMIT: records=' . $params['records_per_page'] . ', offset=' . $offset . ', page=' . $params['page_no']);
+        } else {
+            log_message('warning', '⚠️ PAGINATION - Missing pagination params! page_no=' . ($params['page_no'] ?? 'NOT SET') . ', records_per_page=' . ($params['records_per_page'] ?? 'NOT SET'));
+        }
+        
+        $results = $builder->get()->getResultArray();
+        
+        log_message('debug', '📦 PAGINATION - Backend returning ' . count($results) . ' records');
+        
+        // Process results
+        foreach ($results as $key => $result) {
+            // Process annotation
+            if (!empty($result['annotation']) && $result['annotation'] != '[]') {
+                $results[$key]['annotation'] = json_decode($result['annotation'], true);
+            } else {
+                $results[$key]['annotation'] = [];
+            }
+            
+            // Process question annotation
+            if (!empty($result['questionAnnotation']) && $result['questionAnnotation'] != '[]') {
+                $results[$key]['questionAnnotation'] = json_decode($result['questionAnnotation'], true);
+            } else {
+                $results[$key]['questionAnnotation'] = [];
+            }
+            
+            // Process tags
+            if (!empty($result['tags'])) {
+                $results[$key]['tags'] = array_filter(explode(',', $result['tags']));
+            } else {
+                $results[$key]['tags'] = [];
+            }
+            
+            // Process links
+            if (!empty($result['links'])) {
+                $results[$key]['links'] = json_decode($result['links'], true);
+            } else {
+                $results[$key]['links'] = [];
+            }
+        }
+        
+        return $results;
+    }
+
+    /**
+     * Get test types (SAT, ACT, etc.)
+     */
+    public function getTestTypes($params)
+    {
+        $db = \Config\Database::connect();
+        
+        // Query test_type table if it exists, otherwise return default types
+        $query = "SELECT test_type_id, test_type, status 
+                  FROM test_type 
+                  WHERE status = 1 
+                  ORDER BY test_type_id";
+        
+        try {
+            $result = $db->query($query)->getResultArray();
+            
+            if (empty($result)) {
+                // Return default test types if table is empty
+                $result = [
+                    ['test_type_id' => '1', 'test_type' => 'SAT', 'status' => '1'],
+                    ['test_type_id' => '2', 'test_type' => 'ACT', 'status' => '1'],
+                    ['test_type_id' => '3', 'test_type' => 'Other', 'status' => '1']
+                ];
+            }
+            
+            return $result;
+        } catch (\Exception $e) {
+            log_message('error', 'ContentModel::getTestTypes error: ' . $e->getMessage());
+            // Return default types on error
+            return [
+                ['test_type_id' => '1', 'test_type' => 'SAT', 'status' => '1'],
+                ['test_type_id' => '2', 'test_type' => 'ACT', 'status' => '1'],
+                ['test_type_id' => '3', 'test_type' => 'Other', 'status' => '1']
+            ];
+        }
+    }
+
+    /**
+     * Get content list for a user/school
+     */
+    public function contentList($params)
+    {
+        $db = \Config\Database::connect();
+        
+        $builder = $db->table('content c');
+        
+        $builder->select('c.content_id, c.name, c.subject, c.grade, c.content_format, c.content_type, 
+                         c.status, c.created_by, c.created_date, c.file_path, c.tags, c.links,
+                         COALESCE(c.description, \'\') AS description,
+                         COALESCE((SELECT GROUP_CONCAT(grade_name) FROM grade 
+                                  WHERE FIND_IN_SET(grade_id, c.grade)), \'\') AS grade_name,
+                         COALESCE((SELECT GROUP_CONCAT(subject_name) FROM subject 
+                                  WHERE FIND_IN_SET(subject_id, c.subject)), \'\') AS subject_name,
+                         COALESCE((SELECT CONCAT_WS(" ", first_name, last_name) FROM user_profile 
+                                  WHERE user_id = c.created_by LIMIT 1), \'\') AS created_by_name');
+        
+        // Apply school filter
+        if (isset($params['school_id']) && !empty($params['school_id'])) {
+            $builder->where('c.school_id', $params['school_id']);
+        }
+        
+        // Apply user filter (for "my content")
+        if (isset($params['user_id']) && isset($params['filter']) && $params['filter'] == 'my_content') {
+            $builder->where('c.created_by', $params['user_id']);
+        }
+        
+        // Only published content by default
+        if (!isset($params['include_draft']) || $params['include_draft'] != 1) {
+            $builder->where('c.status', 1);
+        }
+        
+        // Order by recent
+        $builder->orderBy('c.created_date', 'DESC');
+        
+        // Apply limit if specified
+        if (isset($params['limit'])) {
+            $builder->limit($params['limit']);
+        }
+        
+        return $builder->get()->getResultArray();
+    }
+
     public function getSortMaster($data)
     {
         $db = \Config\Database::connect();
@@ -230,6 +466,10 @@ class ContentModel extends BaseModel
                   COALESCE(c.profile_thumb_url, '') as profile_thumb_url,
                   COALESCE(c.tags, '') as tags, c.is_test, c.test_type_id,
                   COALESCE(c.answerkey_path, '') as answerkey_path,
+                  COALESCE((SELECT GROUP_CONCAT(grade_name) FROM grade 
+                           WHERE FIND_IN_SET(grade_id, c.grade)), '') AS grade_name,
+                  COALESCE((SELECT GROUP_CONCAT(subject_name) FROM subject 
+                           WHERE FIND_IN_SET(subject_id, c.subject)), '') AS subject_name,
                   $condition
                   (SELECT CONCAT_WS(' ', first_name, last_name) FROM user_profile 
                   WHERE user_id = c.created_by) as created_by
@@ -270,5 +510,261 @@ class ContentModel extends BaseModel
                   ->where('status', 1)
                   ->get()
                   ->getResultArray();
+    }
+
+    /**
+     * Get question types list
+     */
+    public function questionTypeList()
+    {
+        $db = \Config\Database::connect();
+        
+        $query = "SELECT question_type_id, resource_type_id, question_type, image_path, icon_path
+                  FROM question_types 
+                  WHERE question_uploads = 1";
+        
+        $result = $db->query($query)->getResultArray();
+        
+        // Sort by resource_type_id
+        usort($result, function ($a, $b) {
+            return $a['resource_type_id'] <=> $b['resource_type_id'];
+        });
+        
+        return $result;
+    }
+
+    /**
+     * Get answer list for content
+     */
+    public function answerList($params)
+    {
+        $db = \Config\Database::connect();
+        
+        $condition = "";
+        if (isset($params['student_id']) && $params['student_id'] > 0) {
+            $condition = ",COALESCE((SELECT COALESCE(student_answer,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as student_answer,
+                            COALESCE((SELECT COALESCE(jiixdata,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as jiixdata,
+                            COALESCE((SELECT COALESCE(roughdata,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as roughdata,
+                            COALESCE((SELECT COALESCE(rough_image_url,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as rough_image_url,
+                            COALESCE((SELECT COALESCE(rough_image_thumb_url,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as rough_image_thumb_url,
+                            COALESCE((SELECT COALESCE(student_answer_image,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as student_answer_image,
+                            COALESCE((SELECT COALESCE(student_roughdata,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as student_roughdata,
+                           (SELECT status FROM student_content WHERE id = {$params['student_content_id']}) as student_content_status,
+                           COALESCE((SELECT COALESCE(annotation,'') FROM student_content WHERE id = {$params['student_content_id']}),'') as student_annotation,
+                           COALESCE((select suggestion_query from student_suggestions where content_id={$params['content_id']} AND class_id = {$params['class_id']} AND student_id = {$params['student_id']} AND answer_id = a.answer_id),'') as student_feedback,
+                           COALESCE((SELECT COALESCE(editor_answer,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as student_editor_answer";
+        }
+        
+        $query = "SELECT a.answer_id, a.question_no, 
+                  COALESCE(a.question,'') AS question, a.mob_options, 
+                  COALESCE(a.section_heading,'') AS heading,a.display_order,a.content_id, a.question_type_id,
+                   a.has_sub_question,a.page_no,
+                  COALESCE(a.sub_question_no, '') AS sub_question_no, COALESCE(a.options, '') AS options, a.array, a.answer,
+                  COALESCE(a.editor_answer) as editor_answer, a.auto_grade,  a.points, 
+                  COALESCE(a.difficulty, '') AS difficulty, 
+                  COALESCE(a.allow_exact_match, '') AS allow_exact_match,
+                  COALESCE(a.allow_any_text, '') AS allow_any_text, 
+                  COALESCE(a.match_case, '') AS match_case, 
+                  COALESCE(a.answer_explanation, '') as answer_explanation,
+                  COALESCE(a.minimum_line, '') AS minimum_line $condition
+                  FROM answers a
+                  WHERE a.content_id = '{$params['content_id']}' AND a.status = 1
+                  ORDER BY a.answer_id ASC";
+        
+        return $db->query($query)->getResultArray();
+    }
+    
+    /**
+     * Get or create student_content record (lazy creation)
+     */
+    public function getOrCreateStudentContent($studentId, $contentId, $classContentId, $classId, $userId)
+    {
+        $db = \Config\Database::connect();
+        
+        // Check if student_content exists
+        $studentContent = $db->table('student_content')
+            ->where('student_id', $studentId)
+            ->where('content_id', $contentId)
+            ->where('class_content_id', $classContentId)
+            ->get()
+            ->getRowArray();
+        
+        if ($studentContent) {
+            // Ensure class access exists
+            $accessModel = new \App\Models\V1\StudentContentClassAccessModel();
+            $hasAccess = $accessModel->where([
+                'student_content_id' => $studentContent['id'],
+                'class_id' => $classId
+            ])->first();
+            
+            if (!$hasAccess) {
+                $accessModel->addClassAccess($studentContent['id'], $classId, $classContentId, $userId);
+            }
+            
+            return $studentContent;
+        }
+        
+        // Create new student_content record
+        $data = [
+            'student_id' => $studentId,
+            'content_id' => $contentId,
+            'class_content_id' => $classContentId,
+            'grade_id' => $this->getGradeIdFromClassContent($classContentId),
+            'status' => 1, // Yet to start
+            'created_by' => $userId,
+            'created_date' => date('Y-m-d H:i:s'),
+            'modified_by' => $userId,
+            'modified_date' => date('Y-m-d H:i:s')
+        ];
+        
+        // Get start/end dates from class_content
+        $classContent = $db->table('class_content')
+            ->where('id', $classContentId)
+            ->get()
+            ->getRowArray();
+        
+        if ($classContent) {
+            $data['start_date'] = $classContent['start_date'];
+            $data['end_date'] = $classContent['end_date'];
+        }
+        
+        $studentContentId = $db->table('student_content')->insert($data);
+        
+        // Create class access
+        $accessModel = new \App\Models\V1\StudentContentClassAccessModel();
+        $accessModel->addClassAccess($studentContentId, $classId, $classContentId, $userId);
+        
+        return $db->table('student_content')->where('id', $studentContentId)->get()->getRowArray();
+    }
+    
+    /**
+     * Get grade_id from class_content
+     */
+    private function getGradeIdFromClassContent($classContentId)
+    {
+        $db = \Config\Database::connect();
+        $classContent = $db->table('class_content')
+            ->select('classes.grade_id')
+            ->join('classes', 'classes.id = class_content.class_id')
+            ->where('class_content.id', $classContentId)
+            ->get()
+            ->getRowArray();
+        
+        return $classContent ? $classContent['grade_id'] : 0;
+    }
+    
+    /**
+     * Get class curriculum with consolidated view (no duplicates)
+     */
+    public function getClassCurriculumConsolidated($classId)
+    {
+        $db = \Config\Database::connect();
+        
+        $sql = "
+            SELECT 
+                c.content_id,
+                c.name as title,
+                c.content_type as type,
+                cc.id as class_content_id,
+                cc.start_date,
+                cc.end_date,
+                cc.all_student,
+                GROUP_CONCAT(DISTINCT 
+                    CASE WHEN cc.all_student = 0 THEN up.first_name END 
+                    SEPARATOR ', '
+                ) as individual_students,
+                COUNT(DISTINCT CASE WHEN cc.all_student = 0 THEN u.user_id END) as individual_count,
+                MAX(cc.all_student) as has_class_assignment
+            FROM class_content cc
+            INNER JOIN content c ON cc.content_id = c.content_id
+            LEFT JOIN student_content sc ON cc.id = sc.class_content_id
+            LEFT JOIN user u ON sc.student_id = u.user_id AND cc.all_student = 0
+            LEFT JOIN user_profile up ON u.user_id = up.user_id
+            WHERE cc.class_id = ?
+            AND cc.status = 1
+            GROUP BY c.content_id, cc.id
+            ORDER BY cc.start_date DESC, c.name
+        ";
+        
+        return $db->query($sql, [$classId])->getResultArray();
+    }
+    
+    /**
+     * Get student's visible content (from all their classes)
+     */
+    public function getStudentAvailableContent($studentId)
+    {
+        $db = \Config\Database::connect();
+        
+        $sql = "
+            SELECT DISTINCT
+                c.content_id,
+                c.name as title,
+                c.content_type as type,
+                cc.id as class_content_id,
+                cc.class_id,
+                cc.start_date,
+                cc.end_date,
+                cc.all_student,
+                sc.id as student_content_id,
+                sc.status,
+                sc.laq_id,
+                CASE 
+                    WHEN sc.id IS NULL THEN 'Not Started'
+                    WHEN sc.status = 1 THEN 'Yet to Start'
+                    WHEN sc.status = 2 THEN 'In Progress'
+                    WHEN sc.status = 3 THEN 'Verified'
+                    WHEN sc.status = 4 THEN 'Completed'
+                    WHEN sc.status = 5 THEN 'Corrected'
+                    WHEN sc.status = 6 THEN 'Pending Verification'
+                END as status_text
+            FROM class_content cc
+            INNER JOIN content c ON cc.content_id = c.content_id
+            INNER JOIN student_class scs ON cc.class_id = scs.class_id
+            LEFT JOIN student_content sc ON c.content_id = sc.content_id 
+                AND sc.student_id = ?
+                AND sc.class_content_id = cc.id
+            WHERE scs.student_id = ?
+            AND cc.status = 1
+            AND (
+                cc.all_student = 1 
+                OR EXISTS (
+                    SELECT 1 FROM student_content sc2 
+                    WHERE sc2.class_content_id = cc.id 
+                    AND sc2.student_id = ?
+                )
+            )
+            AND CURDATE() BETWEEN cc.start_date AND cc.end_date
+            ORDER BY cc.start_date, c.name
+        ";
+        
+        return $db->query($sql, [$studentId, $studentId, $studentId])->getResultArray();
+    }
+    
+    /**
+     * Get teacher's gradable content (via class access)
+     */
+    public function getTeacherGradableContent($teacherId, $classId)
+    {
+        $db = \Config\Database::connect();
+        
+        $sql = "
+            SELECT 
+                sc.*,
+                c.name as title,
+                up.first_name,
+                up.last_name,
+                scca.class_id
+            FROM student_content sc
+            INNER JOIN student_content_class_access scca ON sc.id = scca.student_content_id
+            INNER JOIN content c ON sc.content_id = c.content_id
+            INNER JOIN user u ON sc.student_id = u.user_id
+            INNER JOIN user_profile up ON u.user_id = up.user_id
+            WHERE scca.class_id = ?
+            AND sc.status IN (3, 5, 6)
+            ORDER BY sc.modified_date DESC
+        ";
+        
+        return $db->query($sql, [$classId])->getResultArray();
     }
 }

@@ -209,4 +209,124 @@ class StudentModel extends Model
         
         return $builder->get()->getResultArray();
     }
+    
+    /**
+     * Move student to new class
+     */
+    public function moveStudentToClass($studentId, $oldClassId, $newClassId, $userId)
+    {
+        $db = \Config\Database::connect();
+        
+        // Update student's class membership
+        $db->table('student_class')
+            ->where('student_id', $studentId)
+            ->where('class_id', $oldClassId)
+            ->update(['class_id' => $newClassId, 'modified_date' => date('Y-m-d H:i:s')]);
+        
+        // Update student_content class access
+        $accessModel = new \App\Models\V1\StudentContentClassAccessModel();
+        
+        // Get all student_content records with old class access
+        $studentContentRecords = $db->table('student_content_class_access')
+            ->where('class_id', $oldClassId)
+            ->join('student_content', 'student_content.id = student_content_class_access.student_content_id')
+            ->where('student_content.student_id', $studentId)
+            ->get()
+            ->getResultArray();
+        
+        foreach ($studentContentRecords as $record) {
+            // Check if new class has same content
+            $newClassContent = $db->table('class_content')
+                ->where('class_id', $newClassId)
+                ->where('content_id', $record['content_id'])
+                ->get()
+                ->getRowArray();
+            
+            if ($newClassContent) {
+                // Update access to new class
+                $accessModel->updateClassAccess(
+                    $record['student_content_id'],
+                    $oldClassId,
+                    $newClassId,
+                    $newClassContent['id'],
+                    $userId
+                );
+            } else {
+                // Remove access (content not in new class)
+                $accessModel->removeClassAccess($record['student_content_id'], $oldClassId);
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Add student to additional class (for students in multiple classes)
+     */
+    public function addStudentToClass($studentId, $classId, $userId)
+    {
+        $db = \Config\Database::connect();
+        
+        // Add class membership
+        $db->table('student_class')->insert([
+            'student_id' => $studentId,
+            'class_id' => $classId,
+            'created_date' => date('Y-m-d H:i:s')
+        ]);
+        
+        // Add class access for existing student_content records with matching content
+        $accessModel = new \App\Models\V1\StudentContentClassAccessModel();
+        
+        $sql = "
+            SELECT sc.id as student_content_id, cc.id as class_content_id, cc.content_id
+            FROM student_content sc
+            INNER JOIN class_content cc ON sc.content_id = cc.content_id
+            WHERE sc.student_id = ?
+            AND cc.class_id = ?
+            AND cc.status = 1
+        ";
+        
+        $matchingContent = $db->query($sql, [$studentId, $classId])->getResultArray();
+        
+        foreach ($matchingContent as $content) {
+            $accessModel->addClassAccess(
+                $content['student_content_id'],
+                $classId,
+                $content['class_content_id'],
+                $userId
+            );
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Remove student from class
+     */
+    public function removeStudentFromClass($studentId, $classId, $userId)
+    {
+        $db = \Config\Database::connect();
+        
+        // Remove class membership
+        $db->table('student_class')
+            ->where('student_id', $studentId)
+            ->where('class_id', $classId)
+            ->delete();
+        
+        // Remove class access for student_content records
+        $accessModel = new \App\Models\V1\StudentContentClassAccessModel();
+        
+        $studentContentRecords = $db->table('student_content_class_access')
+            ->where('class_id', $classId)
+            ->join('student_content', 'student_content.id = student_content_class_access.student_content_id')
+            ->where('student_content.student_id', $studentId)
+            ->get()
+            ->getResultArray();
+        
+        foreach ($studentContentRecords as $record) {
+            $accessModel->removeClassAccess($record['student_content_id'], $classId);
+        }
+        
+        return true;
+    }
 } 

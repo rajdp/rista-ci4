@@ -36,38 +36,39 @@ class School extends ResourceController
         header("Access-Control-Allow-Origin: *");
         $this->controller = uri_string();
         $urlAuth = $this->verifyAuthUrl();
-        $headers = $this->input->request_headers();
+        
         if ($urlAuth) {
             $excludeurl = $this->excludefunction();
             if ($excludeurl != 'true') {
-                if (isset($headers['Accesstoken'])) {
-                    $this->output->set_status_header(200);
-                    $headers['Accesstoken'];
+                $accessToken = $this->request->getHeaderLine('Accesstoken');
+                if ($accessToken && !empty($accessToken)) {
+                    $this->response->setStatusCode(200);
                 } else {
                     $this->jsonarr['ErrorObject'] = "Unauthorized User";
                     $this->jsonarr['IsSuccess'] = false;
-                    $this->printjson($this->jsonarr);
-                    $this->output->set_status_header(401);
+                    $this->response->setJSON($this->jsonarr);
+                    $this->response->setStatusCode(401);
                     exit();
                 }
 
             } else {
-                $this->output->set_status_header(200);
+                $this->response->setStatusCode(200);
                 return true;
             }
         } else {
-            $this->output->set_status_header(200);
+            $this->response->setStatusCode(200);
             $this->jsonarr['ErrorObject'] = "The requested url is not found.";
             $this->jsonarr['IsSuccess'] = false;
-            $this->printjson($this->jsonarr);
+            $this->response->setJSON($this->jsonarr);
             exit();
         }
     }
 
     public function adminSettings($name)
     {
-        $adminSettings = $this->db->query("SELECT id as setting_id, value as setting_value, name as setting_name   FROM  admin_settings WHERE 
-                             status = 1")->result_array();
+        $db = \Config\Database::connect();
+        $adminSettings = $db->query("SELECT id as setting_id, value as setting_value, name as setting_name   FROM  admin_settings WHERE 
+                             status = 1")->getResultArray();
         if ($name != '') {
             $data = [];
             for ($i = 0; $i < count($adminSettings); $i++) {
@@ -145,8 +146,10 @@ class School extends ResourceController
         $this->excludeRoutes = array(
             'v1/school/registration',
             'v1/school/staticSiteSchoolRegistration',
+            'v1/school/timeZoneList',
             'school/registration',
             'school/staticSiteSchoolRegistration',
+            'school/timeZoneList',
             'school/announcementList',
             'school/addAnnouncement'
         );
@@ -1362,31 +1365,48 @@ class School extends ResourceController
         return $this->printjson($this->jsonarr);
     }
 
-    public function timeZoneList() {
-        $this->benchmark->mark('code_start');
-        $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
-        $this->common_model->checkPermission($this->controller, $params, $headers);
-        if ($params['platform'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Platform Should not be Empty";
-        } elseif ($params['role_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Role Id Should not be Empty";
-        } elseif ($params['user_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "User Id Should not be Empty";
-        } else {
-            $time = $this->school_model->timeZone();
-            foreach($time as $key => $value) {
-                $time[$key]['time_zone'] = $time[$key]['time_zone'].'('.$time[$key]['utc_timezone'].')';
+    /**
+     * Get timezone list
+     * CI4 migrated version
+     */
+    public function timeZoneList(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
             }
-            $this->jsonarr["IsSuccess"] = true;
-            $this->jsonarr["ResponseObject"] = $time;
+
+            $db = \Config\Database::connect();
+            
+            // Get timezone list
+            $builder = $db->table('time_zone');
+            $builder->select('time_zone_id, time_zone, utc_timezone, status');
+            $builder->where('status', 1);
+            $builder->orderBy('time_zone', 'ASC');
+            
+            $timezones = $builder->get()->getResultArray();
+            
+            // Format timezone display with UTC offset
+            foreach ($timezones as $key => $value) {
+                $timezones[$key]['time_zone'] = $value['time_zone'] . ' (' . $value['utc_timezone'] . ')';
+            }
+
+            return $this->response->setJSON([
+                'IsSuccess' => true,
+                'ResponseObject' => $timezones,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Timezone list error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->response->setJSON([
+                'IsSuccess' => false,
+                'ResponseObject' => [],
+                'ErrorObject' => $e->getMessage()
+            ]);
         }
-        $this->benchmark->mark('code_end');
-        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
-        return $this->printjson($this->jsonarr );
     }
 
     public function addAcademyAdmin_post()
@@ -1878,7 +1898,8 @@ class School extends ResourceController
             $schoolId = $params['school_id'] ?? 0;
             $roleId = $params['role_id'] ?? 0;
 
-            $builder = $this->db->table('institution_announcement');
+            $db = \Config\Database::connect();
+            $builder = $db->table('institution_announcement');
             $builder->select('id, school_id, title, description, from_date, to_date, status');
             $builder->where('school_id', $schoolId);
 
@@ -1929,7 +1950,8 @@ class School extends ResourceController
                 'created_date' => date('Y-m-d H:i:s')
             ];
 
-            $builder = $this->db->table('institution_announcement');
+            $db = \Config\Database::connect();
+            $builder = $db->table('institution_announcement');
             $result = $builder->insert($announcement);
 
             if ($result) {
@@ -1952,6 +1974,66 @@ class School extends ResourceController
                 'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Get grade list for a student (CI4-compatible method)
+     */
+    public function studentGradeList()
+    {
+        header('Content-Type: application/json');
+        
+        $params = json_decode(file_get_contents('php://input'), true);
+        
+        // Validation
+        if (empty($params['platform']) || ($params['platform'] != "web" && $params['platform'] != "ios")) {
+            echo json_encode([
+                "IsSuccess" => false,
+                "ResponseObject" => [],
+                "ErrorObject" => "Platform should not be empty"
+            ]);
+            exit;
+        }
+        
+        if (empty($params['student_id'])) {
+            echo json_encode([
+                "IsSuccess" => false,
+                "ResponseObject" => [],
+                "ErrorObject" => "Student ID should not be empty"
+            ]);
+            exit;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get unique grades from student's classes
+            $builder = $db->table('student_class sc');
+            $builder->select('g.grade_id, g.grade_name');
+            $builder->distinct();
+            $builder->join('class c', 'sc.class_id = c.class_id', 'left');
+            $builder->join('grade g', 'FIND_IN_SET(g.grade_id, c.grade) > 0', 'left', false);
+            $builder->where('sc.student_id', $params['student_id']);
+            $builder->where('sc.status', '1');
+            $builder->where('g.grade_id IS NOT NULL', null, false);
+            $builder->orderBy('g.grade_name', 'ASC');
+            
+            $gradeList = $builder->get()->getResultArray();
+            
+            echo json_encode([
+                "IsSuccess" => true,
+                "ResponseObject" => $gradeList,
+                "ErrorObject" => ""
+            ]);
+            exit;
+        } catch (Exception $e) {
+            echo json_encode([
+                "IsSuccess" => false,
+                "ResponseObject" => [],
+                "ErrorObject" => $e->getMessage()
+            ]);
+            exit;
         }
     }
 

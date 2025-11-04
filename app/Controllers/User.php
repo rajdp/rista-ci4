@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\V1\UserModel;
 use CodeIgniter\RESTful\ResourceController;
 use CodeIgniter\API\ResponseTrait;
+use CodeIgniter\HTTP\ResponseInterface;
 
 class User extends ResourceController
 {
@@ -419,6 +420,119 @@ class User extends ResourceController
                 'ResponseObject' => [],
                 'ErrorObject' => ''
             ]);
+
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Logout user by invalidating their token
+     */
+    public function logout(): ResponseInterface
+    {
+        try {
+            $token = $this->request->getHeaderLine('Accesstoken');
+            
+            if (empty($token)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Access token required'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+            
+            // Invalidate the current token
+            $updated = $db->table('user_token')
+                ->where('access_token', $token)
+                ->update([
+                    'status' => 0,
+                    'modified_date' => date('Y-m-d H:i:s')
+                ]);
+
+            if ($updated) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => ['message' => 'Logged out successfully'],
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Token not found or already invalidated'
+                ], 400);
+            }
+
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Change user password
+     */
+    public function changePassword(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON();
+            
+            if (!$data) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid request data'
+                ], 400);
+            }
+
+            // Validate required fields
+            if (!isset($data->user_id) || !isset($data->old_password) || !isset($data->password)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User ID, old password, and new password are required'
+                ], 400);
+            }
+
+            // Validate password match
+            if (isset($data->confirm_password) && $data->password !== $data->confirm_password) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'New password and confirm password do not match'
+                ], 400);
+            }
+
+            // Change password
+            $result = $this->model->changePassword(
+                $data->user_id,
+                $data->old_password,
+                $data->password
+            );
+
+            if ($result === true) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => ['message' => 'Password changed successfully'],
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => $result ?: 'Failed to change password'
+                ], 400);
+            }
 
         } catch (\Exception $e) {
             return $this->respond([

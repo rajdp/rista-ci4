@@ -44,6 +44,7 @@ class Database extends Config
         'port'         => 8889,
         'numberNative' => false,
         'foundRows'    => false,
+        'socket'       => null, // Force TCP connection
         'dateFormat'   => [
             'date'     => 'Y-m-d',
             'datetime' => 'Y-m-d H:i:s',

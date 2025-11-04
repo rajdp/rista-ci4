@@ -3517,7 +3517,7 @@ class Report extends ResourceController
     }
 
     /**
-     * Get class list for reports (stub - needs full implementation)
+     * Get class list for reports
      */
     public function classList()
     {
@@ -3528,19 +3528,555 @@ class Report extends ResourceController
                 $params = $this->request->getPost() ?? [];
             }
 
-            // For now, return empty array - needs full implementation from CI3
+            log_message('debug', '📊 Report::classList called with params: ' . json_encode($params));
+
+            // Use the ClassesModel classList method with type 8 for grade reports
+            $classesModel = new \App\Models\V1\ClassesModel();
+            $params['type'] = 8; // Grade report type
+            
+            $classList = $classesModel->classList($params);
+            
+            log_message('debug', '✅ Report::classList returning ' . count($classList) . ' classes');
+
             return service('response')->setJSON([
                 'IsSuccess' => true,
-                'ResponseObject' => [],
+                'ResponseObject' => $classList,
                 'ErrorObject' => ''
             ]);
 
         } catch (\Exception $e) {
+            log_message('error', '❌ Report::classList error: ' . $e->getMessage());
             return service('response')->setJSON([
                 'IsSuccess' => false,
                 'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get assessment list for reporting
+     */
+    public function assessmentList()
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📊 Report::assessmentList called with params: ' . json_encode($params));
+
+            // Get assessments (content_type = 3) for the class with date filters
+            $db = \Config\Database::connect();
+            
+            $classId = $params['class_id'] ?? 0;
+            $fromDate = $params['from_date'] ?? '';
+            $toDate = $params['to_date'] ?? '';
+            
+            $dateCondition = '';
+            if (!empty($fromDate) && !empty($toDate)) {
+                $dateCondition = "AND cc.start_date >= '$fromDate' AND cc.end_date <= '$toDate'";
+            } elseif (!empty($fromDate)) {
+                $dateCondition = "AND cc.start_date >= '$fromDate'";
+            } elseif (!empty($toDate)) {
+                $dateCondition = "AND cc.end_date <= '$toDate'";
+            }
+            
+            $query = "SELECT cc.id as class_content_id, cnt.content_id, cnt.name as content_name,
+                        cnt.content_type, cnt.content_format, cc.start_date, cc.end_date,
+                        COALESCE((SELECT SUM(points) FROM answers WHERE content_id = cnt.content_id AND status = 1), 0) as total_points,
+                        COALESCE((SELECT COUNT(*) FROM answers WHERE content_id = cnt.content_id AND status = 1), 0) as no_of_questions
+                        FROM class_content cc
+                        INNER JOIN content cnt ON cc.content_id = cnt.content_id
+                        WHERE cc.class_id = $classId AND cnt.content_type = 3
+                        AND cc.status = 1 AND cnt.status = 1 $dateCondition
+                        ORDER BY cc.start_date DESC";
+            
+            $result = $db->query($query)->getResultArray();
+            
+            log_message('debug', '✅ Report::assessmentList returning ' . count($result) . ' assessments');
+
+            return service('response')->setJSON([
+                'IsSuccess' => true,
+                'ResponseObject' => $result,
+                'ErrorObject' => ''
             ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '❌ Report::assessmentList error: ' . $e->getMessage());
+            return service('response')->setJSON([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get assignment list for reporting
+     */
+    public function assignmentList()
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📊 Report::assignmentList called with params: ' . json_encode($params));
+
+            // Get assignments (content_type = 2) for the class with date filters
+            $db = \Config\Database::connect();
+            
+            $classId = $params['class_id'] ?? 0;
+            $fromDate = $params['from_date'] ?? '';
+            $toDate = $params['to_date'] ?? '';
+            
+            $dateCondition = '';
+            if (!empty($fromDate) && !empty($toDate)) {
+                $dateCondition = "AND cc.start_date >= '$fromDate' AND cc.end_date <= '$toDate'";
+            } elseif (!empty($fromDate)) {
+                $dateCondition = "AND cc.start_date >= '$fromDate'";
+            } elseif (!empty($toDate)) {
+                $dateCondition = "AND cc.end_date <= '$toDate'";
+            }
+            
+            $query = "SELECT cc.id as class_content_id, cnt.content_id, cnt.name as content_name,
+                        cnt.content_type, cnt.content_format, cc.start_date, cc.end_date,
+                        COALESCE((SELECT SUM(points) FROM answers WHERE content_id = cnt.content_id AND status = 1), 0) as total_points,
+                        COALESCE((SELECT COUNT(*) FROM answers WHERE content_id = cnt.content_id AND status = 1), 0) as no_of_questions
+                        FROM class_content cc
+                        INNER JOIN content cnt ON cc.content_id = cnt.content_id
+                        WHERE cc.class_id = $classId AND cnt.content_type = 2
+                        AND cc.status = 1 AND cnt.status = 1 $dateCondition
+                        ORDER BY cc.start_date DESC";
+            
+            $result = $db->query($query)->getResultArray();
+            
+            log_message('debug', '✅ Report::assignmentList returning ' . count($result) . ' assignments');
+
+            return service('response')->setJSON([
+                'IsSuccess' => true,
+                'ResponseObject' => $result,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '❌ Report::assignmentList error: ' . $e->getMessage());
+            return service('response')->setJSON([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get detailed assessment report with statistics
+     */
+    public function assessmentReports()
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📊 Report::assessmentReports called with params: ' . json_encode($params));
+
+            $db = \Config\Database::connect();
+            $classId = $params['class_id'] ?? 0;
+            $contentIds = $params['content_id'] ?? [];
+            
+            if (empty($contentIds)) {
+                log_message('debug', '⚠️ No content IDs provided for assessmentReports');
+                $response = [
+                    'contentList' => [],
+                    'studentAverage' => '0',
+                    'totalAverage' => '0',
+                    'totalStudentAssigned' => 0,
+                    'totalStudentGraded' => 0,
+                    'totalAbsent' => 0,
+                    'AverageStudentScore' => '0',
+                    'chartValues' => [[
+                        'Master' => 0,
+                        'Excellent' => 0,
+                        'Proficient' => 0,
+                        'Average' => 0,
+                        'belowAverage' => 0
+                    ]]
+                ];
+                return service('response')->setJSON([
+                    'IsSuccess' => true,
+                    'ResponseObject' => $response,
+                    'ErrorObject' => ''
+                ]);
+            }
+            
+            // Convert array to comma-separated string for SQL IN clause
+            $contentIdString = implode(',', array_map('intval', $contentIds));
+            
+            log_message('debug', '📊 Fetching assessment performance for content IDs: ' . $contentIdString);
+            
+            // Get ALL student performance data from student_work table (all statuses)
+            $query = "SELECT 
+                        sw.content_id,
+                        sw.content_name,
+                        COALESCE(sw.obtained_score, 0) as earned_points,
+                        COALESCE(sw.total_score, 0) as total_score,
+                        sw.student_content_status,
+                        COALESCE(up.first_name, '') as first_name,
+                        COALESCE(up.last_name, '') as last_name,
+                        sw.sys_time as submission_date
+                    FROM student_work sw
+                    LEFT JOIN user_profile up ON sw.student_id = up.user_id
+                    WHERE sw.content_id IN ($contentIdString)
+                    AND sw.content_type = 3
+                    ORDER BY sw.content_name, up.last_name, up.first_name";
+            
+            $studentData = $db->query($query)->getResultArray();
+            
+            log_message('debug', '📊 Query executed: ' . $query);
+            log_message('debug', '📊 Found ' . count($studentData) . ' total assessment submissions (all statuses)');
+            
+            // Debug: Check what statuses exist for these content IDs
+            $statusCheckQuery = "SELECT sw.content_id, sw.student_content_status, COUNT(*) as count,
+                                SUM(CASE WHEN sw.obtained_score IS NOT NULL THEN 1 ELSE 0 END) as has_score,
+                                SUM(CASE WHEN sw.obtained_score > 0 THEN 1 ELSE 0 END) as has_nonzero_score
+                                FROM student_work sw
+                                WHERE sw.content_id IN ($contentIdString) AND sw.content_type = 3
+                                GROUP BY sw.content_id, sw.student_content_status
+                                ORDER BY sw.content_id, sw.student_content_status";
+            $statusData = $db->query($statusCheckQuery)->getResultArray();
+            log_message('debug', '🔍 Assessment status breakdown: ' . json_encode($statusData));
+            
+            // Get assignment counts for each content from student_work
+            $assignedQuery = "SELECT sw.content_id, 
+                                COUNT(DISTINCT sw.student_id) as total_assigned,
+                                SUM(CASE WHEN sw.student_content_status IN (3,5) AND sw.obtained_score IS NOT NULL THEN 1 ELSE 0 END) as total_graded
+                            FROM student_work sw
+                            WHERE sw.content_id IN ($contentIdString) AND sw.content_type = 3
+                            GROUP BY sw.content_id";
+            $assignedData = $db->query($assignedQuery)->getResultArray();
+            $statsMap = [];
+            foreach ($assignedData as $row) {
+                $statsMap[$row['content_id']] = [
+                    'assigned' => intval($row['total_assigned']),
+                    'graded' => intval($row['total_graded'])
+                ];
+            }
+            
+            // Organize data by content
+            $contentList = [];
+            $totalStudentsGraded = 0;
+            $totalEarnedPoints = 0;
+            $totalPossiblePoints = 0;
+            $performanceBands = ['Master' => 0, 'Excellent' => 0, 'Proficient' => 0, 'Average' => 0, 'belowAverage' => 0];
+            
+            foreach ($studentData as $row) {
+                $contentId = $row['content_id'];
+                
+                if (!isset($contentList[$contentId])) {
+                    $contentList[$contentId] = [
+                        'content_id' => $contentId,
+                        'content_name' => $row['content_name'],
+                        'total_points' => $row['total_score'] ?? 0,
+                        'scores' => [],
+                        'assigned' => $statsMap[$contentId]['assigned'] ?? 0,
+                        'graded' => $statsMap[$contentId]['graded'] ?? 0
+                    ];
+                }
+                
+                $earnedPoints = floatval($row['earned_points'] ?? 0);
+                $totalPoints = floatval($row['total_score'] ?? 0);
+                $percentage = $totalPoints > 0 ? ($earnedPoints / $totalPoints) * 100 : 0;
+                
+                // Categorize into performance bands
+                if ($percentage >= 90) {
+                    $performanceBands['Master']++;
+                } elseif ($percentage >= 80) {
+                    $performanceBands['Excellent']++;
+                } elseif ($percentage >= 70) {
+                    $performanceBands['Proficient']++;
+                } elseif ($percentage >= 50) {
+                    $performanceBands['Average']++;
+                } else {
+                    $performanceBands['belowAverage']++;
+                }
+                
+                $contentList[$contentId]['scores'][] = $earnedPoints;
+                $totalStudentsGraded++;
+                $totalEarnedPoints += $earnedPoints;
+                $totalPossiblePoints += $totalPoints;
+            }
+            
+            // Format data to match frontend table expectations
+            $finalContentList = [];
+            $lastAvgScore = 0;
+            foreach ($contentList as $content) {
+                $studentCount = count($content['scores']);
+                $totalEarned = array_sum($content['scores']);
+                $totalPoints = floatval($content['total_points']);
+                
+                $avgScore = $studentCount > 0 && $totalPoints > 0 
+                    ? round(($totalEarned / ($studentCount * $totalPoints)) * 100, 2) 
+                    : 0;
+                $lastAvgScore = $avgScore;
+                
+                $finalContentList[] = [
+                    'content_id' => $content['content_id'],
+                    'content_name' => $content['content_name'],
+                    'average_student_score' => $avgScore,
+                    'assigned' => $content['assigned'],
+                    'graded' => $content['graded'],
+                    'absent' => max(0, $content['assigned'] - $content['graded']),
+                    'assessment_date' => '', // Frontend will populate from assessmentList data
+                    'min_score' => !empty($content['scores']) ? round(min($content['scores']), 2) : 0,
+                    'max_score' => !empty($content['scores']) ? round(max($content['scores']), 2) : 0
+                ];
+            }
+            
+            $studentAverage = $totalStudentsGraded > 0 ? round($totalEarnedPoints / $totalStudentsGraded, 2) : 0;
+            $totalAverage = $totalPossiblePoints > 0 ? round(($totalEarnedPoints / $totalPossiblePoints) * 100, 2) : 0;
+            
+            $totalAssigned = array_sum(array_column($finalContentList, 'assigned'));
+            $totalGraded = array_sum(array_column($finalContentList, 'graded'));
+            $totalAbsent = array_sum(array_column($finalContentList, 'absent'));
+            
+            log_message('debug', '📊 Calculated stats - Contents: ' . count($finalContentList) . ', Total Graded: ' . $totalGraded . ', Avg: ' . $studentAverage);
+            
+            $response = [
+                'contentList' => $finalContentList,
+                'studentAverage' => (string)$studentAverage,
+                'totalAverage' => (string)$totalAverage,
+                'totalStudentAssigned' => $totalAssigned,
+                'totalStudentGraded' => $totalGraded,
+                'totalAbsent' => $totalAbsent,
+                'AverageStudentScore' => (string)$lastAvgScore,
+                'chartValues' => [$performanceBands]
+            ];
+
+            return service('response')->setJSON([
+                'IsSuccess' => true,
+                'ResponseObject' => $response,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '❌ Report::assessmentReports error: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            return service('response')->setJSON([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get detailed assignment report with statistics
+     */
+    public function assignmentReports()
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📊 Report::assignmentReports called with params: ' . json_encode($params));
+
+            $db = \Config\Database::connect();
+            $classId = $params['class_id'] ?? 0;
+            $contentIds = $params['content_id'] ?? [];
+            
+            if (empty($contentIds)) {
+                log_message('debug', '⚠️ No content IDs provided for assignmentReports');
+                $response = [
+                    'contentList' => [],
+                    'studentAverage' => '0',
+                    'totalAverage' => '0',
+                    'totalStudentAssigned' => 0,
+                    'totalStudentGraded' => 0,
+                    'totalAbsent' => 0,
+                    'AverageStudentScore' => '0',
+                    'chartValues' => [[
+                        'Master' => 0,
+                        'Excellent' => 0,
+                        'Proficient' => 0,
+                        'Average' => 0,
+                        'belowAverage' => 0
+                    ]]
+                ];
+                return service('response')->setJSON([
+                    'IsSuccess' => true,
+                    'ResponseObject' => $response,
+                    'ErrorObject' => ''
+                ]);
+            }
+            
+            // Convert array to comma-separated string for SQL IN clause
+            $contentIdString = implode(',', array_map('intval', $contentIds));
+            
+            log_message('debug', '📊 Fetching assignment performance for content IDs: ' . $contentIdString);
+            
+            // Get ALL student performance data from student_work table (all statuses)
+            $query = "SELECT 
+                        sw.content_id,
+                        sw.content_name,
+                        COALESCE(sw.obtained_score, 0) as earned_points,
+                        COALESCE(sw.total_score, 0) as total_score,
+                        sw.student_content_status,
+                        COALESCE(up.first_name, '') as first_name,
+                        COALESCE(up.last_name, '') as last_name,
+                        sw.sys_time as submission_date
+                    FROM student_work sw
+                    LEFT JOIN user_profile up ON sw.student_id = up.user_id
+                    WHERE sw.content_id IN ($contentIdString)
+                    AND sw.content_type = 2
+                    ORDER BY sw.content_name, up.last_name, up.first_name";
+            
+            $studentData = $db->query($query)->getResultArray();
+            
+            log_message('debug', '📊 Query executed: ' . $query);
+            log_message('debug', '📊 Found ' . count($studentData) . ' total assignment submissions (all statuses)');
+            
+            // Debug: Check what statuses exist for these content IDs
+            $statusCheckQuery = "SELECT sw.content_id, sw.student_content_status, COUNT(*) as count,
+                                SUM(CASE WHEN sw.obtained_score IS NOT NULL THEN 1 ELSE 0 END) as has_score,
+                                SUM(CASE WHEN sw.obtained_score > 0 THEN 1 ELSE 0 END) as has_nonzero_score
+                                FROM student_work sw
+                                WHERE sw.content_id IN ($contentIdString) AND sw.content_type = 2
+                                GROUP BY sw.content_id, sw.student_content_status
+                                ORDER BY sw.content_id, sw.student_content_status";
+            $statusData = $db->query($statusCheckQuery)->getResultArray();
+            log_message('debug', '🔍 Assignment status breakdown: ' . json_encode($statusData));
+            
+            // Get assignment counts for each content from student_work
+            $assignedQuery = "SELECT sw.content_id, 
+                                COUNT(DISTINCT sw.student_id) as total_assigned,
+                                SUM(CASE WHEN sw.student_content_status IN (3,5) AND sw.obtained_score IS NOT NULL THEN 1 ELSE 0 END) as total_graded
+                            FROM student_work sw
+                            WHERE sw.content_id IN ($contentIdString) AND sw.content_type = 2
+                            GROUP BY sw.content_id";
+            $assignedData = $db->query($assignedQuery)->getResultArray();
+            $statsMap = [];
+            foreach ($assignedData as $row) {
+                $statsMap[$row['content_id']] = [
+                    'assigned' => intval($row['total_assigned']),
+                    'graded' => intval($row['total_graded'])
+                ];
+            }
+            
+            // Organize data by content
+            $contentList = [];
+            $totalStudents = 0;
+            $totalEarnedPoints = 0;
+            $totalPossiblePoints = 0;
+            $performanceBands = ['Master' => 0, 'Excellent' => 0, 'Proficient' => 0, 'Average' => 0, 'belowAverage' => 0];
+            
+            foreach ($studentData as $row) {
+                $contentId = $row['content_id'];
+                
+                if (!isset($contentList[$contentId])) {
+                    $contentList[$contentId] = [
+                        'content_id' => $contentId,
+                        'content_name' => $row['content_name'],
+                        'total_points' => $row['total_score'] ?? 0,
+                        'scores' => [],
+                        'assigned' => $statsMap[$contentId]['assigned'] ?? 0,
+                        'graded' => $statsMap[$contentId]['graded'] ?? 0
+                    ];
+                }
+                
+                $earnedPoints = floatval($row['earned_points'] ?? 0);
+                $totalPoints = floatval($row['total_score'] ?? 0);
+                $percentage = $totalPoints > 0 ? ($earnedPoints / $totalPoints) * 100 : 0;
+                
+                // Categorize into performance bands
+                if ($percentage >= 90) {
+                    $performanceBands['Master']++;
+                } elseif ($percentage >= 80) {
+                    $performanceBands['Excellent']++;
+                } elseif ($percentage >= 70) {
+                    $performanceBands['Proficient']++;
+                } elseif ($percentage >= 50) {
+                    $performanceBands['Average']++;
+                } else {
+                    $performanceBands['belowAverage']++;
+                }
+                
+                $contentList[$contentId]['scores'][] = $earnedPoints;
+                $totalStudents++;
+                $totalEarnedPoints += $earnedPoints;
+                $totalPossiblePoints += $totalPoints;
+            }
+            
+            // Format data to match frontend table expectations
+            $finalContentList = [];
+            $lastAvgScore = 0;
+            foreach ($contentList as $content) {
+                $studentCount = count($content['scores']);
+                $totalEarned = array_sum($content['scores']);
+                $totalPoints = floatval($content['total_points']);
+                
+                $avgScore = $studentCount > 0 && $totalPoints > 0 
+                    ? round(($totalEarned / ($studentCount * $totalPoints)) * 100, 2) 
+                    : 0;
+                $lastAvgScore = $avgScore;
+                
+                $finalContentList[] = [
+                    'content_id' => $content['content_id'],
+                    'content_name' => $content['content_name'],
+                    'average_student_score' => $avgScore,
+                    'assigned' => $content['assigned'],
+                    'graded' => $content['graded'],
+                    'absent' => max(0, $content['assigned'] - $content['graded']),
+                    'assignment_date' => '', // Frontend will populate from assignmentList data
+                    'min_score' => !empty($content['scores']) ? round(min($content['scores']), 2) : 0,
+                    'max_score' => !empty($content['scores']) ? round(max($content['scores']), 2) : 0
+                ];
+            }
+            
+            $studentAverage = $totalStudents > 0 ? round($totalEarnedPoints / $totalStudents, 2) : 0;
+            $totalAverage = $totalPossiblePoints > 0 ? round(($totalEarnedPoints / $totalPossiblePoints) * 100, 2) : 0;
+            
+            $totalAssigned = array_sum(array_column($finalContentList, 'assigned'));
+            $totalGraded = array_sum(array_column($finalContentList, 'graded'));
+            $totalAbsent = array_sum(array_column($finalContentList, 'absent'));
+            
+            log_message('debug', '📊 Calculated stats - Contents: ' . count($finalContentList) . ', Total Graded: ' . $totalGraded . ', Avg: ' . $studentAverage);
+            
+            $response = [
+                'contentList' => $finalContentList,
+                'studentAverage' => (string)$studentAverage,
+                'totalAverage' => (string)$totalAverage,
+                'totalStudentAssigned' => $totalAssigned,
+                'totalStudentGraded' => $totalGraded,
+                'totalAbsent' => $totalAbsent,
+                'AverageStudentScore' => (string)$lastAvgScore,
+                'chartValues' => [$performanceBands]
+            ];
+
+            return service('response')->setJSON([
+                'IsSuccess' => true,
+                'ResponseObject' => $response,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '❌ Report::assignmentReports error: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            return service('response')->setJSON([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
         }
     }
 

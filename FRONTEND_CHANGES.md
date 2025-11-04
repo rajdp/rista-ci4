@@ -21,7 +21,7 @@ export const environment = {
   apiHost: 'http://localhost:8888/rista_ci4/public/',
   webHost: 'http://localhost:8211',
   imgUrl: 'http://localhost:8888/rista',
-  version: '5.9.11',
+  version: '6.0.0',
   showStudent: true,
   sessionPrefix: 'rista_',
   envName: 'LOCAL'
@@ -36,7 +36,7 @@ export const environment = {
   apiHost: 'https://dev-api.edquill.com/rista_ci4/public/',
   webHost: 'https://dev.edquill.com',
   imgUrl: 'https://dev-api.edquill.com/rista',
-  version: '5.9.11',
+  version: '6.0.0',
   showStudent: true,
   sessionPrefix: 'rista_',
   envName: 'DEV'
@@ -51,7 +51,7 @@ export const environment = {
   apiHost: 'https://staging-api.edquill.com/rista_ci4/public/',
   webHost: 'https://staging.edquill.com',
   imgUrl: 'https://staging-api.edquill.com/rista',
-  version: '5.9.11',
+  version: '6.0.0',
   showStudent: true,
   sessionPrefix: 'rista_',
   envName: 'STAGING'
@@ -66,7 +66,7 @@ export const environment = {
   apiHost: 'https://api.edquill.com/rista_ci4/public/',
   webHost: 'https://edquill.com',
   imgUrl: 'https://api.edquill.com/rista',
-  version: '5.9.11',
+  version: '6.0.0',
   showStudent: true,
   sessionPrefix: 'rista_',
   envName: 'PROD'

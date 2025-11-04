@@ -118,6 +118,18 @@ class AuthFilter implements FilterInterface
             return $this->unauthorizedResponse('Token has expired');
         }
 
+        // Check if token is still active in database (for multiple login control)
+        $db = \Config\Database::connect();
+        $tokenStatus = $db->table('user_token')
+            ->select('status')
+            ->where('access_token', $token)
+            ->get()
+            ->getRowArray();
+
+        if (!$tokenStatus || (int)$tokenStatus['status'] !== 1) {
+            return $this->unauthorizedResponse('Your session has expired. You have logged in from another device. Please re-login');
+        }
+
         // Store user info in request for use in controllers
         $request->user = $tokenPayload;
         $request->user_id = Authorization::getUserId($tokenPayload);

@@ -2,22 +2,16 @@
 // Test database connection
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Load environment
-$env = parse_ini_file(__DIR__ . '/../.env');
-if (!$env) {
-    die("Failed to load .env file\n");
-}
-
 echo "Database Configuration Test\n";
 echo "===========================\n\n";
 
-// Try to connect
+// Try to connect using the same config as the app
 $mysqli = new mysqli(
-    $env['database_default_hostname'] ?? 'localhost',
-    $env['database_default_username'] ?? 'root',
-    $env['database_default_password'] ?? 'root',
-    $env['database_default_database'] ?? 'edquill_production',
-    $env['database_default_port'] ?? 8889
+    '127.0.0.1',
+    'root',
+    'root',
+    'edquill_production',
+    8889
 );
 
 if ($mysqli->connect_error) {
@@ -26,9 +20,9 @@ if ($mysqli->connect_error) {
 
 echo "✓ Database connection successful!\n\n";
 echo "Connected to:\n";
-echo "  Host: " . ($env['database_default_hostname'] ?? 'localhost') . "\n";
-echo "  Database: " . ($env['database_default_database'] ?? 'edquill_production') . "\n";
-echo "  Port: " . ($env['database_default_port'] ?? 8889) . "\n\n";
+echo "  Host: 127.0.0.1\n";
+echo "  Database: edquill_production\n";
+echo "  Port: 8889\n\n";
 
 // Test table existence
 $tables = ['students', 'teachers', 'classes', 'content', 'schools', 'users'];

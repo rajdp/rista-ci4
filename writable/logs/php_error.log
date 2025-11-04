@@ -48,3 +48,273 @@ Stack trace:
 [25-Oct-2025 19:29:41 UTC] PHP Fatal error:  Declaration of App\Controllers\Content::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Content.php on line 172
 [25-Oct-2025 20:38:34 UTC] PHP Fatal error:  Access level to App\Controllers\Book::initController() must be public (as in class CodeIgniter\RESTful\BaseResource) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Book.php on line 16
 [25-Oct-2025 20:41:07 UTC] PHP Fatal error:  Access level to App\Controllers\Book::initController() must be public (as in class CodeIgniter\RESTful\BaseResource) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Book.php on line 16
+[26-Oct-2025 19:16:47 UTC] PHP Warning:  require(/Applications/MAMP/htdocs/rista_ci4/vendor/myclabs/deep-copy/src/DeepCopy/deep_copy.php): Failed to open stream: No such file or directory in /Applications/MAMP/htdocs/rista_ci4/vendor/composer/autoload_real.php on line 41
+[26-Oct-2025 19:16:47 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/Applications/MAMP/htdocs/rista_ci4/vendor/composer/../myclabs/deep-copy/src/DeepCopy/deep_copy.php' (include_path='.:/Applications/MAMP/bin/php/php8.2.0/lib/php') in /Applications/MAMP/htdocs/rista_ci4/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /Applications/MAMP/htdocs/rista_ci4/vendor/composer/autoload_real.php(45): {closure}('6124b4c8570aa39...', '/Applications/M...')
+#1 /Applications/MAMP/htdocs/rista_ci4/vendor/autoload.php(22): ComposerAutoloaderInit657ac079313fab046eb8c29fe1d6992b::getLoader()
+#2 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Autoloader/Autoloader.php(146): include('/Applications/M...')
+#3 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Autoloader/Autoloader.php(131): CodeIgniter\Autoloader\Autoloader->loadComposerAutoloader(Object(Config\Modules))
+#4 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(253): CodeIgniter\Autoloader\Autoloader->initialize(Object(Config\Autoload), Object(Config\Modules))
+#5 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(54): CodeIgniter\Boot::loadAutoloader()
+#6 /Applications/MAMP/htdocs/rista_ci4/public/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+#7 {main}
+  thrown in /Applications/MAMP/htdocs/rista_ci4/vendor/composer/autoload_real.php on line 41
+[26-Oct-2025 21:18:13 UTC] PHP Fatal error:  Declaration of App\Controllers\Feedback::delete(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::delete($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Feedback.php on line 173
+[27-Oct-2025 03:14:52 UTC] PHP Fatal error:  Declaration of App\Controllers\Content::update(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::update($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Content.php on line 761
+[28-Oct-2025 04:58:27 UTC] PHP Fatal error:  Declaration of App\Controllers\Feedback::delete(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::delete($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Feedback.php on line 173
+[28-Oct-2025 20:31:25 UTC] PHP Fatal error:  Declaration of App\Controllers\Student::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Student.php on line 46
+[28-Oct-2025 20:31:45 UTC] PHP Fatal error:  Declaration of App\Controllers\Student::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Student.php on line 46
+[28-Oct-2025 22:30:43 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:31:56 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:31:56 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:02 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:02 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:09 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:09 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:25 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:25 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:37 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:37 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:38 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:32:38 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:33:44 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[28-Oct-2025 22:33:44 UTC] PHP Fatal error:  Declaration of App\Controllers\Classes::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Classes.php on line 242
+[30-Oct-2025 03:04:01 UTC] 🔍 DEBUG Total classes for school 1: 0
+[30-Oct-2025 03:04:01 UTC] 🔍 DEBUG Active classes for school 1: 0
+[30-Oct-2025 03:04:01 UTC] 🔍 DEBUG Query: SELECT c.class_id, c.school_id, c.class_name, c.batch_id, c.class_type,
+                    c.subject, c.start_date, c.end_date, c.tags, c.class_status, c.grade,
+                    COALESCE((SELECT GROUP_CONCAT(batch_name) FROM batch WHERE FIND_IN_SET(batch_id, c.batch_id)),'-') as classroom_name,
+                    COALESCE((SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)),'') AS subject_name,
+                    COALESCE((SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)),'') AS grade_name,
+                    (CASE WHEN c.start_date > CURRENT_DATE() THEN 2 
+                    WHEN c.end_date >= CURRENT_DATE() THEN 3
+                    WHEN c.end_date < CURRENT_DATE() THEN 4
+                    ELSE 1 END) AS classDate_status
+                    FROM class c
+                    WHERE c.school_id = 1 AND c.status = 1
+                    ORDER BY c.start_date DESC, c.class_name
+[30-Oct-2025 03:04:01 UTC] ✅ DEBUG Found 0 classes
+[30-Oct-2025 03:04:19 UTC] 🔍 DEBUG All schools with classes: [{"school_id":"2","class_count":"485"},{"school_id":"3","class_count":"1"},{"school_id":"41","class_count":"2"},{"school_id":"42","class_count":"5"},{"school_id":"47","class_count":"3"},{"school_id":"48","class_count":"1"},{"school_id":"49","class_count":"2"},{"school_id":"51","class_count":"2"},{"school_id":"52","class_count":"1"},{"school_id":"53","class_count":"1"},{"school_id":"58","class_count":"15"}]
+[30-Oct-2025 03:04:19 UTC] 🔍 DEBUG Total classes for school 1: 0
+[30-Oct-2025 03:04:19 UTC] 🔍 DEBUG Active classes for school 1: 0
+[30-Oct-2025 03:04:19 UTC] 🔍 DEBUG Query: SELECT c.class_id, c.school_id, c.class_name, c.batch_id, c.class_type,
+                    c.subject, c.start_date, c.end_date, c.tags, c.class_status, c.grade,
+                    COALESCE((SELECT GROUP_CONCAT(batch_name) FROM batch WHERE FIND_IN_SET(batch_id, c.batch_id)),'-') as classroom_name,
+                    COALESCE((SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)),'') AS subject_name,
+                    COALESCE((SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)),'') AS grade_name,
+                    (CASE WHEN c.start_date > CURRENT_DATE() THEN 2 
+                    WHEN c.end_date >= CURRENT_DATE() THEN 3
+                    WHEN c.end_date < CURRENT_DATE() THEN 4
+                    ELSE 1 END) AS classDate_status
+                    FROM class c
+                    WHERE c.school_id = 1 AND c.status = 1
+                    ORDER BY c.start_date DESC, c.class_name
+[30-Oct-2025 03:04:19 UTC] ✅ DEBUG Found 0 classes
+[02-Nov-2025 17:55:20 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 17:55:20
+[02-Nov-2025 17:55:20 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 17:55:20 UTC] ✅ All validations passed
+[02-Nov-2025 17:55:20 UTC] ❌ Exception in getMessageCount: Unknown column 'm.id' in 'on clause' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+[02-Nov-2025 18:03:18 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:03:18
+[02-Nov-2025 18:03:18 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:03:18 UTC] ✅ All validations passed
+[02-Nov-2025 18:03:18 UTC] ❌ Exception in getMessageCount: Unknown column 'm.id' in 'on clause' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+[02-Nov-2025 18:04:18 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:04:18
+[02-Nov-2025 18:04:18 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:04:18 UTC] ✅ All validations passed
+[02-Nov-2025 18:04:18 UTC] ❌ Exception in getMessageCount: Unknown column 'm.id' in 'on clause' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+[02-Nov-2025 18:05:19 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:05:19
+[02-Nov-2025 18:05:19 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:05:19 UTC] ✅ All validations passed
+[02-Nov-2025 18:05:19 UTC] ❌ Exception in getMessageCount: Unknown column 'm.id' in 'on clause' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+[02-Nov-2025 18:05:32 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:05:32
+[02-Nov-2025 18:05:32 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:05:32 UTC] ✅ All validations passed
+[02-Nov-2025 18:05:32 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.mailbox_id = md.mailbox_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:05:32 UTC] ❌ Exception in getMessageCount: Unknown column 'm.mailbox_id' in 'on clause' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+[02-Nov-2025 18:11:31 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:11:31
+[02-Nov-2025 18:11:31 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:11:31 UTC] ✅ All validations passed
+[02-Nov-2025 18:11:31 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.mailbox_id = md.mailbox_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:11:31 UTC] ❌ Exception in getMessageCount: Unknown column 'm.mailbox_id' in 'on clause' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+[02-Nov-2025 18:12:31 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:12:31
+[02-Nov-2025 18:12:31 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:12:31 UTC] ✅ All validations passed
+[02-Nov-2025 18:12:31 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:12:31 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:12:31 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:12:31 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:13:31 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:13:31
+[02-Nov-2025 18:13:31 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:13:31 UTC] ✅ All validations passed
+[02-Nov-2025 18:13:31 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:13:31 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:13:31 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:13:31 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:13:34 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:13:34
+[02-Nov-2025 18:13:34 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:13:34 UTC] ✅ All validations passed
+[02-Nov-2025 18:13:34 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:13:34 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:13:34 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:13:34 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:47:28 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:47:28
+[02-Nov-2025 18:47:28 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:47:28 UTC] ✅ All validations passed
+[02-Nov-2025 18:47:28 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:47:28 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:47:28 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:47:28 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:47:37 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:47:37
+[02-Nov-2025 18:47:37 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:47:37 UTC] ✅ All validations passed
+[02-Nov-2025 18:47:37 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:47:37 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:47:37 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:47:37 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:47:45 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:47:45
+[02-Nov-2025 18:47:45 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:47:45 UTC] ✅ All validations passed
+[02-Nov-2025 18:47:45 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:47:45 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:47:45 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:47:45 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:47:46 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:47:46
+[02-Nov-2025 18:47:46 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:47:46 UTC] ✅ All validations passed
+[02-Nov-2025 18:47:46 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:47:46 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:47:46 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:47:46 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:47:48 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:47:48
+[02-Nov-2025 18:47:48 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:47:48 UTC] ✅ All validations passed
+[02-Nov-2025 18:47:48 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:47:48 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:47:48 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:47:48 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:55:31 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:55:31
+[02-Nov-2025 18:55:31 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:55:31 UTC] ✅ All validations passed
+[02-Nov-2025 18:55:31 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:55:31 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:55:31 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:55:31 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:57:07 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:57:07
+[02-Nov-2025 18:57:07 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:57:07 UTC] ✅ All validations passed
+[02-Nov-2025 18:57:07 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:57:07 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:57:07 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:57:07 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 18:58:48 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 18:58:48
+[02-Nov-2025 18:58:48 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 18:58:48 UTC] ✅ All validations passed
+[02-Nov-2025 18:58:48 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 18:58:48 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 18:58:48 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 18:58:48 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 19:09:06 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 19:09:06
+[02-Nov-2025 19:09:06 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 19:09:06 UTC] ✅ All validations passed
+[02-Nov-2025 19:09:06 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 19:09:06 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 19:09:06 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 19:09:06 UTC] ✅ SSE response sent successfully
+[02-Nov-2025 19:09:17 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-02 19:09:17
+[02-Nov-2025 19:09:17 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[02-Nov-2025 19:09:17 UTC] ✅ All validations passed
+[02-Nov-2025 19:09:17 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[02-Nov-2025 19:09:17 UTC] 📦 Query returned 0 rows: []
+[02-Nov-2025 19:09:17 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[02-Nov-2025 19:09:17 UTC] ✅ SSE response sent successfully

@@ -1,0 +1,454 @@
+WARNING - 2025-11-04 01:06:38 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 134.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:38 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 135.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:38 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 136.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:38 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 137.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:38 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 88.
+ 1 APPPATH/Controllers/School.php(38): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:38 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 146.
+ 1 APPPATH/Controllers/School.php(41): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+ERROR - 2025-11-04 01:06:38 --> mysqli_sql_exception: Unknown column 'time_zone_id' in 'field list' in /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php(327): mysqli->query('SELECT `time_zo...', 0)
+#1 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(738): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `time_zo...')
+#2 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(652): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `time_zo...')
+#3 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `time_zo...', Array, false)
+#4 /Applications/MAMP/htdocs/rista_ci4/app/Controllers/School.php(1389): CodeIgniter\Database\BaseBuilder->get()
+#5 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(933): App\Controllers\School->timeZoneList()
+#6 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\School))
+#7 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(NULL, Object(Config\Cache), false)
+#8 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(334): CodeIgniter\CodeIgniter->run()
+#9 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+#10 /Applications/MAMP/htdocs/rista_ci4/public/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+#11 {main}
+ERROR - 2025-11-04 01:06:38 --> Timezone list error: Unknown column 'time_zone_id' in 'field list' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+DEBUG - 2025-11-04 01:06:54 --> 🔍 PAGINATION - Content::sortMaster received params: page_no=1, records_per_page=10
+DEBUG - 2025-11-04 01:06:54 --> 🔍 PAGINATION - All params: {"platform":"web","role_id":"2","user_id":"49","school_id":"2","sort_by":"0","content_user_id":"0","type":"list","page_no":1,"records_per_page":10,"library":"0","tags":[],"grade":[],"subject":[],"exact_search":0,"search_name":"","timezone":"America\/New_York"}
+DEBUG - 2025-11-04 01:06:54 --> 🔍 PAGINATION - Backend applying LIMIT: records=10, offset=0, page=1
+DEBUG - 2025-11-04 01:06:54 --> 📦 PAGINATION - Backend returning 10 records
+ERROR - 2025-11-04 01:06:56 --> mysqli_sql_exception: Unknown column 'csc.course_id' in 'where clause' in /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php(327): mysqli->query('SELECT *\nFROM `...', 0)
+#1 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(738): CodeIgniter\Database\MySQLi\Connection->execute('SELECT *\nFROM `...')
+#2 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(652): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT *\nFROM `...')
+#3 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT *\nFROM `...', Array, false)
+#4 /Applications/MAMP/htdocs/rista_ci4/app/Models/V1/BaseModel.php(32): CodeIgniter\Database\BaseBuilder->get()
+#5 /Applications/MAMP/htdocs/rista_ci4/app/Models/V1/CourseModel.php(111): App\Models\V1\BaseModel->getResult(Object(CodeIgniter\Database\MySQLi\Builder))
+#6 /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Course.php(77): App\Models\V1\CourseModel->courseWithoutSchedule('csc.course_id =...')
+#7 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(933): App\Controllers\Course->list()
+#8 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Course))
+#9 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(NULL, Object(Config\Cache), false)
+#10 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(334): CodeIgniter\CodeIgniter->run()
+#11 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+#12 /Applications/MAMP/htdocs/rista_ci4/public/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+#13 {main}
+ERROR - 2025-11-04 01:06:56 --> Course list error: Unknown column 'csc.course_id' in 'where clause' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+WARNING - 2025-11-04 01:06:57 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 134.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:57 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 135.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:57 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 136.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:57 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 137.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:57 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 134.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:57 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 135.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:57 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 136.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:06:57 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 137.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-04 01:06:57 --> 📥 Classes::topicList params: {"platform":"web","role_id":"2","user_id":"49","class_id":"1368","timezone":"America\/New_York"}
+DEBUG - 2025-11-04 01:06:57 --> 📝 Classes::topicList SQL: SELECT `topic_id`, `class_id`, `topic`, `start_date`, `end_date`, `display_order`, `status`, `created_by`, `created_date`, `modified_by`, `modified_date`
+FROM `topic`
+WHERE `class_id` = '1368'
+AND `status` = 1
+ORDER BY `display_order` ASC, `topic_id` ASC
+DEBUG - 2025-11-04 01:06:57 --> 📥 Classes::curriculumList params: {"platform":"web","type":"0","role_id":"2","user_id":"49","class_id":"1368","school_id":"2","timezone":"America\/New_York"}
+DEBUG - 2025-11-04 01:06:57 --> 📝 Classes::curriculumList SQL: SELECT `cc`.*, `cc`.`id` as `class_content_id`, `c`.`name` as `content_name`, `c`.`content_type`, `c`.`content_format`, `c`.`file_path`, CASE 
+                                WHEN cc.start_date > CURDATE() THEN "1"
+                                WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN "2"
+                                WHEN cc.end_date < CURDATE() THEN "3"
+                                ELSE "2"
+                             END as content_date_status, CASE WHEN cc.all_student = 0 THEN
+                                GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name) ORDER BY up.first_name SEPARATOR ", ")
+                             END AS individual_students, CASE WHEN cc.all_student = 0 THEN COUNT(DISTINCT sc.student_id) ELSE 0 END AS individual_count
+FROM `class_content` `cc`
+LEFT JOIN `content` `c` ON `cc`.`content_id` = `c`.`content_id`
+LEFT JOIN `student_content` `sc` ON `sc`.`class_content_id` = `cc`.`id`
+LEFT JOIN `user_profile` `up` ON `sc`.`student_id` = `up`.`user_id`
+WHERE `cc`.`class_id` = '1368'
+AND `cc`.`status` = 1
+GROUP BY `cc`.`id`
+ORDER BY `cc`.`start_date` ASC
+DEBUG - 2025-11-04 01:06:57 --> 📦 Classes::topicList fetched 2 row(s)
+DEBUG - 2025-11-04 01:06:57 --> 📄 Classes::topicList sample row: {"topic_id":"158","class_id":"1368","topic":"test","start_date":"2025-01-30","end_date":"2025-11-07","display_order":"1","status":"1","created_by":"49","created_date":"2025-10-31 20:51:21","modified_by":"49","modified_date":"2025-11-01 19:51:31"}
+DEBUG - 2025-11-04 01:06:57 --> 📦 Classes::curriculumList fetched 5 row(s)
+DEBUG - 2025-11-04 01:06:57 --> 📄 Classes::curriculumList sample row: {"id":"26005","class_id":"1368","content_id":"10842","school_id":"2","status":"1","all_student":"0","release_score":"0","auto_review":"0","start_date":"2025-10-31","end_date":"2025-12-31","start_time":"00:00:00","end_time":"23:59:00","notes":"","downloadable":"0","topic_id":"159","is_accessible":"0","allow_feedback":"0","allow_workspace":"0","show_timer":"0","created_by":"49","created_date":"2025-10-31 20:24:02","modified_by":"49","modified_date":"2025-11-03 16:16:46","sys_time":"2025-11-03 11:16:46","class_content_id":"26005","content_name":"PALSHILLSB-Calendar (1).pdf","content_type":"2","content_format":"1","file_path":"[{\"original_image_url\":\"uploads\\\/content\\\/answerKey\\\/def8303c9cae4c.pdf\",\"image\":\"PALSHILLSB-Calendar (1).pdf.pdf\",\"size\":52585,\"type\":\"application\\\/pdf\",\"original_name\":\"PALSHILLSB-Calendar (1).pdf\",\"extension\":\"pdf\",\"resource_type\":\"2\",\"links\":[]}]","content_date_status":"2","individual_students":"","individual_count":0}
+WARNING - 2025-11-04 01:52:54 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 134.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:52:54 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 134.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:52:54 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 135.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:52:54 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 135.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:52:54 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 136.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:52:54 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 136.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:52:54 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 137.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 01:52:54 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 137.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-04 01:52:54 --> 📥 Classes::topicList params: {"platform":"web","role_id":"2","user_id":"49","class_id":"1368","timezone":"America\/New_York"}
+DEBUG - 2025-11-04 01:52:54 --> 📥 Classes::curriculumList params: {"platform":"web","type":"0","role_id":"2","user_id":"49","class_id":"1368","school_id":"2","timezone":"America\/New_York"}
+DEBUG - 2025-11-04 01:52:54 --> 📝 Classes::topicList SQL: SELECT `topic_id`, `class_id`, `topic`, `start_date`, `end_date`, `display_order`, `status`, `created_by`, `created_date`, `modified_by`, `modified_date`
+FROM `topic`
+WHERE `class_id` = '1368'
+AND `status` = 1
+ORDER BY `display_order` ASC, `topic_id` ASC
+DEBUG - 2025-11-04 01:52:54 --> 📝 Classes::curriculumList SQL: SELECT `cc`.*, `cc`.`id` as `class_content_id`, `c`.`name` as `content_name`, `c`.`content_type`, `c`.`content_format`, `c`.`file_path`, CASE 
+                                WHEN cc.start_date > CURDATE() THEN "1"
+                                WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN "2"
+                                WHEN cc.end_date < CURDATE() THEN "3"
+                                ELSE "2"
+                             END as content_date_status, CASE WHEN cc.all_student = 0 THEN
+                                GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name) ORDER BY up.first_name SEPARATOR ", ")
+                             END AS individual_students, CASE WHEN cc.all_student = 0 THEN COUNT(DISTINCT sc.student_id) ELSE 0 END AS individual_count
+FROM `class_content` `cc`
+LEFT JOIN `content` `c` ON `cc`.`content_id` = `c`.`content_id`
+LEFT JOIN `student_content` `sc` ON `sc`.`class_content_id` = `cc`.`id`
+LEFT JOIN `user_profile` `up` ON `sc`.`student_id` = `up`.`user_id`
+WHERE `cc`.`class_id` = '1368'
+AND `cc`.`status` = 1
+GROUP BY `cc`.`id`
+ORDER BY `cc`.`start_date` ASC
+DEBUG - 2025-11-04 01:52:54 --> 📦 Classes::topicList fetched 2 row(s)
+DEBUG - 2025-11-04 01:52:54 --> 📄 Classes::topicList sample row: {"topic_id":"158","class_id":"1368","topic":"test","start_date":"2025-01-30","end_date":"2025-11-07","display_order":"1","status":"1","created_by":"49","created_date":"2025-10-31 20:51:21","modified_by":"49","modified_date":"2025-11-01 19:51:31"}
+DEBUG - 2025-11-04 01:52:54 --> 📦 Classes::curriculumList fetched 5 row(s)
+DEBUG - 2025-11-04 01:52:54 --> 📄 Classes::curriculumList sample row: {"id":"26005","class_id":"1368","content_id":"10842","school_id":"2","status":"1","all_student":"0","release_score":"0","auto_review":"0","start_date":"2025-10-31","end_date":"2025-12-31","start_time":"00:00:00","end_time":"23:59:00","notes":"","downloadable":"0","topic_id":"159","is_accessible":"0","allow_feedback":"0","allow_workspace":"0","show_timer":"0","created_by":"49","created_date":"2025-10-31 20:24:02","modified_by":"49","modified_date":"2025-11-03 16:16:46","sys_time":"2025-11-03 11:16:46","class_content_id":"26005","content_name":"PALSHILLSB-Calendar (1).pdf","content_type":"2","content_format":"1","file_path":"[{\"original_image_url\":\"uploads\\\/content\\\/answerKey\\\/def8303c9cae4c.pdf\",\"image\":\"PALSHILLSB-Calendar (1).pdf.pdf\",\"size\":52585,\"type\":\"application\\\/pdf\",\"original_name\":\"PALSHILLSB-Calendar (1).pdf\",\"extension\":\"pdf\",\"resource_type\":\"2\",\"links\":[]}]","content_date_status":"2","individual_students":"","individual_count":0}
+WARNING - 2025-11-04 03:05:12 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 134.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:05:12 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 135.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:05:12 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 136.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:05:12 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 137.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:05:12 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 88.
+ 1 APPPATH/Controllers/School.php(38): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:05:12 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 146.
+ 1 APPPATH/Controllers/School.php(41): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+ERROR - 2025-11-04 03:05:12 --> mysqli_sql_exception: Unknown column 'time_zone_id' in 'field list' in /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php(327): mysqli->query('SELECT `time_zo...', 0)
+#1 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(738): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `time_zo...')
+#2 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(652): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `time_zo...')
+#3 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `time_zo...', Array, false)
+#4 /Applications/MAMP/htdocs/rista_ci4/app/Controllers/School.php(1389): CodeIgniter\Database\BaseBuilder->get()
+#5 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(933): App\Controllers\School->timeZoneList()
+#6 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\School))
+#7 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(NULL, Object(Config\Cache), false)
+#8 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(334): CodeIgniter\CodeIgniter->run()
+#9 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+#10 /Applications/MAMP/htdocs/rista_ci4/public/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+#11 {main}
+ERROR - 2025-11-04 03:05:12 --> Timezone list error: Unknown column 'time_zone_id' in 'field list' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+ERROR - 2025-11-04 03:05:16 --> mysqli_sql_exception: Unknown column 'csc.course_id' in 'where clause' in /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php(327): mysqli->query('SELECT *\nFROM `...', 0)
+#1 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(738): CodeIgniter\Database\MySQLi\Connection->execute('SELECT *\nFROM `...')
+#2 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(652): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT *\nFROM `...')
+#3 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT *\nFROM `...', Array, false)
+#4 /Applications/MAMP/htdocs/rista_ci4/app/Models/V1/BaseModel.php(32): CodeIgniter\Database\BaseBuilder->get()
+#5 /Applications/MAMP/htdocs/rista_ci4/app/Models/V1/CourseModel.php(111): App\Models\V1\BaseModel->getResult(Object(CodeIgniter\Database\MySQLi\Builder))
+#6 /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Course.php(77): App\Models\V1\CourseModel->courseWithoutSchedule('csc.course_id =...')
+#7 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(933): App\Controllers\Course->list()
+#8 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Course))
+#9 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(NULL, Object(Config\Cache), false)
+#10 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(334): CodeIgniter\CodeIgniter->run()
+#11 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+#12 /Applications/MAMP/htdocs/rista_ci4/public/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+#13 {main}
+ERROR - 2025-11-04 03:05:16 --> Course list error: Unknown column 'csc.course_id' in 'where clause' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+ERROR - 2025-11-04 03:06:08 --> mysqli_sql_exception: Unknown column 'csc.course_id' in 'where clause' in /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php:327
+Stack trace:
+#0 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/MySQLi/Connection.php(327): mysqli->query('SELECT *\nFROM `...', 0)
+#1 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(738): CodeIgniter\Database\MySQLi\Connection->execute('SELECT *\nFROM `...')
+#2 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php(652): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT *\nFROM `...')
+#3 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT *\nFROM `...', Array, false)
+#4 /Applications/MAMP/htdocs/rista_ci4/app/Models/V1/BaseModel.php(32): CodeIgniter\Database\BaseBuilder->get()
+#5 /Applications/MAMP/htdocs/rista_ci4/app/Models/V1/CourseModel.php(111): App\Models\V1\BaseModel->getResult(Object(CodeIgniter\Database\MySQLi\Builder))
+#6 /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Course.php(77): App\Models\V1\CourseModel->courseWithoutSchedule('csc.course_id =...')
+#7 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(933): App\Controllers\Course->list()
+#8 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(507): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Course))
+#9 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(NULL, Object(Config\Cache), false)
+#10 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(334): CodeIgniter\CodeIgniter->run()
+#11 /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+#12 /Applications/MAMP/htdocs/rista_ci4/public/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+#13 {main}
+ERROR - 2025-11-04 03:06:08 --> Course list error: Unknown column 'csc.course_id' in 'where clause' at /Applications/MAMP/htdocs/rista_ci4/vendor/codeigniter4/framework/system/Database/BaseConnection.php:692
+WARNING - 2025-11-04 03:06:10 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 134.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:06:10 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 134.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:06:10 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 135.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:06:10 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 135.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:06:10 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 136.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:06:10 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 136.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:06:10 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 137.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/curriculumList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-04 03:06:10 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 137.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('classes/topicList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-04 03:06:10 --> 📥 Classes::curriculumList params: {"platform":"web","type":"0","role_id":"2","user_id":"49","class_id":"1368","school_id":"2","timezone":"America\/New_York"}
+DEBUG - 2025-11-04 03:06:10 --> 📥 Classes::topicList params: {"platform":"web","role_id":"2","user_id":"49","class_id":"1368","timezone":"America\/New_York"}
+DEBUG - 2025-11-04 03:06:10 --> 📝 Classes::topicList SQL: SELECT `topic_id`, `class_id`, `topic`, `start_date`, `end_date`, `display_order`, `status`, `created_by`, `created_date`, `modified_by`, `modified_date`
+FROM `topic`
+WHERE `class_id` = '1368'
+AND `status` = 1
+ORDER BY `display_order` ASC, `topic_id` ASC
+DEBUG - 2025-11-04 03:06:10 --> 📝 Classes::curriculumList SQL: SELECT `cc`.*, `cc`.`id` as `class_content_id`, `c`.`name` as `content_name`, `c`.`content_type`, `c`.`content_format`, `c`.`file_path`, CASE 
+                                WHEN cc.start_date > CURDATE() THEN "1"
+                                WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN "2"
+                                WHEN cc.end_date < CURDATE() THEN "3"
+                                ELSE "2"
+                             END as content_date_status, CASE WHEN cc.all_student = 0 THEN
+                                GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name) ORDER BY up.first_name SEPARATOR ", ")
+                             END AS individual_students, CASE WHEN cc.all_student = 0 THEN COUNT(DISTINCT sc.student_id) ELSE 0 END AS individual_count
+FROM `class_content` `cc`
+LEFT JOIN `content` `c` ON `cc`.`content_id` = `c`.`content_id`
+LEFT JOIN `student_content` `sc` ON `sc`.`class_content_id` = `cc`.`id`
+LEFT JOIN `user_profile` `up` ON `sc`.`student_id` = `up`.`user_id`
+WHERE `cc`.`class_id` = '1368'
+AND `cc`.`status` = 1
+GROUP BY `cc`.`id`
+ORDER BY `cc`.`start_date` ASC
+DEBUG - 2025-11-04 03:06:10 --> 📦 Classes::topicList fetched 2 row(s)
+DEBUG - 2025-11-04 03:06:10 --> 📄 Classes::topicList sample row: {"topic_id":"158","class_id":"1368","topic":"test","start_date":"2025-01-30","end_date":"2025-11-07","display_order":"1","status":"1","created_by":"49","created_date":"2025-10-31 20:51:21","modified_by":"49","modified_date":"2025-11-01 19:51:31"}
+DEBUG - 2025-11-04 03:06:10 --> 📦 Classes::curriculumList fetched 5 row(s)
+DEBUG - 2025-11-04 03:06:10 --> 📄 Classes::curriculumList sample row: {"id":"26005","class_id":"1368","content_id":"10842","school_id":"2","status":"1","all_student":"0","release_score":"0","auto_review":"0","start_date":"2025-10-31","end_date":"2025-12-31","start_time":"00:00:00","end_time":"23:59:00","notes":"","downloadable":"0","topic_id":"159","is_accessible":"0","allow_feedback":"0","allow_workspace":"0","show_timer":"0","created_by":"49","created_date":"2025-10-31 20:24:02","modified_by":"49","modified_date":"2025-11-03 16:16:46","sys_time":"2025-11-03 11:16:46","class_content_id":"26005","content_name":"PALSHILLSB-Calendar (1).pdf","content_type":"2","content_format":"1","file_path":"[{\"original_image_url\":\"uploads\\\/content\\\/answerKey\\\/def8303c9cae4c.pdf\",\"image\":\"PALSHILLSB-Calendar (1).pdf.pdf\",\"size\":52585,\"type\":\"application\\\/pdf\",\"original_name\":\"PALSHILLSB-Calendar (1).pdf\",\"extension\":\"pdf\",\"resource_type\":\"2\",\"links\":[]}]","content_date_status":"2","individual_students":"","individual_count":0}
