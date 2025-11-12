@@ -101,21 +101,37 @@ class AuthFilter implements FilterInterface
         // Get token from header
         $token = $request->getHeaderLine('Accesstoken');
         
+        log_message('debug', 'AuthFilter: Route = ' . $currentRoute);
+        log_message('debug', 'AuthFilter: Token = ' . ($token ? substr($token, 0, 20) . '...' : 'EMPTY'));
+        
         if (empty($token)) {
+            log_message('error', 'AuthFilter: No access token provided for route: ' . $currentRoute);
             return $this->unauthorizedResponse('Access token required');
         }
 
-        // Validate token
-        $tokenPayload = Authorization::validateToken($token);
-        
-        if (!$tokenPayload) {
-            return $this->unauthorizedResponse('Invalid or expired token');
+        // Validate token with exception handling
+        try {
+            $tokenPayload = Authorization::validateToken($token);
+            
+            if (!$tokenPayload) {
+                log_message('debug', 'AuthFilter: Token validation returned false');
+                return $this->unauthorizedResponse('Invalid or expired token');
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'AuthFilter: Token validation exception: ' . $e->getMessage());
+            return $this->unauthorizedResponse('Invalid token format');
         }
 
         // Check token timestamp
-        $validToken = Authorization::validateTimestamp($token);
-        if (!$validToken) {
-            return $this->unauthorizedResponse('Token has expired');
+        try {
+            $validToken = Authorization::validateTimestamp($token);
+            if (!$validToken) {
+                log_message('debug', 'AuthFilter: Token timestamp validation failed');
+                return $this->unauthorizedResponse('Token has expired');
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'AuthFilter: Token timestamp validation exception: ' . $e->getMessage());
+            return $this->unauthorizedResponse('Token validation error');
         }
 
         // Check if token is still active in database (for multiple login control)
@@ -127,8 +143,11 @@ class AuthFilter implements FilterInterface
             ->getRowArray();
 
         if (!$tokenStatus || (int)$tokenStatus['status'] !== 1) {
+            log_message('error', 'AuthFilter: Token not active in database. Status = ' . ($tokenStatus ? $tokenStatus['status'] : 'NOT FOUND'));
             return $this->unauthorizedResponse('Your session has expired. You have logged in from another device. Please re-login');
         }
+        
+        log_message('debug', 'AuthFilter: Token validated successfully for route: ' . $currentRoute);
 
         // Store user info in request for use in controllers
         $request->user = $tokenPayload;

@@ -304,5 +304,84 @@ class Common extends ResourceController
             ]);
         }
     }
+
+    /**
+     * Validate availability slots for overlap.
+     */
+    public function availabilityTimeCheck(): ResponseInterface
+    {
+        try {
+            $payload = (array) ($this->request->getJSON(true) ?? []);
+
+            $selectedSlots = $payload['selected_availabilityDate'] ?? [];
+            $previousSlots = $payload['previous_availabilityDate'] ?? [];
+
+            if (!is_array($selectedSlots)) {
+                $selectedSlots = [];
+            }
+            if (!is_array($previousSlots)) {
+                $previousSlots = [];
+            }
+
+            $conflicts = [];
+
+            if (!empty($selectedSlots) && !empty($previousSlots)) {
+                foreach ($previousSlots as $previous) {
+                    foreach ($selectedSlots as $selected) {
+                        if (($previous['slotday'] ?? null) === ($selected['slotday'] ?? null)) {
+                            $prevStart = strtotime((string) ($previous['slotstarttime'] ?? ''));
+                            $prevEnd = strtotime((string) ($previous['slotendtime'] ?? ''));
+                            $selStart = strtotime((string) ($selected['slotstarttime'] ?? ''));
+                            $selEnd = strtotime((string) ($selected['slotendtime'] ?? ''));
+
+                            if ($prevStart === false || $prevEnd === false || $selStart === false || $selEnd === false) {
+                                continue;
+                            }
+
+                            $overlaps =
+                                ($prevStart <= $selStart && $prevEnd >= $selStart) ||
+                                ($prevStart <= $selEnd && $prevEnd >= $selEnd) ||
+                                ($prevStart >= $selStart && $prevEnd <= $selEnd);
+
+                            if ($overlaps) {
+                                $conflicts[] = sprintf(
+                                    '%s - %s for %s',
+                                    $selected['slotstarttime'] ?? '',
+                                    $selected['slotendtime'] ?? '',
+                                    $this->getDayName((int) ($selected['slotday'] ?? 0))
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (empty($conflicts)) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Time Slot Added Successfully',
+                    'ErrorObject' => ''
+                ]);
+            }
+
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => 'Schedule for ' . implode(', ', $conflicts) . ' - Slot time already exists',
+                'ErrorObject' => ''
+            ]);
+        } catch (\Throwable $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    private function getDayName(int $dayNumber): string
+    {
+        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        return $days[$dayNumber - 1] ?? 'Day ' . $dayNumber;
+    }
 }
 

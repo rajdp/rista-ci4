@@ -5,6 +5,7 @@ namespace App\Models\V1;
 use CodeIgniter\Model;
 use CodeIgniter\API\ResponseTrait;
 use Config\Services;
+use App\Libraries\Authorization;
 
 class CommonModel extends BaseModel
 {
@@ -135,6 +136,120 @@ class CommonModel extends BaseModel
     }
 
     /**
+     * Legacy permission guard used by the CI3-era controllers.
+     *
+     * @param string|null $controller Route string as stored in the permission table.
+     * @param array|null  $params     Decoded request payload.
+     * @param array|null  $headers    Request headers as provided by IncomingRequest::getHeaders().
+     *
+     * @return bool
+     */
+    public function checkPermission($controller = null, $params = null, $headers = null)
+    {
+        $params = is_array($params) ? $params : [];
+        $roleId = isset($params['role_id']) ? (int) $params['role_id'] : null;
+        $userId = isset($params['user_id']) ? (int) $params['user_id'] : null;
+
+        $accessToken = Services::request()->getHeaderLine('Accesstoken');
+
+        if (! $accessToken) {
+            $accessToken = $this->extractAccessTokenFromInput($headers, $params);
+        }
+
+        if (! $accessToken) {
+            $this->denyRequest(401, 'Unauthorized User');
+        }
+
+        if (! $userId) {
+            $this->denyRequest(401, 'User Id should not be empty');
+        }
+
+        $tokenStatus = $this->verifyAccessToken($userId, $accessToken);
+        if (! ($tokenStatus['success'] ?? false)) {
+            $message = $tokenStatus['message'] ?? 'Unauthorized User';
+            $this->denyRequest(401, $message);
+        }
+
+        if ($roleId && $controller) {
+            $controllerKeys = $this->normaliseControllerKeys($controller);
+            $hasPermission = false;
+            foreach ($controllerKeys as $controllerKey) {
+                if ($this->checkPermissions($controllerKey, $roleId)) {
+                    $hasPermission = true;
+                    break;
+                }
+            }
+
+            if (! $hasPermission) {
+                $this->denyRequest(403, 'You do not have permission to access this resource');
+            }
+        }
+
+        return true;
+    }
+
+    private function extractAccessTokenFromInput($headers, array $params): ?string
+    {
+        $headerCandidates = ['Accesstoken', 'AccessToken', 'Access-Token'];
+
+        foreach ($headerCandidates as $candidate) {
+            if (! isset($headers[$candidate])) {
+                continue;
+            }
+
+            $header = $headers[$candidate];
+
+            if (is_array($header)) {
+                $header = $header[0] ?? null;
+            }
+
+            if (is_object($header) && method_exists($header, 'getValue')) {
+                $value = $header->getValue();
+                if (! empty($value)) {
+                    return $value;
+                }
+            } elseif (is_string($header) && $header !== '') {
+                return $header;
+            }
+        }
+
+        foreach (['Accesstoken', 'AccessToken', 'accessToken'] as $paramKey) {
+            if (! empty($params[$paramKey])) {
+                return (string) $params[$paramKey];
+            }
+        }
+
+        return null;
+    }
+
+    private function normaliseControllerKeys(string $controller): array
+    {
+        $normalized = ltrim($controller, '/');
+        $candidates = [$normalized];
+
+        if (strpos($normalized, 'v1/') === 0) {
+            $candidates[] = substr($normalized, 3);
+        } else {
+            $candidates[] = 'v1/' . $normalized;
+        }
+
+        return array_values(array_unique(array_filter($candidates)));
+    }
+
+    private function denyRequest(int $statusCode, string $message): void
+    {
+        $response = Services::response();
+        $response->setStatusCode($statusCode);
+        $response->setJSON([
+            'IsSuccess' => false,
+            'ErrorObject' => $message,
+        ]);
+        $response->send();
+
+        exit;
+    }
+
+    /**
      * Lightweight controller permission check used by the migrated CI4 controllers.
      */
     public function checkControllerPermission(string $controller, int $roleId): bool
@@ -176,20 +291,7 @@ class CommonModel extends BaseModel
      */
     public function verifyAccessToken(int $userId, string $accessToken): array
     {
-        $builder = $this->getBuilder('user_token');
-        $builder->select('status');
-        $builder->where('user_id', $userId);
-        $builder->where('access_token', $accessToken);
-        $tokenRow = $builder->get()->getRowArray();
-
-        if (! $tokenRow || (int) $tokenRow['status'] !== 1) {
-            return [
-                'success' => false,
-                'message' => "Your session has expired. Kindly logout and relogin",
-            ];
-        }
-
-        $decoded = AUTHORIZATION::validateToken($accessToken);
+        $decoded = \AUTHORIZATION::validateToken($accessToken);
         if (! $decoded) {
             return [
                 'success' => false,
@@ -202,6 +304,19 @@ class CommonModel extends BaseModel
             return [
                 'success' => false,
                 'message' => "Unauthorised User",
+            ];
+        }
+
+        $builder = $this->getBuilder('user_token');
+        $builder->select('status');
+        $builder->where('user_id', $userId);
+        $builder->where('access_token', $accessToken);
+        $tokenRow = $builder->get()->getRowArray();
+
+        if ($tokenRow && (int) $tokenRow['status'] !== 1) {
+            return [
+                'success' => false,
+                'message' => "Your session has expired. Kindly logout and relogin",
             ];
         }
 
@@ -326,7 +441,7 @@ class CommonModel extends BaseModel
         $headers = $request->getHeaders();
         
         if (isset($headers['Accesstoken']) && !empty($headers['Accesstoken'])) {
-            $userId = $this->decodeToken(AUTHORIZATION::validateToken($headers['Accesstoken']));
+            $userId = $this->decodeToken(\AUTHORIZATION::validateToken($headers['Accesstoken']));
             return $userId;
         }
         return false;

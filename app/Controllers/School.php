@@ -1,6 +1,7 @@
 <?php
 namespace App\Controllers;
 
+use App\Libraries\LegacyBenchmarkTimer;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\RESTful\ResourceController;
 
@@ -26,7 +27,7 @@ class School extends ResourceController
         
         $this->school_model = new \App\Models\V1\SchoolModel();
         $this->common_model = new \App\Models\V1\CommonModel();
-        $this->benchmark = \Config\Services::timer();
+        $this->benchmark = new LegacyBenchmarkTimer();
         $adminSettings = $this->adminSettings('');
         foreach ($adminSettings as $key => $details) {
             $this->settings[$details['setting_name']] = $details['setting_value'];
@@ -164,7 +165,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -641,7 +642,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] == "") {
             $this->jsonarr["IsSuccess"] = false;
@@ -729,7 +730,7 @@ class School extends ResourceController
     public function list_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] == "") {
             $this->jsonarr["IsSuccess"] = false;
@@ -807,7 +808,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -892,7 +893,7 @@ class School extends ResourceController
     public function detail_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -928,7 +929,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1034,7 +1035,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1077,7 +1078,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1124,7 +1125,7 @@ class School extends ResourceController
     public function calendarList_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1158,7 +1159,7 @@ class School extends ResourceController
     public function studentUpgrade_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1223,7 +1224,7 @@ class School extends ResourceController
     public function updradeStudents_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
 //        $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1262,7 +1263,7 @@ class School extends ResourceController
     public function studentUpgradeList_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
 //        $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1314,7 +1315,7 @@ class School extends ResourceController
     public function studentGradeList_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1344,7 +1345,7 @@ class School extends ResourceController
     public function dateformat_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] == "") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1510,7 +1511,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
       //  $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1750,7 +1751,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
        // $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1791,7 +1792,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
        // $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1836,7 +1837,7 @@ class School extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         // $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;

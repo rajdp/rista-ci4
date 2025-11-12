@@ -17,20 +17,24 @@ class CategoryModel extends Model
         'description',
         'status',
         'path',
-        'display_order'
+        'display_order',
+        'entity_id',
+        'created_by',
+        'modified_by'
     ];
 
     protected $useTimestamps = true;
-    protected $createdField = 'created_at';
-    protected $updatedField = 'updated_at';
+    protected $createdField = 'created_date';
+    protected $updatedField = 'modified_date';
 
     protected $validationRules = [
         'category_name' => 'required|min_length[3]|max_length[255]',
-        'subject_id' => 'permit_empty|integer',
-        'description' => 'permit_empty|max_length[1000]',
-        'status' => 'required|in_list[0,1]',
+        'subject_id' => 'permit_empty',
+        'description' => 'permit_empty',
+        'status' => 'required|in_list[A,I]',
         'path' => 'permit_empty|max_length[255]',
-        'display_order' => 'permit_empty|integer'
+        'display_order' => 'permit_empty|integer',
+        'entity_id' => 'required|integer'
     ];
 
     protected $validationMessages = [

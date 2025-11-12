@@ -2,7 +2,7 @@
 
 namespace App\Libraries;
 
-use CodeIgniter\Config\Services;
+use App\Libraries\JWT as LegacyJWT;
 
 class Authorization
 {
@@ -29,8 +29,9 @@ class Authorization
      */
     public static function validateToken($token)
     {
-        $jwtKey = config('Jwt')->key;
-        return JWT::decode($token, $jwtKey);
+        $jwtConfig = config('Jwt');
+        $jwtKey = $jwtConfig->key;
+        return LegacyJWT::decode($token, $jwtKey);
     }
 
     /**
@@ -41,8 +42,9 @@ class Authorization
      */
     public static function generateToken($data)
     {
-        $jwtKey = config('Jwt')->key;
-        return JWT::encode($data, $jwtKey);
+        $jwtConfig = config('Jwt');
+        $jwtKey = $jwtConfig->key;
+        return LegacyJWT::encode($data, $jwtKey);
     }
 
     /**
@@ -53,7 +55,9 @@ class Authorization
      */
     public static function isAdmin($tokenPayload)
     {
-        return isset($tokenPayload->role) && $tokenPayload->role === 'admin';
+        // Support both 'role' and 'role_id' for backward compatibility
+        $roleValue = $tokenPayload->role_id ?? $tokenPayload->role ?? null;
+        return $roleValue === 'admin' || $roleValue === 1 || $roleValue === '1';
     }
 
     /**
@@ -65,7 +69,9 @@ class Authorization
      */
     public static function hasRole($tokenPayload, $role)
     {
-        return isset($tokenPayload->role) && $tokenPayload->role === $role;
+        // Support both 'role' and 'role_id' for backward compatibility
+        $roleValue = $tokenPayload->role_id ?? $tokenPayload->role ?? null;
+        return $roleValue == $role;
     }
 
     /**
@@ -76,6 +82,10 @@ class Authorization
      */
     public static function getUserId($tokenPayload)
     {
+        // Support both 'id' and 'user_id' for backward compatibility
+        if (isset($tokenPayload->user_id)) {
+            return $tokenPayload->user_id;
+        }
         return isset($tokenPayload->id) ? $tokenPayload->id : null;
     }
 

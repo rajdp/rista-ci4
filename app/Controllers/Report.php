@@ -1,6 +1,7 @@
 <?php
 namespace App\Controllers;
 
+use App\Libraries\LegacyBenchmarkTimer;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\RESTful\ResourceController;
 
@@ -22,7 +23,7 @@ class Report extends ResourceController
         
         $this->report_model = new \App\Models\V1\ReportModel();
         $this->common_model = new \App\Models\V1\CommonModel();
-        $this->benchmark = \Config\Services::timer();
+        $this->benchmark = new LegacyBenchmarkTimer();
 
         // Authentication is handled by AuthFilter in CI4
         header("Access-Control-Allow-Origin: *");

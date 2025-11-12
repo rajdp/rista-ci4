@@ -35,6 +35,7 @@ $routes->group('', function($routes) {
     
     // User registration and password reset
     $routes->match(['POST', 'OPTIONS'], 'user/login', 'User::login');
+    $routes->match(['POST', 'OPTIONS'], 'user/create', 'User::create');
     $routes->match(['POST', 'OPTIONS'], 'user/logout', 'User::logout');
     $routes->match(['POST', 'OPTIONS'], 'user/register', 'User::register');
     $routes->match(['POST', 'OPTIONS'], 'user/forgotPassword', 'User::forgotPassword');
@@ -57,6 +58,10 @@ $routes->group('', function($routes) {
     
     // Student endpoints
     $routes->post('student/StudentFromClassList', 'Student::StudentFromClassList');
+    
+    // Self-registration portal (public)
+    $routes->get('self-registration/config/(:segment)', 'SelfRegistration::config/$1');
+    $routes->post('self-registration/submit', 'SelfRegistration::submit');
     
     // Teacher endpoints
     $routes->post('teacher/list', 'Teacher::list');
@@ -118,6 +123,19 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('student/studentAllClassList', 'Student::studentAllClassList');
     $routes->post('student/attendanceDetail', 'Student::attendanceDetail');
     
+    // Self-registration admin actions
+    $routes->post('admin/self-registration/list', 'Admin\SelfRegistration::list');
+    $routes->post('admin/self-registration/detail', 'Admin\SelfRegistration::detail');
+    $routes->post('admin/self-registration/status', 'Admin\SelfRegistration::updateStatus');
+    $routes->post('admin/self-registration/summary', 'Admin\SelfRegistration::updateSummary');
+    $routes->post('admin/self-registration/student', 'Admin\SelfRegistration::updateStudent');
+    $routes->post('admin/self-registration/guardians', 'Admin\SelfRegistration::updateGuardians');
+    $routes->post('admin/self-registration/note', 'Admin\SelfRegistration::addNote');
+    $routes->post('admin/self-registration/message', 'Admin\SelfRegistration::sendMessage');
+    $routes->post('admin/self-registration/promote', 'Admin\SelfRegistration::promote');
+    $routes->post('admin/self-registration/document/review', 'Admin\SelfRegistration::reviewDocument');
+    $routes->post('admin/self-registration/assignees', 'Admin\SelfRegistration::assignees');
+    
     // CRM - Guardian management
     $routes->post('crm/guardians/list', 'Admin\Guardians::list');
     $routes->post('crm/guardians/save', 'Admin\Guardians::save');
@@ -164,9 +182,9 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     // School endpoints
     $routes->get('school', 'School::index');
     $routes->post('school', 'School::create');
-    $routes->post('school/list', 'School::list');
-    $routes->post('school/add', 'School::add');
-    $routes->post('school/edit', 'School::edit');
+    $routes->post('school/list', 'School::list_post');
+    $routes->post('school/add', 'School::registration_post');
+    $routes->post('school/edit', 'School::edit_post');
     $routes->post('school/update', 'School::update');
     $routes->post('school/remove', 'School::remove');
     $routes->post('school/detail', 'School::detail');
@@ -180,6 +198,8 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('class', 'Classes::create');
     $routes->post('class/list', 'Classes::list');
     $routes->post('class/add', 'Classes::add');
+    $routes->post('classes/add', 'Classes::create');
+    $routes->post('classes/create', 'Classes::create');
     $routes->post('classes/teacherList', 'Classes::teacherList');
     $routes->post('classes/list', 'Classes::list');
     $routes->post('classes/getCommentCount', 'Classes::getCommentCount');
@@ -200,6 +220,7 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('classes/classAddNotes', 'Classes::classAddNotes');
     $routes->post('classes/enrollStudent', 'Classes::enrollStudent');
     $routes->post('classes/slotList', 'Classes::slotList');
+    $routes->post('classes/updateClass', 'Classes::updateClass');
     $routes->post('classes/edit', 'Classes::edit');
     $routes->post('class/edit', 'Classes::edit');
     $routes->post('class/update', 'Classes::update');
@@ -256,8 +277,8 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->get('category', 'Category::index');
     $routes->post('category', 'Category::create');
     $routes->post('category/list', 'Category::list');
-    $routes->post('category/add', 'Category::add');
-    $routes->post('category/edit', 'Category::edit');
+    $routes->post('category/add', 'Category::addCategory');
+    $routes->post('category/edit', 'Category::editCategory');
     $routes->post('category/update', 'Category::update');
     $routes->post('category/remove', 'Category::remove');
     

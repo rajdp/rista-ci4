@@ -31,37 +31,117 @@ class Guardians extends BaseController
     {
         try {
             $payload = (array) ($this->request->getJSON() ?? []);
-            $token = $this->validateToken();
+            
+            log_message('debug', '📥 Guardians::list - Payload: ' . json_encode($payload));
+            
+            // Get access token from header
+            $accessToken = $this->request->getHeaderLine('Accesstoken');
+            
+            if (empty($accessToken)) {
+                log_message('warning', '⚠️ Guardians::list - No access token provided');
+                return $this->unauthorizedResponse('Access token required');
+            }
 
-            if (!$token) {
-                return $this->unauthorizedResponse();
+            // Validate token using the Authorization library with exception handling
+            try {
+                $tokenData = \App\Libraries\Authorization::validateToken($accessToken);
+                
+                if (!$tokenData) {
+                    log_message('warning', '⚠️ Guardians::list - Token validation returned false');
+                    return $this->unauthorizedResponse('Invalid or expired token');
+                }
+            } catch (\Throwable $e) {
+                log_message('error', '❌ Guardians::list - Token validation exception: ' . $e->getMessage());
+                return $this->unauthorizedResponse('Invalid token format');
+            }
+
+            log_message('debug', '✅ Guardians::list - Token validated successfully. Token data: ' . json_encode($tokenData));
+
+            // Get user info from token
+            $userId = \App\Libraries\Authorization::getUserId($tokenData);
+            $schoolId = \App\Libraries\Authorization::getSchoolId($tokenData);
+            $isAdmin = \App\Libraries\Authorization::isAdmin($tokenData);
+            $roleId = isset($tokenData->role_id) ? (int) $tokenData->role_id : 0;
+            $canViewOtherStudents = $isAdmin || in_array($roleId, [2, 4], true);
+            $canListWithoutStudentId = $isAdmin || $roleId === 2;
+
+            log_message('debug', '📝 Guardians::list - User ID: ' . ($userId ?? 'null') . ', School ID: ' . ($schoolId ?? 'null') . ', Is Admin: ' . ($isAdmin ? 'yes' : 'no'));
+
+            // If a specific student_id is requested, verify permission
+            if (!empty($payload['student_id'])) {
+                $requestedStudentId = (int) $payload['student_id'];
+                
+                // Allow if user is admin OR if user is the student requesting their own data
+                if (!$canViewOtherStudents && (string) $userId !== (string) $requestedStudentId) {
+                    log_message('warning', '⚠️ Guardians::list - Permission denied: user ' . $userId . ' requested student ' . $requestedStudentId);
+                    return $this->unauthorizedResponse('You do not have permission to view this student\'s guardian information');
+                }
+                
+                log_message('debug', '✅ Guardians::list - Permission granted for student: ' . $requestedStudentId);
+            } else if (!$canListWithoutStudentId) {
+                // Users without elevated permissions must provide a specific student_id (their own)
+                log_message('warning', '⚠️ Guardians::list - Non-admin user must provide student_id');
+                return $this->unauthorizedResponse('Student ID is required');
             }
 
             if (empty($payload['school_id'])) {
-                $payload['school_id'] = $this->getSchoolId($token) ?? null;
+                $payload['school_id'] = $schoolId;
+                log_message('debug', '📝 Guardians::list - School ID from token: ' . ($payload['school_id'] ?? 'null'));
             }
 
-            $guardians = $this->guardianModel->filterGuardians($payload);
-
-            // Attach linked students for quick display
-            $guardianIds = array_column($guardians, 'id');
-            $links = [];
-
-            if (!empty($guardianIds)) {
-                $links = $this->studentGuardianModel
-                    ->whereIn('guardian_id', $guardianIds)
+            // If student_id is provided, get guardians linked to that student
+            if (!empty($payload['student_id'])) {
+                $studentId = (int) $payload['student_id'];
+                
+                // Get guardian IDs linked to this student
+                $studentLinks = $this->studentGuardianModel
+                    ->where('student_id', $studentId)
                     ->findAll();
+                
+                $guardianIds = array_column($studentLinks, 'guardian_id');
+                
+                if (empty($guardianIds)) {
+                    log_message('debug', '📝 Guardians::list - No guardians found for student: ' . $studentId);
+                    return $this->successResponse([], 'No guardians found for this student');
+                }
+                
+                // Get guardian details
+                $guardians = $this->guardianModel
+                    ->whereIn('id', $guardianIds)
+                    ->where('school_id', $payload['school_id'])
+                    ->where('status', 1)
+                    ->findAll();
+                
+                $links = $studentLinks;
+            } else {
+                // Admin viewing all guardians
+                $guardians = $this->guardianModel->filterGuardians($payload);
+
+                // Attach linked students for quick display
+                $guardianIds = array_column($guardians, 'id');
+                $links = [];
+
+                if (!empty($guardianIds)) {
+                    $links = $this->studentGuardianModel
+                        ->whereIn('guardian_id', $guardianIds)
+                        ->findAll();
+                }
             }
 
             $studentDetails = [];
             if (!empty($links)) {
                 $studentIds = array_unique(array_column($links, 'student_id'));
                 if (!empty($studentIds)) {
-                    $studentDetails = $this->studentsModel
-                        ->select('id, first_name, last_name, email, grade_id')
-                        ->whereIn('id', $studentIds)
-                        ->findAll();
-                    $studentDetails = array_column($studentDetails, null, 'id');
+                    try {
+                        $studentDetails = $this->studentsModel
+                            ->select('id, first_name, last_name, email, grade_id')
+                            ->whereIn('id', $studentIds)
+                            ->findAll();
+                        $studentDetails = array_column($studentDetails, null, 'id');
+                    } catch (\Throwable $e) {
+                        log_message('warning', '⚠️ Guardians::list - Unable to load student reference data: ' . $e->getMessage());
+                        $studentDetails = [];
+                    }
                 }
             }
 
@@ -82,8 +162,11 @@ class Guardians extends BaseController
                 return $guardian;
             }, $guardians);
 
+            log_message('debug', '✅ Guardians::list - Returning ' . count($guardians) . ' guardian(s)');
             return $this->successResponse($guardians, 'Guardians retrieved successfully');
         } catch (\Throwable $e) {
+            log_message('error', '❌ Guardians::list - Error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            log_message('error', '❌ Guardians::list - Stack trace: ' . $e->getTraceAsString());
             return $this->errorResponse('Unable to list guardians: ' . $e->getMessage());
         }
     }
@@ -148,6 +231,27 @@ class Guardians extends BaseController
                 return $this->errorResponse('Missing required fields: ' . implode(', ', $this->getMissingFields($payload, $required)));
             }
 
+            // Get access token and validate permission
+            $accessToken = $this->request->getHeaderLine('Accesstoken');
+            if (!empty($accessToken)) {
+                $tokenData = \App\Libraries\Authorization::validateToken($accessToken);
+                if ($tokenData) {
+                    $userId = \App\Libraries\Authorization::getUserId($tokenData);
+                    $isAdmin = \App\Libraries\Authorization::isAdmin($tokenData);
+                    
+                    // Check if non-admin user is trying to assign guardians to other students
+                    if (!$isAdmin) {
+                        $studentIds = array_map('intval', (array) $payload['student_ids']);
+                        foreach ($studentIds as $studentId) {
+                            if ($userId != $studentId) {
+                                log_message('warning', '⚠️ Guardians::assign - Permission denied: user ' . $userId . ' tried to assign to student ' . $studentId);
+                                return $this->unauthorizedResponse('You can only manage your own guardian information');
+                            }
+                        }
+                    }
+                }
+            }
+
             $guardianId = (int) $payload['guardian_id'];
             $studentIds = array_map('intval', (array) $payload['student_ids']);
             $isPrimary = !empty($payload['is_primary']);
@@ -177,8 +281,10 @@ class Guardians extends BaseController
                 }
             }
 
+            log_message('debug', '✅ Guardians::assign - Guardian ' . $guardianId . ' assigned to ' . count($studentIds) . ' student(s)');
             return $this->successResponse(true, 'Guardian assignments updated successfully');
         } catch (\Throwable $e) {
+            log_message('error', '❌ Guardians::assign - Error: ' . $e->getMessage());
             return $this->errorResponse('Unable to assign guardian: ' . $e->getMessage());
         }
     }
@@ -195,19 +301,41 @@ class Guardians extends BaseController
                 return $this->errorResponse('Guardian id is required');
             }
 
+            // Get access token and validate permission
+            $accessToken = $this->request->getHeaderLine('Accesstoken');
+            if (!empty($accessToken)) {
+                $tokenData = \App\Libraries\Authorization::validateToken($accessToken);
+                if ($tokenData) {
+                    $userId = \App\Libraries\Authorization::getUserId($tokenData);
+                    $isAdmin = \App\Libraries\Authorization::isAdmin($tokenData);
+                    
+                    // Check if non-admin user is trying to remove guardians from other students
+                    if (!$isAdmin && !empty($payload['student_id'])) {
+                        $studentId = (int) $payload['student_id'];
+                        if ($userId != $studentId) {
+                            log_message('warning', '⚠️ Guardians::remove - Permission denied: user ' . $userId . ' tried to remove from student ' . $studentId);
+                            return $this->unauthorizedResponse('You can only manage your own guardian information');
+                        }
+                    }
+                }
+            }
+
             if (!empty($payload['student_id'])) {
                 $this->studentGuardianModel->where('guardian_id', (int) $payload['guardian_id'])
                     ->where('student_id', (int) $payload['student_id'])
                     ->delete();
 
+                log_message('debug', '✅ Guardians::remove - Guardian ' . $payload['guardian_id'] . ' unlinked from student ' . $payload['student_id']);
                 return $this->successResponse(true, 'Guardian unlinked from student');
             }
 
             $this->studentGuardianModel->where('guardian_id', (int) $payload['guardian_id'])->delete();
             $this->guardianModel->delete((int) $payload['guardian_id']);
 
+            log_message('debug', '✅ Guardians::remove - Guardian ' . $payload['guardian_id'] . ' removed completely');
             return $this->successResponse(true, 'Guardian removed successfully');
         } catch (\Throwable $e) {
+            log_message('error', '❌ Guardians::remove - Error: ' . $e->getMessage());
             return $this->errorResponse('Unable to remove guardian: ' . $e->getMessage());
         }
     }

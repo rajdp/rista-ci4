@@ -26,6 +26,8 @@ class UserModel extends BaseModel
         'modified_date'
     ];
 
+    protected array $lastDbError = [];
+
     public function __construct()
     {
         parent::__construct();
@@ -119,6 +121,7 @@ class UserModel extends BaseModel
         $db->table('user_token')->insert([
             'user_id' => $user['user_id'],
             'access_token' => $accessToken,
+            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
             'status' => 1,
             'created_date' => date('Y-m-d H:i:s')
         ]);
@@ -364,8 +367,67 @@ class UserModel extends BaseModel
      */
     public function createUser(array $data)
     {
-        $userId = $this->db->table('user')->insert($data);
-        return $userId ? $this->db->insertID() : false;
+        $this->lastDbError = [];
+        $result = $this->db->table('user')->insert($data);
+
+        if (! $result) {
+            $this->lastDbError = $this->db->error();
+            return false;
+        }
+
+        return $this->db->insertID();
+    }
+
+    public function saveUserProfile(int $userId, array $profileData = []): void
+    {
+        if (! $userId || empty($profileData)) {
+            return;
+        }
+
+        $profileTable = $this->db->table('user_profile');
+        $existing = $profileTable->where('user_id', $userId)->countAllResults();
+
+        $payload = array_filter([
+            'first_name' => $profileData['first_name'] ?? null,
+            'last_name' => $profileData['last_name'] ?? null,
+            'modified_date' => date('Y-m-d H:i:s'),
+        ], static fn ($value) => $value !== null);
+
+        if ($existing) {
+            $profileTable->where('user_id', $userId)->update($payload);
+        } else {
+            $profileTable->insert(array_merge([
+                'user_id' => $userId,
+                'created_date' => date('Y-m-d H:i:s'),
+            ], $payload));
+        }
+    }
+
+    public function syncUserProfileDetails(int $userId, $schoolId = null): void
+    {
+        if (! $userId || empty($schoolId)) {
+            return;
+        }
+
+        $detailsTable = $this->db->table('user_profile_details');
+        $exists = $detailsTable
+            ->where('user_id', $userId)
+            ->where('school_id', $schoolId)
+            ->countAllResults();
+
+        if (! $exists) {
+            $detailsTable->insert([
+                'user_id' => $userId,
+                'school_id' => $schoolId,
+                'status' => 1,
+                'created_date' => date('Y-m-d H:i:s'),
+            ]);
+        }
+    }
+
+    public function getLastDbError(): array
+    {
+        return $this->lastDbError;
     }
 
     /**

@@ -44,32 +44,136 @@ class User extends ResourceController
 
     public function create()
     {
-        try {
-            $data = $this->request->getJSON();
-            $salt = 'ristainternational';
-            $data->password = md5($salt . $data->password . $salt);
-            
-            $userId = $this->model->createUser([
-                'email_id' => $data->email_id,
-                'password' => $data->password,
-                'role_id' => $data->role_id,
-                'school_id' => $data->school_id ?? '',
-                'status' => 1
-            ]);
+        $db = \Config\Database::connect();
 
-            if (!$userId) {
-                return $this->fail('Failed to create user');
+        try {
+            $payload = $this->request->getJSON();
+
+            if (! $payload) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid request payload'
+                ], ResponseInterface::HTTP_BAD_REQUEST);
             }
-            return $this->respondCreated(['message' => 'User created successfully', 'user_id' => $userId]);
-        } catch (\Exception $e) {
-            return $this->fail($e->getMessage());
+
+            $email = strtolower(trim($payload->email_id ?? $payload->email ?? ''));
+            $password = $payload->password ?? null;
+            $roleId = isset($payload->role_id) ? (int) $payload->role_id : 0;
+
+            if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'A valid email is required'
+                ], ResponseInterface::HTTP_BAD_REQUEST);
+            }
+
+            if (empty($password)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Password is required'
+                ], ResponseInterface::HTTP_BAD_REQUEST);
+            }
+
+            if ($roleId <= 0) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role is required'
+                ], ResponseInterface::HTTP_BAD_REQUEST);
+            }
+
+            if ($this->model->getUserByEmail($email)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Email already registered'
+                ], ResponseInterface::HTTP_CONFLICT);
+            }
+
+            $salt = 'ristainternational';
+            $hashedPassword = md5($salt . $password . $salt);
+
+            $schoolId = $payload->school_id ?? null;
+            $corporateId = $payload->corporate_id ?? null;
+
+            $userData = [
+                'email_id' => $email,
+                'password' => $hashedPassword,
+                'role_id' => $roleId,
+                'school_id' => $schoolId && $schoolId !== '' ? (string) $schoolId : '0',
+                'corporate_id' => $corporateId && $corporateId !== '' ? (string) $corporateId : '0',
+                'status' => 1,
+                'default_password' => 1,
+                'created_date' => date('Y-m-d H:i:s'),
+                'individual_teacher' => 0,
+                'login_type' => '',
+                'tc_status' => 0,
+                'edquill_teacher_id' => 0,
+                'auto_generate_email_edquill' => 0,
+                'student_id' => '',
+                'academy_user_id' => 0,
+            ];
+
+            $firstName = $payload->first_name ?? '';
+            $lastName = $payload->last_name ?? '';
+
+            $db->transBegin();
+
+            $userId = $this->model->createUser($userData);
+
+            if (! $userId) {
+                $db->transRollback();
+
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => $this->model->getLastDbError()['message'] ?? 'Failed to create user'
+                ], ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            if ($firstName !== '' || $lastName !== '') {
+                $this->model->saveUserProfile($userId, [
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                ]);
+            }
+
+            if (is_numeric($schoolId) && (int) $schoolId > 0) {
+                $this->model->syncUserProfileDetails($userId, $schoolId);
+            }
+
+            $db->transCommit();
+
+            return $this->respondCreated([
+                'IsSuccess' => true,
+                'ResponseObject' => [
+                    'user_id' => $userId,
+                    'message' => 'User created successfully',
+                ],
+                'ErrorObject' => null,
+            ]);
+        } catch (\Throwable $e) {
+            if ($db->transStatus() === false) {
+                $db->transRollback();
+            }
+
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage(),
+            ], ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     public function update($id = null)
     {
         try {
+            error_log('[LOGIN] Request received');
             $data = $this->request->getJSON();
+            error_log('[LOGIN] Parsed JSON: ' . json_encode($data));
             
             $userData = [
                 'email_id' => $data->email_id,
@@ -151,7 +255,8 @@ class User extends ResourceController
                 'ErrorObject' => ''
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            log_message('error', '[LOGIN] ' . $e->getMessage());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,

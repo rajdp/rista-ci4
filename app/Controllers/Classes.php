@@ -146,6 +146,12 @@ class Classes extends BaseController
                 $builder->whereIn('c.course_id', $params['course_id']);
             }
             
+            // Add day filter
+            if (isset($params['day_filter']) && !empty($params['day_filter']) && $params['day_filter'] != '0') {
+                $builder->join('class_schedule cs_day', 'cs_day.class_id = c.class_id', 'left');
+                $builder->where('cs_day.slot_days', $params['day_filter']);
+            }
+            
             if (isset($params['type']) && !empty($params['type'])) {
                 // Type filtering logic from CI3
                 $builder->where('c.status', '1');
@@ -177,6 +183,69 @@ class Classes extends BaseController
 
             $classes = $builder->get()->getResultArray();
 
+            // Get all class IDs
+            $classIds = array_column($classes, 'class_id');
+            
+            // Fetch all schedules in one query with teacher and time information
+            $scheduleData = [];
+            if (!empty($classIds)) {
+                $scheduleBuilder = $db->table('class_schedule cs');
+                $scheduleBuilder->select('cs.class_id, cs.slot_days, cs.start_time, cs.end_time, cs.teacher_id');
+                $scheduleBuilder->whereIn('cs.class_id', $classIds);
+                $scheduleBuilder->orderBy('cs.slot_days', 'ASC');
+                $allSchedules = $scheduleBuilder->get()->getResultArray();
+                
+                // Get unique teacher IDs to fetch names in one query
+                $teacherIds = [];
+                foreach ($allSchedules as $schedule) {
+                    if (!empty($schedule['teacher_id'])) {
+                        $ids = explode(',', $schedule['teacher_id']);
+                        $teacherIds = array_merge($teacherIds, $ids);
+                    }
+                }
+                $teacherIds = array_unique(array_filter($teacherIds));
+                
+                // Fetch teacher names
+                $teacherNames = [];
+                if (!empty($teacherIds)) {
+                    $teacherBuilder = $db->table('user_profile');
+                    $teacherBuilder->select('user_id, first_name, last_name');
+                    $teacherBuilder->whereIn('user_id', $teacherIds);
+                    $teachers = $teacherBuilder->get()->getResultArray();
+                    
+                    foreach ($teachers as $teacher) {
+                        $teacherNames[$teacher['user_id']] = trim($teacher['first_name'] . ' ' . $teacher['last_name']);
+                    }
+                }
+                
+                // Group schedules by class_id with detailed information
+                foreach ($allSchedules as $schedule) {
+                    if (!empty($schedule['slot_days'])) {
+                        if (!isset($scheduleData[$schedule['class_id']])) {
+                            $scheduleData[$schedule['class_id']] = [];
+                        }
+                        
+                        // Get teacher names for this schedule
+                        $scheduleTeachers = [];
+                        if (!empty($schedule['teacher_id'])) {
+                            $ids = explode(',', $schedule['teacher_id']);
+                            foreach ($ids as $id) {
+                                if (isset($teacherNames[$id])) {
+                                    $scheduleTeachers[] = $teacherNames[$id];
+                                }
+                            }
+                        }
+                        
+                        $scheduleData[$schedule['class_id']][] = [
+                            'slot_day' => $schedule['slot_days'],
+                            'start_time' => $schedule['start_time'],
+                            'end_time' => $schedule['end_time'],
+                            'teachers' => $scheduleTeachers
+                        ];
+                    }
+                }
+            }
+
             // Process each class
             foreach ($classes as $key => $class) {
                 // Ensure no_of_students is a number
@@ -184,6 +253,17 @@ class Classes extends BaseController
                 
                 // Process teacher_ids
                 $classes[$key]['teacher_ids'] = !empty($class['teacher_ids']) ? explode(',', $class['teacher_ids']) : [];
+                
+                // Add detailed schedule information
+                $classId = $class['class_id'];
+                $classes[$key]['schedules'] = isset($scheduleData[$classId]) 
+                    ? $scheduleData[$classId]
+                    : [];
+                    
+                // Also keep slot_days array for backward compatibility
+                $classes[$key]['slot_days'] = isset($scheduleData[$classId]) 
+                    ? array_values(array_unique(array_column($scheduleData[$classId], 'slot_day')))
+                    : [];
             }
             
             return $this->respond([
@@ -209,30 +289,39 @@ class Classes extends BaseController
     public function create(): ResponseInterface
     {
         try {
-            $data = $this->request->getJSON();
-            
-            $classId = $this->classesModel->createClass($data);
-            
-            if ($classId) {
-                return $this->respond([
-                    'IsSuccess' => true,
-                    'ResponseObject' => ['class_id' => $classId],
-                    'ErrorObject' => ''
-                ]);
-                    } else {
+            $data = $this->request->getJSON(true);
+            if ($data === null) {
+                $data = $this->request->getJSON();
+            }
+
+            $classDetails = $this->classesModel->createClass($data);
+
+            if ($classDetails === false) {
                 return $this->respond([
                     'IsSuccess' => false,
                     'ResponseObject' => null,
                     'ErrorObject' => 'Failed to create class'
-                ]);
+                ], ResponseInterface::HTTP_BAD_REQUEST);
             }
 
-        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $classDetails,
+                'ErrorObject' => ''
+            ]);
+        } catch (\InvalidArgumentException $e) {
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
-            ]);
+            ], ResponseInterface::HTTP_BAD_REQUEST);
+        } catch (\Throwable $e) {
+            log_message('error', 'Class create error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'Failed to create class'
+            ], ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -305,29 +394,38 @@ class Classes extends BaseController
     {
         try {
             $data = $this->request->getJSON();
-            
-            $result = $this->classesModel->updateClass($data->class_id ?? 0, $data);
-            
-            if ($result) {
+
+            if (empty($data) || empty($data->class_id)) {
                 return $this->respond([
-                    'IsSuccess' => true,
-                    'ResponseObject' => ['message' => 'Class updated successfully'],
-                    'ErrorObject' => ''
-                ]);
-                } else {
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class ID is required'
+                ], ResponseInterface::HTTP_BAD_REQUEST);
+            }
+
+            $result = $this->classesModel->updateClass((int)$data->class_id, $data);
+
+            if ($result === false) {
                 return $this->respond([
                     'IsSuccess' => false,
                     'ResponseObject' => null,
                     'ErrorObject' => 'Failed to update class'
-                ]);
+                ], ResponseInterface::HTTP_BAD_REQUEST);
             }
 
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $result,
+                'ErrorObject' => ''
+            ]);
+
         } catch (\Exception $e) {
+            log_message('error', 'Class update error: ' . $e->getMessage());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
-            ]);
+            ], ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 

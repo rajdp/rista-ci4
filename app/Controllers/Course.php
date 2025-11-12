@@ -40,10 +40,17 @@ class Course extends BaseController
             $builder = $db->table('tbl_course c');
             $builder->select('c.course_id, c.course_name, c.seo_title, c.category_id, c.subject_id, c.grade_id, c.description,
                              c.short_description, COALESCE(c.path, "") as path, c.validity_start_date, c.validity_end_date, c.status, 
-                             c.lessons, c.overview_content, c.course_content, c.prerequisites, c.other_details, c.author, c.fees,
+                             c.lessons, c.overview_content, c.course_content, c.prerequisites, c.other_details, 
+                             COALESCE(c.documentation_requirements, "") as documentation_requirements, c.author, c.fees,
                              c.certified_course, c.multiple_schedule, c.schedule, c.redirect_url, COALESCE(c.button_name, "") as button_name,
                              c.created_by, c.created_date, c.is_popular, c.is_exclusive, c.event, c.display_order, c.contact_info,
                              c.entity_id,
+                             (
+                                 SELECT COUNT(*) 
+                                 FROM class cls 
+                                 WHERE cls.course_id = c.course_id 
+                                   AND cls.school_id = c.entity_id
+                             ) as class_count,
                              (SELECT GROUP_CONCAT(category_name) FROM tbl_course_category WHERE FIND_IN_SET(category_id, c.category_id)) as category_name,
                              (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject_id)) as subject_name,
                              (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade_id)) as grade_name');
@@ -70,33 +77,17 @@ class Course extends BaseController
             
             $course_list = $builder->get()->getResultArray();
             
-            // Process course list
+            // Process course list - convert comma-separated values to arrays
             foreach ($course_list as $key => $value) {
-                if (isset($value['schedule']) && $value['schedule'] == 0) {
-                    $schedule_condition = "csc.course_id = {$value['course_id']}";
-                    $schedule = $this->courseModel->courseWithoutSchedule($schedule_condition);
-                    if (!empty($schedule[0])) {
-                        $course_list[$key] = array_merge($course_list[$key], [
-                            'schedule_id' => $schedule[0]['schedule_id'] ?? '',
-                            'schedule_title' => $schedule[0]['schedule_title'] ?? '',
-                            'course_start_date' => $schedule[0]['course_start_date'] ?? '',
-                            'course_end_date' => $schedule[0]['course_end_date'] ?? '',
-                            'registration_start_date' => $schedule[0]['registration_start_date'] ?? '',
-                            'registration_end_date' => $schedule[0]['registration_end_date'] ?? '',
-                            'course_type' => ($schedule[0]['course_type'] ?? 0) == 1 ? 'O' : 'I',
-                            'location_id' => $schedule[0]['location_id'] ?? '',
-                            'cost' => $schedule[0]['cost'] ?? '',
-                            'discount_amount' => $schedule[0]['discount_amount'] ?? '',
-                            'actual_cost' => $schedule[0]['actual_cost'] ?? '',
-                            'total_slots' => $schedule[0]['total_slots'] ?? '',
-                            'slots_booked' => $schedule[0]['slots_booked'] ?? ''
-                        ]);
-                    }
-                }
+                // Convert category_id, subject_id, grade_id to arrays
                 $course_list[$key]['category_id'] = !empty($value['category_id']) ? explode(',', $value['category_id']) : [];
                 $course_list[$key]['subject_id'] = !empty($value['subject_id']) ? explode(',', $value['subject_id']) : [];
+                $course_list[$key]['grade_id'] = !empty($value['grade_id']) ? explode(',', $value['grade_id']) : [];
+                
+                // Convert category_name, subject_name, grade_name to arrays  
                 $course_list[$key]['category_name'] = !empty($value['category_name']) ? explode(',', $value['category_name']) : [];
                 $course_list[$key]['subject_name'] = !empty($value['subject_name']) ? explode(',', $value['subject_name']) : [];
+                $course_list[$key]['grade_name'] = !empty($value['grade_name']) ? explode(',', $value['grade_name']) : [];
             }
             
             return $this->respond([
@@ -419,6 +410,184 @@ class Course extends BaseController
             }
 
         } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Add new course
+     */
+    public function add(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Prepare course data
+            $data = [
+                'course_name' => $params['course_name'] ?? '',
+                'description' => $params['description'] ?? '',
+                'short_description' => $params['short_description'] ?? '',
+                'overview_content' => $params['overview_content'] ?? '',
+                'prerequisites' => $params['prerequisites'] ?? '',
+                'course_content' => $params['course_content'] ?? '',
+                'other_details' => $params['other_details'] ?? '',
+                'documentation_requirements' => $params['documentation_requirements'] ?? '',
+                'author' => $params['author'] ?? '',
+                'lessons' => $params['lessons'] ?? '',
+                'path' => $params['path'] ?? '',
+                'category_id' => is_array($params['category_id']) ? implode(',', $params['category_id']) : ($params['category_id'] ?? ''),
+                'subject_id' => is_array($params['subject_id']) ? implode(',', $params['subject_id']) : ($params['subject_id'] ?? ''),
+                'grade_id' => is_array($params['grade_id']) ? implode(',', $params['grade_id']) : ($params['grade_id'] ?? ''),
+                'display_order' => $params['display_order'] ?? 0,
+                'status' => $params['status'] ?? 'D',
+                'certified_course' => $params['certified_course'] ?? 'N',
+                'multiple_schedule' => $params['multiple_schedule'] ?? 'Y',
+                'schedule' => $params['schedule'] ?? '1',
+                'is_popular' => $params['is_popular'] ?? 'N',
+                'is_exclusive' => $params['is_exclusive'] ?? 'N',
+                'event' => $params['event'] ?? '0',
+                'redirect_url' => $params['redirect_url'] ?? '',
+                'button_name' => $params['button_name'] ?? '',
+                'validity_start_date' => $params['validity_start_date'] ?? null,
+                'validity_end_date' => $params['validity_end_date'] ?? null,
+                'course_start_date' => $params['course_start_date'] ?? null,
+                'course_end_date' => $params['course_end_date'] ?? null,
+                'registration_start_date' => $params['registration_start_date'] ?? null,
+                'registration_end_date' => $params['registration_end_date'] ?? null,
+                'course_type' => $params['course_type'] ?? '',
+                'fees' => $params['fees'] ?? 0,
+                'cost' => $params['cost'] ?? 0,
+                'discount_amount' => $params['discount'] ?? 0,
+                'total_slots' => $params['total_slots'] ?? 0,
+                'is_paid' => $params['is_paid'] ?? '0',
+                'contact_info' => $params['contact_info'] ?? '',
+                'entity_id' => $params['school_id'] ?? 0,
+                'created_by' => $params['user_id'] ?? 0,
+                'created_date' => date('Y-m-d H:i:s')
+            ];
+
+            $db = \Config\Database::connect();
+            $builder = $db->table('tbl_course');
+            $result = $builder->insert($data);
+
+            if ($result) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Course added successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to add course'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Course add error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Edit existing course
+     */
+    public function edit($id = null): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            $courseId = $id ?? ($params['course_id'] ?? 0);
+            
+            if (empty($courseId)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Course ID is required'
+                ]);
+            }
+
+            // Prepare course data
+            $data = [
+                'course_name' => $params['course_name'] ?? '',
+                'description' => $params['description'] ?? '',
+                'short_description' => $params['short_description'] ?? '',
+                'overview_content' => $params['overview_content'] ?? '',
+                'prerequisites' => $params['prerequisites'] ?? '',
+                'course_content' => $params['course_content'] ?? '',
+                'other_details' => $params['other_details'] ?? '',
+                'documentation_requirements' => $params['documentation_requirements'] ?? '',
+                'author' => $params['author'] ?? '',
+                'lessons' => $params['lessons'] ?? '',
+                'path' => $params['path'] ?? '',
+                'category_id' => is_array($params['category_id']) ? implode(',', $params['category_id']) : ($params['category_id'] ?? ''),
+                'subject_id' => is_array($params['subject_id']) ? implode(',', $params['subject_id']) : ($params['subject_id'] ?? ''),
+                'grade_id' => is_array($params['grade_id']) ? implode(',', $params['grade_id']) : ($params['grade_id'] ?? ''),
+                'display_order' => $params['display_order'] ?? 0,
+                'status' => $params['status'] ?? 'D',
+                'certified_course' => $params['certified_course'] ?? 'N',
+                'multiple_schedule' => $params['multiple_schedule'] ?? 'Y',
+                'schedule' => $params['schedule'] ?? '1',
+                'is_popular' => $params['is_popular'] ?? 'N',
+                'is_exclusive' => $params['is_exclusive'] ?? 'N',
+                'event' => $params['event'] ?? '0',
+                'redirect_url' => $params['redirect_url'] ?? '',
+                'button_name' => $params['button_name'] ?? '',
+                'validity_start_date' => $params['validity_start_date'] ?? null,
+                'validity_end_date' => $params['validity_end_date'] ?? null,
+                'course_start_date' => $params['course_start_date'] ?? null,
+                'course_end_date' => $params['course_end_date'] ?? null,
+                'registration_start_date' => $params['registration_start_date'] ?? null,
+                'registration_end_date' => $params['registration_end_date'] ?? null,
+                'course_type' => $params['course_type'] ?? '',
+                'fees' => $params['fees'] ?? 0,
+                'cost' => $params['cost'] ?? 0,
+                'discount_amount' => $params['discount'] ?? 0,
+                'total_slots' => $params['total_slots'] ?? 0,
+                'is_paid' => $params['is_paid'] ?? '0',
+                'contact_info' => $params['contact_info'] ?? '',
+                'modified_by' => $params['user_id'] ?? 0,
+                'modified_date' => date('Y-m-d H:i:s')
+            ];
+
+            $db = \Config\Database::connect();
+            $builder = $db->table('tbl_course');
+            $builder->where('course_id', $courseId);
+            $result = $builder->update($data);
+
+            if ($result !== false) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Course updated successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update course'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Course edit error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,

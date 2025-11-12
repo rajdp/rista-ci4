@@ -11,6 +11,8 @@ The application uses the following role ID mapping:
 | 3 | Content Creator | Creates educational content |
 | 4 | Teacher | Teaches classes |
 | 5 | Student | Enrolled student |
+| 6 | Corporate Admin | Manages schools at the corporate level |
+| 7 | Registrar | Admissions & Enrollment coordinator |
 
 ## Implementation Notes
 

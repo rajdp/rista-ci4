@@ -270,4 +270,65 @@ class BatchModel extends BaseModel
         
         return $builder->get()->getResultArray();
     }
-} 
+
+    /**
+     * Get batch assignments for a specific class
+     *
+     * @param array $params
+     * @return array
+     */
+    public function getClassBatch(array $params): array
+    {
+        $builder = $this->db->table('class');
+        $builder->select('batch_id');
+        $builder->where('class_id', $params['class_id']);
+
+        if (!empty($params['school_id'])) {
+            $builder->where('school_id', $params['school_id']);
+        }
+
+        return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Build a lightweight tree for a specific batch and its parents
+     *
+     * @param int $batchId
+     * @param array $params
+     * @return array
+     */
+    public function addBatchTree(int $batchId, array $params): array
+    {
+        if (empty($batchId)) {
+            return [];
+        }
+
+        $builder = $this->db->table('batch b');
+        $builder->select('b.batch_id, b.batch_name as text, b.parent_batch_id, b.batch_type');
+        $builder->select("CONCAT_WS('/', b.batch_id, 'folder', b.parent_batch_id) as value");
+        $builder->select("'folder' as type");
+        $builder->select('0 as checked');
+
+        if ($params['role_id'] == 2) {
+            $builder->select("(CASE WHEN b.school_id = {$params['school_id']} THEN 1 ELSE 0 END) AS delete_status");
+        } elseif (in_array($params['role_id'], [4, 6])) {
+            $builder->select("(CASE WHEN b.created_by = {$params['user_id']} THEN 1 ELSE 0 END) AS delete_status");
+        } else {
+            $builder->select('1 as delete_status');
+        }
+
+        if ($params['role_id'] != 6) {
+            $builder->where('b.school_id', $params['school_id']);
+        }
+
+        $builder->where('b.batch_id', $batchId);
+
+        $result = $builder->get()->getResultArray();
+
+        foreach ($result as &$item) {
+            $item['children'] = [];
+        }
+
+        return $result;
+    }
+}

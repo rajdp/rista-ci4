@@ -122,8 +122,15 @@ class Content_model extends CI_Model
                                        COALESCE (c.tags, '')AS tags,c.content_format, c.access, c.status, 
                                        COALESCE (c.profile_url,'') AS profile_url, 
                                        COALESCE (c.profile_thumb_url, '') AS profile_thumb_url,
-                                       (SELECT CONCAT_WS(' ',first_name,last_name) FROM user_profile
-                                       WHERE user_id = c.created_by) AS created_by, c.created_date FROM content c 
+                                       COALESCE(
+                                       NULLIF(
+                                           (SELECT TRIM(CONCAT_WS(' ',first_name,last_name)) FROM user_profile
+                                            WHERE user_id = c.created_by),
+                                           ''
+                                       ),
+                                       (SELECT user_name FROM user WHERE user_id = c.created_by),
+                                       CAST(c.created_by AS CHAR)
+                                   ) AS created_by, c.created_date FROM content c 
                                        WHERE c.school_id='{$params['school_id']}' $type $condition4 $condition3 $condition
                                        $condition1 $condition2 
                                        ORDER BY c.content_id DESC $limit")->result_array();
