@@ -978,6 +978,102 @@ class SelfRegistration extends BaseController
     }
 
     /**
+     * Persist course-level decisions before conversion.
+     */
+    public function updateCourseDecisions(): ResponseInterface
+    {
+        try {
+            $payload = (array) ($this->request->getJSON() ?? []);
+            $registrationId = (int) ($payload['registration_id'] ?? 0);
+
+            if ($registrationId <= 0) {
+                return $this->errorResponse('registration_id is required');
+            }
+
+            if (empty($payload['course_decisions']) || !is_array($payload['course_decisions'])) {
+                return $this->errorResponse('Provide course decisions to save');
+            }
+
+            $token = $this->validateToken();
+            if (! $token) {
+                return $this->unauthorizedResponse('Access token required');
+            }
+
+            $actorId = $this->getUserId($token);
+            if (! $actorId) {
+                return $this->unauthorizedResponse('Unable to resolve user from token');
+            }
+
+            $detail = $this->selfRegistrationModel->getRegistrationDetail($registrationId);
+            if (empty($detail)) {
+                return $this->errorResponse('Registration not found', 404);
+            }
+
+            $defaultSchoolId = $this->getSchoolId($token);
+            if ($defaultSchoolId && (int) ($detail['registration']['school_id'] ?? 0) !== (int) $defaultSchoolId) {
+                return $this->unauthorizedResponse('You do not have access to this registration');
+            }
+
+            $courses = $detail['courses'] ?? [];
+            log_message(
+                'debug',
+                sprintf(
+                    'SelfRegistration::updateCourseDecisions registration_id=%d incoming_decisions=%s course_ids=%s',
+                    $registrationId,
+                    json_encode($payload['course_decisions']),
+                    json_encode(array_column($courses, 'id'))
+                )
+            );
+            $courseDecisions = $this->prepareCourseDecisions($payload['course_decisions'], $courses);
+
+            if (empty($courseDecisions)) {
+                log_message(
+                    'error',
+                    sprintf(
+                        'SelfRegistration::updateCourseDecisions - Unable to map decisions. Payload=%s | Courses=%s',
+                        json_encode($payload['course_decisions']),
+                        json_encode(array_column($courses, 'id'))
+                    )
+                );
+                return $this->errorResponse('Unable to process the provided course decisions');
+            }
+
+            $this->selfRegistrationModel->updateCourseDecisions($registrationId, $courseDecisions);
+            $this->recordHistoryNote(
+                $registrationId,
+                (int) $actorId,
+                'Course decisions updated',
+                [
+                    'courses' => array_map(static function ($decision) {
+                        return [
+                            'registration_course_id' => $decision['registration_course_id'],
+                            'course_id' => $decision['course_id'] ?? null,
+                            'course_name' => $decision['course_name'] ?? null,
+                            'decision_status' => $decision['decision_status'],
+                            'approved_schedule_id' => $decision['approved_schedule_id'],
+                            'approved_schedule_title' => $decision['approved_schedule_title'],
+                            'approved_fee_amount' => $decision['approved_fee_amount'],
+                            'decision_notes' => $decision['decision_notes'] ?? null,
+                        ];
+                    }, $courseDecisions)
+                ]
+            );
+
+            $updatedDetail = $this->selfRegistrationModel->getRegistrationDetail($registrationId);
+
+            return $this->successResponse([
+                'registration' => $updatedDetail['registration'] ?? $detail['registration'],
+                'courses' => $updatedDetail['courses'] ?? $courses,
+            ], 'Course decisions saved');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage());
+        } catch (\Throwable $e) {
+            log_message('error', 'SelfRegistration::updateCourseDecisions - ' . $e->getMessage());
+            return $this->errorResponse('Unable to save course decisions');
+        }
+    }
+
+    /**
      * @param array<int,mixed> $decisions
      * @param array<int,array<string,mixed>> $courses
      * @return array<int,array<string,mixed>>
@@ -989,8 +1085,12 @@ class SelfRegistration extends BaseController
         }
 
         $courseLookup = [];
+        $debugCourseKeys = [];
+        $courseByCourseId = [];
         foreach ($courses as $course) {
-            $rowId = isset($course['id']) ? (int) $course['id'] : 0;
+            $rowId = isset($course['registration_course_id'])
+                ? (int) $course['registration_course_id']
+                : (isset($course['id']) ? (int) $course['id'] : 0);
             if ($rowId <= 0) {
                 continue;
             }
@@ -1007,11 +1107,29 @@ class SelfRegistration extends BaseController
 
             $course['__schedule_lookup'] = $scheduleLookup;
             $courseLookup[$rowId] = $course;
+            $debugCourseKeys[] = $rowId;
+
+            $catalogCourseId = isset($course['course_id']) ? (int) $course['course_id'] : 0;
+            if ($catalogCourseId > 0) {
+                $courseByCourseId[$catalogCourseId][] = $course;
+            }
         }
 
         $normalized = [];
+        log_message('debug', sprintf(
+            'SelfRegistration::prepareCourseDecisions - available row ids=%s',
+            json_encode(array_keys($courseLookup))
+        ));
+
         foreach ($decisions as $decision) {
+            if (is_object($decision)) {
+                $decision = (array) $decision;
+            }
             if (!is_array($decision)) {
+                log_message('error', sprintf(
+                    'SelfRegistration::prepareCourseDecisions - skipping non-array decision=%s',
+                    json_encode($decision)
+                ));
                 continue;
             }
 
@@ -1019,11 +1137,54 @@ class SelfRegistration extends BaseController
                 ? (int) $decision['registration_course_id']
                 : (isset($decision['id']) ? (int) $decision['id'] : 0);
 
-            if ($rowId <= 0 || !isset($courseLookup[$rowId])) {
-                continue;
+            log_message('debug', sprintf(
+                'SelfRegistration::prepareCourseDecisions - evaluating decision=%s resolved_row_id=%d',
+                json_encode($decision),
+                $rowId
+            ));
+
+            $course = null;
+            if ($rowId > 0 && isset($courseLookup[$rowId])) {
+                $course = $courseLookup[$rowId];
+            } elseif (!empty($decision['course_id'])) {
+                $courseId = (int) $decision['course_id'];
+                if ($courseId > 0 && !empty($courseByCourseId[$courseId])) {
+                    // If multiple matches exist, pick the first one (they should share the same rowId)
+                    $course = $courseByCourseId[$courseId][0];
+                    $rowId = isset($course['registration_course_id'])
+                        ? (int) $course['registration_course_id']
+                        : (isset($course['id']) ? (int) $course['id'] : $rowId);
+                }
             }
 
-            $course = $courseLookup[$rowId];
+            if ($rowId <= 0 || $course === null) {
+                if (count($courseLookup) === 1) {
+                    $onlyRowId = array_key_first($courseLookup);
+                    log_message(
+                        'debug',
+                        sprintf(
+                            'SelfRegistration::prepareCourseDecisions - falling back to sole course id=%d for decision=%s',
+                            $onlyRowId,
+                            json_encode($decision)
+                        )
+                    );
+                    $course = $courseLookup[$onlyRowId];
+                    $rowId = $onlyRowId;
+                } else {
+                    log_message(
+                        'error',
+                        sprintf(
+                            'SelfRegistration::prepareCourseDecisions - unable to match decision=%s available_row_ids=%s original_row_id=%s debug_course_keys=%s',
+                            json_encode($decision),
+                            json_encode(array_keys($courseLookup)),
+                            $rowId,
+                            json_encode($debugCourseKeys)
+                        )
+                    );
+                    continue;
+                }
+            }
+
             $status = strtolower(trim((string) ($decision['decision_status'] ?? 'pending')));
             if (!in_array($status, $this->allowedCourseDecisionStatuses, true)) {
                 $status = 'pending';
@@ -1173,5 +1334,293 @@ class SelfRegistration extends BaseController
             'created_by' => $actorId,
             'metadata' => $metadata
         ]);
+    }
+
+    /**
+     * Assign class/teacher to registration with conflict checks
+     */
+    public function assignClass(): ResponseInterface
+    {
+        try {
+            $payload = (array) ($this->request->getJSON() ?? []);
+            $registrationId = (int) ($payload['registration_id'] ?? 0);
+            $classId = isset($payload['class_id']) ? (int) $payload['class_id'] : null;
+            $teacherId = isset($payload['teacher_id']) ? (int) $payload['teacher_id'] : null;
+            $scheduleId = isset($payload['schedule_id']) ? (int) $payload['schedule_id'] : null;
+
+            if ($registrationId <= 0) {
+                return $this->errorResponse('registration_id is required');
+            }
+
+            $token = $this->validateToken();
+            if (!$token) {
+                return $this->unauthorizedResponse('Access token required');
+            }
+
+            $actorId = (int) $this->getUserId($token);
+            if (!$actorId) {
+                return $this->unauthorizedResponse('Unable to resolve user from token');
+            }
+
+            $record = $this->selfRegistrationModel->getRegistrationById($registrationId);
+            if (empty($record)) {
+                return $this->errorResponse('Registration not found', 404);
+            }
+
+            $defaultSchoolId = $this->getSchoolId($token);
+            if ($defaultSchoolId && (int) $record['school_id'] !== (int) $defaultSchoolId) {
+                return $this->unauthorizedResponse('You do not have access to this registration');
+            }
+
+            // Check conflicts if teacher_id and schedule provided
+            if ($teacherId && $scheduleId) {
+                $conflicts = $this->checkScheduleConflicts($defaultSchoolId, $teacherId, $scheduleId);
+                if (!empty($conflicts)) {
+                    return $this->errorResponse('Schedule conflict detected: ' . json_encode($conflicts));
+                }
+            }
+
+            // Update course decisions if provided
+            if (!empty($payload['course_decisions'])) {
+                $detail = $this->selfRegistrationModel->getRegistrationDetail($registrationId);
+                $courses = $detail['courses'] ?? [];
+                $courseDecisions = $this->prepareCourseDecisions($payload['course_decisions'], $courses);
+                
+                if (!empty($courseDecisions)) {
+                    $this->selfRegistrationModel->updateCourseDecisions($registrationId, $courseDecisions);
+                }
+            }
+
+            // Update assignment
+            $updateData = [];
+            if ($classId !== null) {
+                $updateData['assigned_class_id'] = $classId;
+            }
+            if ($teacherId !== null) {
+                $updateData['assigned_teacher_id'] = $teacherId;
+            }
+
+            if (!empty($updateData)) {
+                $updateData['updated_at'] = date('Y-m-d H:i:s');
+                $this->selfRegistrationModel->updateRegistration($registrationId, $updateData);
+                
+                $this->recordHistoryNote(
+                    $registrationId,
+                    $actorId,
+                    'Class/teacher assigned',
+                    $updateData
+                );
+            }
+
+            $detail = $this->selfRegistrationModel->getRegistrationDetail($registrationId);
+
+            return $this->successResponse($detail, 'Class assignment updated');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage());
+        } catch (\Throwable $e) {
+            log_message('error', 'SelfRegistration::assignClass - ' . $e->getMessage());
+            return $this->errorResponse('Unable to assign class');
+        }
+    }
+
+    /**
+     * Approve registration and create invoice draft
+     */
+    public function approve(): ResponseInterface
+    {
+        try {
+            $payload = (array) ($this->request->getJSON() ?? []);
+            $registrationId = (int) ($payload['registration_id'] ?? 0);
+            $sendInvoice = isset($payload['send_invoice']) ? $this->normalizeBoolean($payload['send_invoice'], 1) : 1;
+            $sendAutopayLink = isset($payload['send_autopay_link']) ? $this->normalizeBoolean($payload['send_autopay_link'], 0) : 0;
+
+            if ($registrationId <= 0) {
+                return $this->errorResponse('registration_id is required');
+            }
+
+            $token = $this->validateToken();
+            if (!$token) {
+                return $this->unauthorizedResponse('Access token required');
+            }
+
+            $actorId = (int) $this->getUserId($token);
+            if (!$actorId) {
+                return $this->unauthorizedResponse('Unable to resolve user from token');
+            }
+
+            $detail = $this->selfRegistrationModel->getRegistrationDetail($registrationId);
+            if (empty($detail)) {
+                return $this->errorResponse('Registration not found', 404);
+            }
+
+            $registration = $detail['registration'];
+            $defaultSchoolId = $this->getSchoolId($token);
+            if ($defaultSchoolId && (int) ($registration['school_id'] ?? 0) !== (int) $defaultSchoolId) {
+                return $this->unauthorizedResponse('You do not have access to this registration');
+            }
+
+            // Calculate total fees from course decisions
+            $courses = $detail['courses'] ?? [];
+            $totalAmount = 0;
+            foreach ($courses as $course) {
+                if (($course['decision_status'] ?? '') === 'approved') {
+                    $totalAmount += (float) ($course['approved_fee_amount'] ?? $course['fee_amount'] ?? 0);
+                }
+            }
+
+            if ($totalAmount <= 0) {
+                return $this->errorResponse('No approved courses with fees found');
+            }
+
+            // Create invoice draft (if student already converted, use student_id; otherwise store registration_id)
+            $invoiceModel = new \App\Models\Admin\InvoiceModel();
+            $invoiceNumber = 'INV-' . date('Ymd-His') . '-' . $registrationId;
+            
+            // Note: Store registration_id in metadata if table doesn't have the column
+            $invoiceData = [
+                'student_id' => $registration['converted_student_user_id'] ?? null,
+                'due_date' => $payload['due_date'] ?? date('Y-m-d', strtotime('+30 days')),
+                'amount_due' => $totalAmount,
+                'amount_paid' => 0,
+                'status' => 'draft',
+                'invoice_number' => $invoiceNumber,
+                'issued_at' => date('Y-m-d H:i:s'),
+            ];
+            
+            // Store registration_id reference in metadata if needed (via separate table or JSON field)
+            // For now, we'll track it via invoice_number pattern or add to metadata JSON if available
+
+            $invoiceId = $invoiceModel->insert($invoiceData, true);
+
+            // Update registration status to approved
+            $this->selfRegistrationModel->updateRegistration($registrationId, [
+                'status' => 'approved',
+                'last_status_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            // Send invoice if requested
+            if ($sendInvoice) {
+                $invoice = $invoiceModel->find($invoiceId);
+                $this->sendInvoiceEmail($defaultSchoolId, $registration, $invoice, $sendAutopayLink);
+            }
+
+            $this->recordHistoryNote(
+                $registrationId,
+                $actorId,
+                'Registration approved, invoice created',
+                [
+                    'invoice_id' => $invoiceId,
+                    'invoice_number' => $invoiceNumber,
+                    'amount' => $totalAmount,
+                ]
+            );
+
+            return $this->successResponse([
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'amount_due' => $totalAmount,
+            ], 'Registration approved and invoice created');
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage());
+        } catch (\Throwable $e) {
+            log_message('error', 'SelfRegistration::approve - ' . $e->getMessage());
+            return $this->errorResponse('Unable to approve registration');
+        }
+    }
+
+    /**
+     * Check schedule conflicts for teacher/room
+     */
+    private function checkScheduleConflicts(?int $schoolId, int $teacherId, int $scheduleId): array
+    {
+        $db = \Config\Database::connect();
+        
+        // Get schedule details
+        $schedule = $db->table('t_session')
+            ->where('id', $scheduleId)
+            ->where('school_id', $schoolId)
+            ->get()
+            ->getRowArray();
+
+        if (!$schedule) {
+            return ['error' => 'Schedule not found'];
+        }
+
+        $startsAt = $schedule['starts_at'] ?? null;
+        $endsAt = $schedule['ends_at'] ?? null;
+
+        if (!$startsAt || !$endsAt) {
+            return [];
+        }
+
+        // Check teacher conflicts
+        $teacherConflicts = $db->table('t_session')
+            ->where('school_id', $schoolId)
+            ->where('teacher_id', $teacherId)
+            ->where('id !=', $scheduleId)
+            ->where('starts_at <', $endsAt)
+            ->where('ends_at >', $startsAt)
+            ->get()
+            ->getResultArray();
+
+        $conflicts = [];
+        if (!empty($teacherConflicts)) {
+            $conflicts['teacher'] = $teacherConflicts;
+        }
+
+        // Check room conflicts if room_id exists
+        if (!empty($schedule['room_id'])) {
+            $roomConflicts = $db->table('t_session')
+                ->where('school_id', $schoolId)
+                ->where('room_id', $schedule['room_id'])
+                ->where('id !=', $scheduleId)
+                ->where('starts_at <', $endsAt)
+                ->where('ends_at >', $startsAt)
+                ->get()
+                ->getResultArray();
+
+            if (!empty($roomConflicts)) {
+                $conflicts['room'] = $roomConflicts;
+            }
+        }
+
+        return $conflicts;
+    }
+
+    /**
+     * Send invoice email
+     */
+    private function sendInvoiceEmail(int $schoolId, array $registration, array $invoice, bool $includeAutopayLink): void
+    {
+        $messaging = service('messaging');
+        
+        $vars = [
+            'student_name' => ($registration['student_first_name'] ?? '') . ' ' . ($registration['student_last_name'] ?? ''),
+            'invoice_number' => $invoice['invoice_number'],
+            'amount_due' => number_format($invoice['amount_due'], 2),
+            'due_date' => $invoice['due_date'],
+        ];
+
+        if ($includeAutopayLink && $registration['autopay_authorized']) {
+            $vars['autopay_link'] = $this->generateAutopayLink($schoolId, $registration['id']);
+        }
+
+        $messaging->sendTemplate(
+            $schoolId,
+            'email',
+            'invoice_sent',
+            $registration['email'] ?? $registration['guardian1_email'] ?? '',
+            $vars
+        );
+    }
+
+    /**
+     * Generate autopay setup link
+     */
+    private function generateAutopayLink(int $schoolId, int $registrationId): string
+    {
+        // TODO: Generate secure token and return portal URL
+        return '/portal/autopay/setup?reg=' . $registrationId;
     }
 }

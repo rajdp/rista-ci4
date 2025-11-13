@@ -466,13 +466,16 @@ class ContentModel extends BaseModel
                   COALESCE(c.profile_thumb_url, '') as profile_thumb_url,
                   COALESCE(c.tags, '') as tags, c.is_test, c.test_type_id,
                   COALESCE(c.answerkey_path, '') as answerkey_path,
+                  COALESCE(c.content_duration, '0') as content_duration,
+                  COALESCE(c.total_questions, 0) as total_questions,
                   COALESCE((SELECT GROUP_CONCAT(grade_name) FROM grade 
                            WHERE FIND_IN_SET(grade_id, c.grade)), '') AS grade_name,
                   COALESCE((SELECT GROUP_CONCAT(subject_name) FROM subject 
                            WHERE FIND_IN_SET(subject_id, c.subject)), '') AS subject_name,
                   $condition
                   (SELECT CONCAT_WS(' ', first_name, last_name) FROM user_profile 
-                  WHERE user_id = c.created_by) as created_by
+                  WHERE user_id = c.created_by) as created_by,
+                  c.created_by, c.created_date
                   $notes $download $allowFeedback $allowWorkspace $showTimer
                   FROM content c
                   WHERE c.content_id = '{$params['content_id']}'
@@ -490,9 +493,35 @@ class ContentModel extends BaseModel
     {
         $db = \Config\Database::connect();
         
+        // Remove status filter since text_questions table doesn't have status column
         $query = "SELECT question_id, audo_grade 
                   FROM text_questions 
-                  WHERE content_id = '$contentId' AND status = 1";
+                  WHERE content_id = '$contentId'";
+        
+        return $db->query($query)->getResultArray();
+    }
+    
+    /**
+     * Get all questions for content (for repository detail view)
+     */
+    public function getQuestionsForContent($contentId)
+    {
+        $db = \Config\Database::connect();
+        
+        $query = "SELECT tq.question_id, tq.content_id, tq.question_type_id, tq.sub_question_type_id, 
+                  COALESCE(tq.editor_context, '') AS editor_context, tq.editor_type, tq.question_no,
+                  tq.sub_question_no, tq.has_sub_question, tq.question, tq.options, tq.answer, tq.level, tq.heading_option,
+                  tq.multiple_response, tq.audo_grade, tq.points, tq.exact_match, tq.hint, tq.explanation, 
+                  COALESCE(tq.resource, '') AS resource, tq.word_limit,
+                  tq.scoring_instruction, COALESCE(tq.editor_answer, '') as editor_answer,
+                  COALESCE(tq.source, '') AS source,
+                  COALESCE(tq.target, '') AS target, tq.passage_id, tq.created_by, tq.created_date,
+                  COALESCE(p.passage, '') AS passage, COALESCE(p.title, '') AS passage_title,
+                  tq.subject_id, tq.question_topic_id, tq.question_standard, tq.question_sub_topic_id, tq.skill
+                  FROM text_questions tq
+                  LEFT JOIN passage as p ON tq.passage_id = p.passage_id 
+                  WHERE tq.content_id = '$contentId'
+                  ORDER BY tq.question_no ASC, tq.sub_question_no ASC";
         
         return $db->query($query)->getResultArray();
     }
@@ -519,16 +548,83 @@ class ContentModel extends BaseModel
     {
         $db = \Config\Database::connect();
         
-        $query = "SELECT question_type_id, resource_type_id, question_type, image_path, icon_path
-                  FROM question_types 
-                  WHERE question_uploads = 1";
+        $query = "SELECT rtm.resource_type, qt.question_type_id, qt.resource_type_id, qt.question_type, qt.image_path, qt.icon_path
+                  FROM resource_type_master rtm
+                  LEFT JOIN question_types qt ON rtm.resource_type_id = qt.resource_type_id
+                  WHERE rtm.status = 1 AND qt.question_uploads = 1
+                  ORDER BY qt.resource_type_id, qt.question_type_id";
         
         $result = $db->query($query)->getResultArray();
         
-        // Sort by resource_type_id
-        usort($result, function ($a, $b) {
-            return $a['resource_type_id'] <=> $b['resource_type_id'];
-        });
+        return $result;
+    }
+
+    /**
+     * Get question standard list
+     */
+    public function questionStandard($condition = '')
+    {
+        $db = \Config\Database::connect();
+        
+        // The table likely uses 'id' as primary key instead of 'question_standard_id'
+        // Map it to 'question_standard_id' for frontend compatibility
+        $whereClause = '';
+        if (!empty($condition)) {
+            $whereClause = $condition;
+        }
+        
+        $query = "SELECT id as question_standard_id, question_standard, status 
+                  FROM question_standard 
+                  {$whereClause}
+                  ORDER BY id";
+        
+        try {
+            $result = $db->query($query)->getResultArray();
+            return $result;
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            log_message('error', 'questionStandard query error: ' . $e->getMessage());
+            // Return empty array if table doesn't exist or has different structure
+            return [];
+        }
+    }
+
+    /**
+     * Get question topic list
+     */
+    public function questionTopic($condition = '')
+    {
+        $db = \Config\Database::connect();
+        
+        // Build WHERE clause
+        $whereClause = '';
+        if (!empty($condition)) {
+            $whereClause = $condition;
+        }
+        
+        $query = "SELECT question_topic_id, question_topic, status 
+                  FROM question_topic 
+                  {$whereClause}
+                  ORDER BY question_topic_id";
+        
+        $result = $db->query($query)->getResultArray();
+        
+        return $result;
+    }
+
+    /**
+     * Get question subtopic list
+     */
+    public function questionSubTopic($condition = '')
+    {
+        $db = \Config\Database::connect();
+        
+        $query = "SELECT sub_topic_id, question_topic_id, sub_topic, status 
+                  FROM sub_topic 
+                  {$condition}
+                  ORDER BY sub_topic_id";
+        
+        $result = $db->query($query)->getResultArray();
         
         return $result;
     }

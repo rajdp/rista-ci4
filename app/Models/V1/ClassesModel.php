@@ -350,6 +350,59 @@ class ClassesModel extends BaseModel
     }
 
     /**
+     * Update the display order for topics
+     */
+    public function updateTopicOrder(array $topicIds, int $userId = null): bool
+    {
+        $db = \Config\Database::connect();
+
+        $normalizedIds = [];
+        foreach ($topicIds as $id) {
+            $id = (int) $id;
+            if ($id > 0) {
+                $normalizedIds[] = $id;
+            }
+        }
+
+        if (empty($normalizedIds)) {
+            return false;
+        }
+
+        $db->transBegin();
+
+        try {
+            $builder = $db->table('topic');
+            foreach ($normalizedIds as $index => $topicId) {
+                $data = [
+                    'display_order' => $index + 1,
+                    'modified_date' => date('Y-m-d H:i:s'),
+                ];
+
+                if ($userId !== null && $userId > 0) {
+                    $data['modified_by'] = $userId;
+                }
+
+                $builder->where('topic_id', $topicId)->update($data);
+
+                if ($db->affectedRows() === 0) {
+                    // Ensure the topic exists; if it does not, rollback
+                    $exists = $db->table('topic')->where('topic_id', $topicId)->countAllResults();
+                    if ($exists === 0) {
+                        throw new \RuntimeException('Topic ID ' . $topicId . ' not found');
+                    }
+                }
+            }
+
+            $db->transCommit();
+            return true;
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            log_message('error', 'ClassesModel::updateTopicOrder failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Decode payload into an associative array
      */
     private function decodePayload($data): array

@@ -83,6 +83,87 @@ class SelfRegistration extends BaseController
     }
 
     /**
+     * Attempt to match an existing student by email for a given school portal.
+     */
+    public function lookup(): ResponseInterface
+    {
+        $payload = $this->request->getJSON(true) ?? $this->request->getPost() ?? [];
+
+        $email = strtolower(trim((string) ($payload['email'] ?? '')));
+        $identifier = $this->resolveIdentifierFromRequest($payload);
+
+        if (empty($identifier)) {
+            return $this->errorResponse('School key is required');
+        }
+
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->errorResponse('Valid email is required');
+        }
+
+        $school = $this->selfRegistrationModel->getSchoolByIdentifier($identifier);
+        if (empty($school)) {
+            return $this->errorResponse('School not found', 404);
+        }
+
+        if ((int) ($school['portal_enabled'] ?? 1) !== 1) {
+            return $this->errorResponse('School portal is currently disabled', 403);
+        }
+
+        $profile = $this->selfRegistrationModel->findExistingStudentProfile($email, (int) $school['school_id']);
+
+        if (!$profile) {
+            return $this->successResponse([
+                'match_found' => false,
+                'student' => null,
+                'message' => 'No student record found for this email.'
+            ], 'Lookup complete');
+        }
+
+        return $this->successResponse([
+            'match_found' => true,
+            'student' => $profile,
+            'message' => 'We found an existing student profile linked to this email.'
+        ], 'Lookup complete');
+    }
+
+    private function resolveIdentifierFromRequest(array $payload): string
+    {
+        $candidates = [
+            $payload['school_key'] ?? null,
+            $payload['school'] ?? null,
+            $payload['portal'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            $normalized = $this->normalizeIdentifier((string) $candidate);
+            if (!empty($normalized)) {
+                return $normalized;
+            }
+        }
+
+        $origin = $this->request->getHeaderLine('Origin');
+        if (!empty($origin)) {
+            $originHost = parse_url($origin, PHP_URL_HOST);
+            $normalized = $this->normalizeIdentifier((string) $originHost);
+            if (!empty($normalized)) {
+                return $normalized;
+            }
+        }
+
+        $hostHeader = $this->request->getServer('HTTP_HOST');
+        if (!empty($hostHeader)) {
+            // Strip port if present (e.g., school.localhost:8211)
+            $host = explode(':', $hostHeader)[0];
+            $normalized = $this->normalizeIdentifier($host);
+            if (!empty($normalized)) {
+                return $normalized;
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Accept a self-registration submission.
      */
     public function submit(): ResponseInterface
@@ -193,7 +274,10 @@ class SelfRegistration extends BaseController
         // Convert hostnames to subdomain keys (e.g., school.edquill.com -> school)
         if (str_contains($identifier, '.')) {
             $parts = explode('.', $identifier);
-            if (count($parts) > 2) {
+            $tld = strtolower(end($parts));
+            $knownLocalHosts = ['localhost', 'local', 'test', 'dev'];
+
+            if (count($parts) > 2 || in_array($tld, $knownLocalHosts, true)) {
                 return $parts[0];
             }
         }

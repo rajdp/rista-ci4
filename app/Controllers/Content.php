@@ -163,6 +163,71 @@ class Content extends ResourceController
                 $answers = $this->contentModel->answerList($params);
                 $contentList['answers'] = is_array($answers) ? $answers : [];
                 
+                // Get questions from text_questions table (for content_format = 3)
+                // Check content_format from params or from contentList
+                $contentFormat = $params['content_format'] ?? $contentList['content_format'] ?? null;
+                if ($contentFormat == '3' || $contentFormat == 3) {
+                    try {
+                        $questions = $this->contentModel->getQuestionsForContent($params['content_id']);
+                        // Process questions - decode JSON fields
+                        foreach ($questions as &$question) {
+                            // Decode options - handle empty strings and null
+                            if (isset($question['options']) && $question['options'] !== null && $question['options'] !== '') {
+                                $decoded = json_decode($question['options'], true);
+                                $question['options'] = ($decoded !== null) ? $decoded : [];
+                            } else {
+                                $question['options'] = [];
+                            }
+                            
+                            // Decode answer - handle empty strings and null
+                            if (isset($question['answer']) && $question['answer'] !== null && $question['answer'] !== '') {
+                                $decoded = json_decode($question['answer'], true);
+                                $question['answer'] = ($decoded !== null) ? $decoded : [];
+                            } else {
+                                $question['answer'] = [];
+                            }
+                            
+                            // Decode hint - handle empty strings and null
+                            if (isset($question['hint']) && $question['hint'] !== null && $question['hint'] !== '') {
+                                $decoded = json_decode($question['hint'], true);
+                                $question['hint'] = ($decoded !== null) ? $decoded : [];
+                            } else {
+                                $question['hint'] = [];
+                            }
+                            
+                            // Decode heading_option - handle empty strings and null
+                            if (isset($question['heading_option']) && $question['heading_option'] !== null && $question['heading_option'] !== '') {
+                                $decoded = json_decode($question['heading_option'], true);
+                                $question['heading_option'] = ($decoded !== null) ? $decoded : [];
+                            } else {
+                                $question['heading_option'] = [];
+                            }
+                            
+                            // Decode skill - handle empty strings and null
+                            if (isset($question['skill']) && $question['skill'] !== null && $question['skill'] !== '') {
+                                $decoded = json_decode($question['skill'], true);
+                                $question['skill'] = ($decoded !== null) ? $decoded : [];
+                            } else {
+                                $question['skill'] = [];
+                            }
+                        }
+                        $contentList['questions'] = $questions;
+                    } catch (\Exception $e) {
+                        log_message('error', 'Error loading questions in contentDetail: ' . $e->getMessage());
+                        log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+                        // If there's an error loading questions, set empty array instead of failing
+                        $contentList['questions'] = [];
+                    }
+                } else {
+                    // Initialize empty questions array if not content_format 3
+                    $contentList['questions'] = [];
+                }
+                
+                // Ensure batch_id is set if it exists (for assignments)
+                if (!isset($contentList['batch_id'])) {
+                    $contentList['batch_id'] = null;
+                }
+                
                 // Check if all questions are auto-gradable (for students)
                 if (isset($params['role_id']) && $params['role_id'] == 5) {
                     $questionDetails = $this->contentModel->getQuestionDetails($params['content_id']);
@@ -742,11 +807,60 @@ class Content extends ResourceController
     public function questionTypes(): ResponseInterface
     {
         try {
+            $data = $this->request->getJSON(true);
             $questionTypes = $this->contentModel->questionTypeList();
+            
+            // Filter out question_type_id 54 if content_format is 3
+            if (isset($data['content_format']) && $data['content_format'] == 3) {
+                $questionTypes = array_filter($questionTypes, function($item) {
+                    return $item['question_type_id'] != 54;
+                });
+                $questionTypes = array_values($questionTypes);
+            }
+            
+            // Transform flat list into grouped structure expected by frontend
+            $grouped = [];
+            foreach ($questionTypes as $item) {
+                if (empty($item['resource_type']) || empty($item['question_type_id'])) {
+                    continue; // Skip invalid entries
+                }
+                
+                $resourceType = $item['resource_type'];
+                
+                // Find if this resource_type already exists in grouped array
+                $foundIndex = null;
+                foreach ($grouped as $key => $group) {
+                    if ($group['resource_type'] === $resourceType) {
+                        $foundIndex = $key;
+                        break;
+                    }
+                }
+                
+                // Prepare question type data
+                $questionTypeData = [
+                    'resource_type' => $item['resource_type'],
+                    'question_type_id' => $item['question_type_id'],
+                    'resource_type_id' => $item['resource_type_id'],
+                    'question_type' => $item['question_type'],
+                    'image_path' => $item['image_path'],
+                    'icon_path' => $item['icon_path'] ?? null
+                ];
+                
+                if ($foundIndex !== null) {
+                    // Add this question type to existing group
+                    $grouped[$foundIndex]['types'][] = $questionTypeData;
+                } else {
+                    // Create new group
+                    $grouped[] = [
+                        'resource_type' => $resourceType,
+                        'types' => [$questionTypeData]
+                    ];
+                }
+            }
             
             return $this->respond([
                 'IsSuccess' => true,
-                'ResponseObject' => $questionTypes
+                'ResponseObject' => $grouped
             ]);
             
         } catch (\Exception $e) {
@@ -754,10 +868,582 @@ class Content extends ResourceController
                 'IsSuccess' => false,
                 'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
     
+    /**
+     * Get question standard list
+     */
+    public function questionStandard(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON(true);
+            
+            // Validate required parameters
+            if (!isset($data['platform']) || ($data['platform'] != "web" && $data['platform'] != "ios")) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Platform should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Role Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "User Id should not be empty"
+                ], 400);
+            }
+            
+            $condition = "";
+            // Note: question_standard table may not have question_id column
+            // If filtering is needed, it should be done differently
+            // For now, return all standards
+            
+            $standards = $this->contentModel->questionStandard($condition);
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $standards
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get question topic list
+     */
+    public function questionTopic(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON(true);
+            
+            // Validate required parameters
+            if (!isset($data['platform']) || ($data['platform'] != "web" && $data['platform'] != "ios")) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Platform should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Role Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "User Id should not be empty"
+                ], 400);
+            }
+            
+            $condition = "";
+            if (isset($data['question_id']) && $data['question_id'] > 0) {
+                $condition = "WHERE question_id = " . (int)$data['question_id'];
+            } elseif (isset($data['subject_id']) && $data['subject_id'] > 0) {
+                // Check if question_topic table has subject_id column, otherwise use empty condition
+                $condition = "WHERE subject_id = " . (int)$data['subject_id'];
+            }
+            
+            $topics = $this->contentModel->questionTopic($condition);
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $topics
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get question subtopic list
+     */
+    public function questionSubTopic(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON(true);
+            
+            // Validate required parameters
+            if (!isset($data['platform']) || ($data['platform'] != "web" && $data['platform'] != "ios")) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Platform should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Role Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "User Id should not be empty"
+                ], 400);
+            }
+            
+            $condition = "";
+            if (isset($data['question_topic_id']) && $data['question_topic_id'] > 0) {
+                $condition = "WHERE question_topic_id = " . (int)$data['question_topic_id'];
+            } elseif (isset($data['topic_id']) && $data['topic_id'] > 0) {
+                $condition = "WHERE question_topic_id = " . (int)$data['topic_id'];
+            }
+            
+            $subTopics = $this->contentModel->questionSubTopic($condition);
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $subTopics
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Add question(s) to content
+     */
+    public function addQuestion(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON(true);
+            
+            // Validate required parameters
+            if (!isset($data['platform']) || ($data['platform'] != "web" && $data['platform'] != "ios")) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Platform should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Role Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "User Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Content Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['questions']) || !is_array($data['questions']) || count($data['questions']) == 0) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Questions should not be empty"
+                ], 400);
+            }
+            
+            $db = \Config\Database::connect();
+            $questionsToInsert = [];
+            $count = 1;
+            
+            // Get current question count for this content
+            $existingQuestions = $db->table('text_questions')
+                ->where('content_id', $data['content_id'])
+                ->orderBy('question_no', 'DESC')
+                ->limit(1)
+                ->get()
+                ->getRowArray();
+            
+            if ($existingQuestions) {
+                $count = (int)$existingQuestions['question_no'] + 1;
+            }
+            
+            // Process questions
+            foreach ($data['questions'] as $question) {
+                if ($question['question_type_id'] == 24) {
+                    // Passage type question with sub-questions
+                    $quesNum = 1;
+                    foreach ($question['subQuestions'] as $subQuestion) {
+                        $questionsToInsert[] = $this->prepareQuestionData($subQuestion, $data, $data['content_id'], $count, $quesNum, true, $question);
+                        $quesNum++;
+                    }
+                    $count++;
+                } else {
+                    // Regular question
+                    $questionsToInsert[] = $this->prepareQuestionData($question, $data, $data['content_id'], $count, $count, false);
+                    $count++;
+                }
+            }
+            
+            // Bulk insert questions
+            if (!empty($questionsToInsert)) {
+                $db->table('text_questions')->insertBatch($questionsToInsert);
+                
+                // Update content total_questions count
+                $db->table('content')
+                    ->where('content_id', $data['content_id'])
+                    ->update(['total_questions' => $count - 1]);
+                
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => "Question added Successfully"
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Question not added"
+                ], 400);
+            }
+            
+        } catch (\Exception $e) {
+            log_message('error', 'addQuestion error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Edit question(s) in content
+     */
+    public function editQuestion(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON(true);
+            
+            // Validate required parameters
+            if (!isset($data['platform']) || ($data['platform'] != "web" && $data['platform'] != "ios")) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Platform should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Role Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "User Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['questions']) || !is_array($data['questions']) || count($data['questions']) == 0) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Questions should not be empty"
+                ], 400);
+            }
+            
+            $db = \Config\Database::connect();
+            
+            // Process questions
+            foreach ($data['questions'] as $question) {
+                if ($question['question_type_id'] == 24) {
+                    // Passage type question with sub-questions
+                    foreach ($question['subQuestions'] as $subQuestion) {
+                        if (!empty($subQuestion['question_id'])) {
+                            // Update existing sub-question
+                            $updateData = $this->prepareQuestionUpdateData($subQuestion, $data, $question);
+                            $db->table('text_questions')
+                                ->where('question_id', $subQuestion['question_id'])
+                                ->update($updateData);
+                        }
+                    }
+                } else {
+                    // Regular question
+                    if (!empty($question['question_id'])) {
+                        $updateData = $this->prepareQuestionUpdateData($question, $data);
+                        $db->table('text_questions')
+                            ->where('question_id', $question['question_id'])
+                            ->update($updateData);
+                    }
+                }
+            }
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => "Questions updated successfully"
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'editQuestion error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Prepare question data for insertion
+     */
+    private function prepareQuestionData($question, $params, $contentId, $questionNo, $subQuestionNo, $hasSubQuestion = false, $parentQuestion = null)
+    {
+        $data = [
+            'content_id' => $contentId,
+            'question_type_id' => $hasSubQuestion ? $parentQuestion['question_type_id'] : $question['question_type_id'],
+            'question_no' => $questionNo,
+            'sub_question_no' => $subQuestionNo,
+            'has_sub_question' => $hasSubQuestion ? 1 : 0,
+            'question' => $question['question'] ?? '',
+            'editor_answer' => $question['editor_answer'] ?? '',
+            'options' => json_encode($question['options'] ?? []),
+            'answer' => json_encode($question['answer'] ?? []),
+            'level' => $question['level'] ?? 0,
+            'multiple_response' => $question['multiple_response'] ?? 0,
+            'audo_grade' => $question['autograde'] ?? 0,
+            'points' => $question['points'] ?? 0,
+            'exact_match' => $question['exact_match'] ?? 0,
+            'hint' => json_encode($question['hint'] ?? []),
+            'explanation' => $question['explanation'] ?? '',
+            'resource' => $question['resource'] ?? '',
+            'word_limit' => $question['word_limit'] ?? '',
+            'scoring_instruction' => $question['scoring_instruction'] ?? '',
+            'source' => $question['source'] ?? '',
+            'target' => $question['target'] ?? '',
+            'subject_id' => !empty($question['subject_id']) ? (int)$question['subject_id'] : null,
+            'question_topic_id' => !empty($question['question_topic_id']) ? (int)$question['question_topic_id'] : null,
+            'question_standard' => !empty($question['question_standard']) ? (int)$question['question_standard'] : null,
+            'question_sub_topic_id' => !empty($question['question_sub_topic_id']) ? (int)$question['question_sub_topic_id'] : null,
+            'skill' => !empty($question['skill']) ? json_encode($question['skill']) : null,
+            'created_by' => $params['user_id'],
+            'created_date' => date('Y-m-d H:i:s')
+        ];
+        
+        if ($hasSubQuestion) {
+            $data['sub_question_type_id'] = $question['question_type_id'];
+            $data['passage_id'] = $parentQuestion['passage_id'] ?? 0;
+            if (isset($parentQuestion['editor_context'])) {
+                $data['editor_context'] = $parentQuestion['editor_context'];
+            }
+        }
+        
+        if (isset($question['editor_type'])) {
+            $data['editor_type'] = $question['editor_type'];
+        }
+        
+        if (isset($question['editor_context'])) {
+            $data['editor_context'] = $question['editor_context'];
+        }
+        
+        // Handle heading_option for specific question types (3 = True/False, 5 = Match Table-Standard, 7 = Match Table-Labels)
+        $questionTypeId = (int)($question['question_type_id'] ?? 0);
+        if (in_array($questionTypeId, [3, 5, 7])) {
+            $headingOption = $question['heading_option'] ?? [];
+            if (!empty($headingOption)) {
+                $data['heading_option'] = json_encode($headingOption);
+                log_message('debug', 'Saving heading_option for question_type_id ' . $questionTypeId . ': ' . json_encode($headingOption));
+            } else {
+                $data['heading_option'] = '';
+                log_message('debug', 'heading_option is empty for question_type_id ' . $questionTypeId);
+            }
+        } else {
+            $data['heading_option'] = '';
+        }
+        
+        return $data;
+    }
+
+    /**
+     * Prepare question data for update
+     */
+    private function prepareQuestionUpdateData($question, $params, $parentQuestion = null)
+    {
+        $data = [
+            'question' => $question['question'] ?? '',
+            'editor_answer' => $question['editor_answer'] ?? '',
+            'options' => json_encode($question['options'] ?? []),
+            'answer' => json_encode($question['answer'] ?? []),
+            'level' => $question['level'] ?? 0,
+            'multiple_response' => $question['multiple_response'] ?? 0,
+            'audo_grade' => $question['autograde'] ?? 0,
+            'points' => $question['points'] ?? 0,
+            'exact_match' => $question['exact_match'] ?? 0,
+            'hint' => json_encode($question['hint'] ?? []),
+            'explanation' => $question['explanation'] ?? '',
+            'resource' => $question['resource'] ?? '',
+            'word_limit' => $question['word_limit'] ?? '',
+            'scoring_instruction' => $question['scoring_instruction'] ?? '',
+            'source' => $question['source'] ?? '',
+            'target' => $question['target'] ?? '',
+            'subject_id' => !empty($question['subject_id']) ? (int)$question['subject_id'] : null,
+            'question_topic_id' => !empty($question['question_topic_id']) ? (int)$question['question_topic_id'] : null,
+            'question_standard' => !empty($question['question_standard']) ? (int)$question['question_standard'] : null,
+            'question_sub_topic_id' => !empty($question['question_sub_topic_id']) ? (int)$question['question_sub_topic_id'] : null,
+            'skill' => !empty($question['skill']) ? json_encode($question['skill']) : null,
+            'modified_by' => $params['user_id'],
+            'modified_date' => date('Y-m-d H:i:s')
+        ];
+        
+        if ($parentQuestion) {
+            if (isset($parentQuestion['editor_context'])) {
+                $data['editor_context'] = $parentQuestion['editor_context'];
+            }
+            $data['passage_id'] = $parentQuestion['passage_id'] ?? 0;
+        }
+        
+        if (isset($question['editor_type'])) {
+            $data['editor_type'] = $question['editor_type'];
+        }
+        
+        if (isset($question['editor_context'])) {
+            $data['editor_context'] = $question['editor_context'];
+        }
+        
+        // Handle heading_option for specific question types (3 = True/False, 5 = Match Table-Standard, 7 = Match Table-Labels)
+        $questionTypeId = (int)($question['question_type_id'] ?? 0);
+        if (in_array($questionTypeId, [3, 5, 7])) {
+            $headingOption = $question['heading_option'] ?? [];
+            if (!empty($headingOption)) {
+                $data['heading_option'] = json_encode($headingOption);
+                log_message('debug', 'Updating heading_option for question_type_id ' . $questionTypeId . ': ' . json_encode($headingOption));
+            } else {
+                $data['heading_option'] = '';
+                log_message('debug', 'heading_option is empty for question_type_id ' . $questionTypeId . ' in update');
+            }
+        } else {
+            $data['heading_option'] = '';
+        }
+        
+        return $data;
+    }
+
+    /**
+     * Delete question(s) from content
+     */
+    public function deleteQuestion(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON(true);
+            
+            // Validate required parameters
+            if (!isset($data['platform']) || ($data['platform'] != "web" && $data['platform'] != "ios")) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Platform should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Role Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "User Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['question_id']) || !is_array($data['question_id']) || count($data['question_id']) == 0) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Question Id should not be empty"
+                ], 400);
+            }
+            
+            $db = \Config\Database::connect();
+            
+            // Convert question_id array to integers
+            $questionIds = array_map('intval', $data['question_id']);
+            
+            // Get content_id before deleting (needed to update total_questions)
+            $contentIdResult = $db->table('text_questions')
+                ->select('content_id')
+                ->whereIn('question_id', $questionIds)
+                ->limit(1)
+                ->get()
+                ->getRowArray();
+            
+            if (!$contentIdResult) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Question not found"
+                ], 404);
+            }
+            
+            $contentId = $contentIdResult['content_id'];
+            
+            // Delete questions
+            $deleted = $db->table('text_questions')
+                ->whereIn('question_id', $questionIds)
+                ->delete();
+            
+            if ($deleted) {
+                // Recalculate total_questions for this content
+                $totalQuestions = $db->table('text_questions')
+                    ->where('content_id', $contentId)
+                    ->countAllResults();
+                
+                $db->table('content')
+                    ->where('content_id', $contentId)
+                    ->update(['total_questions' => $totalQuestions]);
+                
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => "Question Deleted Successfully"
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Unable to delete question"
+                ], 400);
+            }
+            
+        } catch (\Exception $e) {
+            log_message('error', 'deleteQuestion error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     /**
      * Student views content (lazy creation trigger)
      */

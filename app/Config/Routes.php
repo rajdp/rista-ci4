@@ -37,6 +37,7 @@ $routes->group('', function($routes) {
     $routes->match(['POST', 'OPTIONS'], 'user/login', 'User::login');
     $routes->match(['POST', 'OPTIONS'], 'user/create', 'User::create');
     $routes->match(['POST', 'OPTIONS'], 'user/logout', 'User::logout');
+    $routes->match(['POST', 'OPTIONS'], 'user/refreshToken', 'User::refreshToken');
     $routes->match(['POST', 'OPTIONS'], 'user/register', 'User::register');
     $routes->match(['POST', 'OPTIONS'], 'user/forgotPassword', 'User::forgotPassword');
     $routes->match(['POST', 'OPTIONS'], 'user/resetPassword', 'User::resetPassword');
@@ -62,6 +63,7 @@ $routes->group('', function($routes) {
     // Self-registration portal (public)
     $routes->get('self-registration/config/(:segment)', 'SelfRegistration::config/$1');
     $routes->post('self-registration/submit', 'SelfRegistration::submit');
+    $routes->post('self-registration/lookup', 'SelfRegistration::lookup');
     
     // Teacher endpoints
     $routes->post('teacher/list', 'Teacher::list');
@@ -78,6 +80,13 @@ $routes->group('', function($routes) {
     $routes->post('content/listPassage', 'Content::listPassage');
     $routes->post('content/specifiedClassList', 'Content::specifiedClassList');
     $routes->post('content/question_types', 'Content::questionTypes');
+    $routes->post('content/questiontypes', 'Content::questionTypes'); // Alias for frontend compatibility
+    $routes->post('content/questionStandard', 'Content::questionStandard');
+    $routes->post('content/questionTopic', 'Content::questionTopic');
+    $routes->post('content/questionSubTopic', 'Content::questionSubTopic');
+    $routes->post('content/addQuestion', 'Content::addQuestion');
+    $routes->post('content/editQuestion', 'Content::editQuestion');
+    $routes->post('content/deleteQuestion', 'Content::deleteQuestion');
 
     // CRM public endpoints
     $routes->get('crm/report/view/(:segment)', 'Admin\ReportCards::viewByToken/$1');
@@ -135,6 +144,13 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('admin/self-registration/promote', 'Admin\SelfRegistration::promote');
     $routes->post('admin/self-registration/document/review', 'Admin\SelfRegistration::reviewDocument');
     $routes->post('admin/self-registration/assignees', 'Admin\SelfRegistration::assignees');
+    $routes->post('admin/self-registration/course-decisions', 'Admin\SelfRegistration::updateCourseDecisions');
+    $routes->post('admin/self-registration/assign-class', 'Admin\SelfRegistration::assignClass');
+    $routes->post('admin/self-registration/approve', 'Admin\SelfRegistration::approve');
+    
+    // Dashboard endpoints
+    $routes->post('api/dashboard', 'Admin\Dashboard::getDashboard');
+    $routes->get('api/dashboard', 'Admin\Dashboard::getDashboard');
     
     // CRM - Guardian management
     $routes->post('crm/guardians/list', 'Admin\Guardians::list');
@@ -215,6 +231,7 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('classes/topicList', 'Classes::topicList');
     $routes->post('classes/addTopic', 'Classes::addTopic');
     $routes->post('classes/updateTopic', 'Classes::updateTopic');
+    $routes->post('classes/updateTopicOrder', 'Classes::updateTopicOrder');
     $routes->post('classes/addCurriculumTopic', 'Classes::addCurriculumTopic');
     $routes->post('classes/getClassNotes', 'Classes::getClassNotes');
     $routes->post('classes/classAddNotes', 'Classes::classAddNotes');

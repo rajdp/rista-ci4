@@ -19,14 +19,27 @@ use CodeIgniter\Config\BaseService;
  */
 class Services extends BaseService
 {
-    /*
-     * public static function example($getShared = true)
-     * {
-     *     if ($getShared) {
-     *         return static::getSharedInstance('example');
-     *     }
-     *
-     *     return new \CodeIgniter\Example();
-     * }
+    /**
+     * Event Handlers Service
      */
+    public static function handlers(bool $getShared = true)
+    {
+        if ($getShared) {
+            return static::getSharedInstance('handlers');
+        }
+
+        return new \App\Services\EventHandlers();
+    }
+
+    /**
+     * Messaging Service
+     */
+    public static function messaging(bool $getShared = true)
+    {
+        if ($getShared) {
+            return static::getSharedInstance('messaging');
+        }
+
+        return new \App\Services\MessagingService();
+    }
 }

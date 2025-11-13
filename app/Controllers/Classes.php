@@ -1639,6 +1639,89 @@ class Classes extends BaseController
     }
 
     /**
+     * Update topic order for a class
+     */
+    public function updateTopicOrder(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '[Classes] updateTopicOrder params: ' . json_encode($params));
+
+            if (empty($params['platform'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty'
+                ]);
+            }
+
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role_Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['topic_order']) || !is_array($params['topic_order'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Topic order should not be empty'
+                ]);
+            }
+
+            $topicOrder = array_values(array_filter($params['topic_order'], static function ($value) {
+                return !empty($value);
+            }));
+
+            if (empty($topicOrder)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Topic order should not be empty'
+                ]);
+            }
+
+            $success = $this->classesModel->updateTopicOrder($topicOrder, (int)($params['user_id'] ?? 0));
+
+            if ($success) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Topic Order updated Successfully',
+                    'ErrorObject' => ''
+                ]);
+            }
+
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'Failed to update Topic Order'
+            ]);
+
+        } catch (\Throwable $e) {
+            log_message('error', 'updateTopicOrder error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'Failed to update Topic Order'
+            ], ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
      * Remove student from class
      */
     public function removeStudent(): ResponseInterface
@@ -2245,7 +2328,7 @@ class Classes extends BaseController
                 ]);
             }
 
-            if (empty($params['notes'])) {
+            if (empty($params['note'])) {
                 return $this->respond([
                     'IsSuccess' => false,
                     'ResponseObject' => null,
@@ -2258,10 +2341,11 @@ class Classes extends BaseController
             // Prepare data for insertion
             $noteData = [
                 'class_id' => $params['class_id'],
-                'notes' => $params['notes'],
+                'note' => $params['note'],
                 'status' => $params['status'] ?? '1',
                 'created_by' => $params['user_id'] ?? null,
-                'created_date' => date('Y-m-d H:i:s')
+                'created_date' => date('Y-m-d H:i:s'),
+                'add_date' => date('Y-m-d H:i:s')
             ];
 
             // Remove null values

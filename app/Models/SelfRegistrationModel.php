@@ -165,6 +165,144 @@ class SelfRegistrationModel extends Model
     }
 
     /**
+     * Look up an existing student profile by email for a specific school.
+     */
+    public function findExistingStudentProfile(string $email, int $schoolId): ?array
+    {
+        $email = strtolower(trim($email));
+        if ($email === '') {
+            return null;
+        }
+
+        $builder = $this->db->table('user u');
+        $builder->select("
+            u.user_id,
+            u.email_id,
+            u.mobile,
+            up.first_name,
+            up.last_name,
+            up.birthday,
+            upd.doj,
+            upd.created_date AS enrollment_date,
+            ua.address1,
+            ua.address2,
+            ua.city,
+            ua.state,
+            ua.country,
+            ua.postal_code
+        ");
+        $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
+        $builder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . (int) $schoolId, 'left');
+        $builder->join('user_address ua', 'ua.user_id = u.user_id AND ua.address_type = 1', 'left');
+        $builder->where('LOWER(u.email_id)', $email);
+        $builder->where('u.role_id', 5);
+        $builder->limit(1);
+
+        $record = $builder->get()->getRowArray();
+        if (!$record || empty($record['user_id'])) {
+            return null;
+        }
+
+        $profile = [
+            'student_id' => (int) $record['user_id'],
+            'first_name' => $record['first_name'] ?? '',
+            'last_name' => $record['last_name'] ?? '',
+            'email' => strtolower($record['email_id'] ?? ''),
+            'mobile' => $record['mobile'] ?? '',
+            'date_of_birth' => $record['birthday'] ?? null,
+            'address' => [
+                'line1' => $record['address1'] ?? null,
+                'line2' => $record['address2'] ?? null,
+                'city' => $record['city'] ?? null,
+                'state' => $record['state'] ?? null,
+                'postal_code' => $record['postal_code'] ?? null,
+                'country' => $record['country'] ?? null,
+            ],
+            'guardians' => $this->getStudentGuardians((int) $record['user_id']),
+            'active_courses' => $this->getStudentActiveCourses((int) $record['user_id'], $schoolId),
+            'last_enrolled_at' => $record['doj'] ?? $record['enrollment_date'] ?? null,
+        ];
+
+        if (!array_filter($profile['address'] ?? [], static fn($value) => $value !== null && $value !== '')) {
+            $profile['address'] = null;
+        }
+
+        return $profile;
+    }
+
+    /**
+     * Fetch guardians linked to a student.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function getStudentGuardians(int $studentUserId): array
+    {
+        $builder = $this->db->table('student_guardians sg');
+        $builder->select('
+            sg.is_primary,
+            sg.relationship_override,
+            g.first_name,
+            g.last_name,
+            g.email,
+            g.phone,
+            g.relationship
+        ');
+        $builder->join('guardians g', 'g.id = sg.guardian_id', 'inner');
+        $builder->where('sg.student_user_id', $studentUserId);
+        $builder->orderBy('sg.is_primary', 'DESC');
+
+        $rows = $builder->get()->getResultArray();
+        if (empty($rows)) {
+            return [];
+        }
+
+        $guardians = [];
+        foreach ($rows as $row) {
+            $nameParts = array_filter([$row['first_name'] ?? '', $row['last_name'] ?? '']);
+            $guardians[] = [
+                'name' => trim(implode(' ', $nameParts)),
+                'email' => $row['email'] ?? null,
+                'phone' => $row['phone'] ?? null,
+                'relation' => $row['relationship_override'] ?? $row['relationship'] ?? null,
+                'type' => !empty($row['is_primary']) ? 'primary' : 'secondary',
+            ];
+        }
+
+        return $guardians;
+    }
+
+    /**
+     * Fetch a lightweight snapshot of active classes/courses for a student.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function getStudentActiveCourses(int $studentUserId, int $schoolId): array
+    {
+        $builder = $this->db->table('student_class sc');
+        $builder->select('c.class_id, c.class_name, c.class_code');
+        $builder->join('class c', 'c.class_id = sc.class_id', 'inner');
+        $builder->where('sc.student_id', $studentUserId);
+        $builder->where('sc.status', 1);
+        $builder->where('c.school_id', $schoolId);
+        $builder->where('c.status', '1');
+        $builder->orderBy('c.start_date', 'DESC');
+        $builder->limit(5);
+
+        $rows = $builder->get()->getResultArray();
+        if (empty($rows)) {
+            return [];
+        }
+
+        return array_map(static function ($row) {
+            return [
+                'course_id' => isset($row['class_id']) ? (int) $row['class_id'] : null,
+                'course_name' => $row['class_name'] ?? ($row['class_code'] ?? null),
+                'schedule_title' => null,
+            ];
+        }, $rows);
+    }
+
+    /**
      * Create a new self-registration record and its related entities.
      *
      * @throws \RuntimeException When the transaction fails.

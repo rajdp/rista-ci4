@@ -355,6 +355,55 @@ class User extends ResourceController
     }
 
     /**
+     * Get user detail by user ID
+     * Accepts selected_user_id or user_id in request
+     */
+    public function getUserDetail()
+    {
+        try {
+            $data = $this->request->getJSON(true) ?? [];
+            
+            if (empty($data)) {
+                $data = $this->request->getPost() ?? [];
+            }
+
+            // Accept either selected_user_id or user_id
+            $userId = $data['selected_user_id'] ?? $data['user_id'] ?? null;
+            
+            if (!$userId) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User ID is required'
+                ], 400);
+            }
+
+            $profile = $this->model->getMyProfile($userId);
+            
+            if (!$profile) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User not found'
+                ], 404);
+            }
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $profile,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Get dashboard statistics
      */
     public function dashBoard()
@@ -580,6 +629,169 @@ class User extends ResourceController
                 'IsSuccess' => false,
                 'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Refresh access token when it expires
+     * This allows users to continue working without being logged out
+     */
+    public function refreshToken(): ResponseInterface
+    {
+        try {
+            $oldToken = $this->request->getHeaderLine('Accesstoken');
+            
+            if (empty($oldToken)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Access token required'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+            
+            // Decode the token to get user info (ignore expiration for refresh)
+            try {
+                $tokenPayload = \App\Libraries\Authorization::validateToken($oldToken);
+                if (!$tokenPayload) {
+                    return $this->respond([
+                        'IsSuccess' => false,
+                        'ResponseObject' => null,
+                        'ErrorObject' => 'Invalid token format'
+                    ], 401);
+                }
+            } catch (\Throwable $e) {
+                log_message('error', 'Token refresh - decode failed: ' . $e->getMessage());
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid token format'
+                ], 401);
+            }
+
+            // Get user info from token
+            $userId = \App\Libraries\Authorization::getUserId($tokenPayload);
+            $roleId = $tokenPayload->role_id ?? null;
+            $schoolId = \App\Libraries\Authorization::getSchoolId($tokenPayload);
+
+            if (!$userId || !$roleId || !$schoolId) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid token payload'
+                ], 401);
+            }
+
+            // Check if the old token exists and is still active in database
+            $tokenStatus = $db->table('user_token')
+                ->select('status, user_id')
+                ->where('access_token', $oldToken)
+                ->get()
+                ->getRowArray();
+
+            if (!$tokenStatus) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Token not found in database'
+                ], 401);
+            }
+
+            // Check if token is still active (status = 1)
+            if ((int)$tokenStatus['status'] !== 1) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Token has been invalidated. Please log in again.'
+                ], 401);
+            }
+
+            // Verify user_id matches
+            if ((int)$tokenStatus['user_id'] !== (int)$userId) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Token user mismatch'
+                ], 401);
+            }
+
+            // Check how long the token has been expired
+            // Allow refresh only if token expired within the last 24 hours (for security)
+            // This prevents indefinite refresh of very old tokens
+            $tokenTimestamp = property_exists($tokenPayload, 'timestamp') ? (int)$tokenPayload->timestamp : null;
+            if ($tokenTimestamp) {
+                $tokenTimeout = config('Jwt')->tokenTimeout * 60; // Convert to seconds
+                $tokenExpiryTime = $tokenTimestamp + $tokenTimeout;
+                $timeSinceExpiry = time() - $tokenExpiryTime;
+                $maxRefreshWindow = 24 * 60 * 60; // 24 hours in seconds
+                
+                if ($timeSinceExpiry > $maxRefreshWindow) {
+                    log_message('info', 'Token refresh rejected - token expired too long ago. Time since expiry: ' . round($timeSinceExpiry / 3600, 2) . ' hours');
+                    return $this->respond([
+                        'IsSuccess' => false,
+                        'ResponseObject' => null,
+                        'ErrorObject' => 'Token has expired too long ago. Please log in again.'
+                    ], 401);
+                }
+            }
+
+            // Generate new token
+            $newTokenPayload = [
+                'user_id' => $userId,
+                'role_id' => $roleId,
+                'school_id' => $schoolId,
+                'timestamp' => time()
+            ];
+            
+            $newAccessToken = \App\Libraries\Authorization::generateToken($newTokenPayload);
+
+            // Update database: invalidate old token and create new one
+            $db->transStart();
+            
+            // Invalidate old token
+            $db->table('user_token')
+                ->where('access_token', $oldToken)
+                ->update([
+                    'status' => 0,
+                    'modified_date' => date('Y-m-d H:i:s')
+                ]);
+
+            // Insert new token
+            $db->table('user_token')->insert([
+                'user_id' => $userId,
+                'access_token' => $newAccessToken,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+                'status' => 1,
+                'created_date' => date('Y-m-d H:i:s')
+            ]);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to refresh token'
+                ], 500);
+            }
+
+            // Return new token in CI3 format
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => [
+                    'Accesstoken' => $newAccessToken
+                ],
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Token refresh error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'Token refresh failed: ' . $e->getMessage()
             ], 500);
         }
     }

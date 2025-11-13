@@ -300,11 +300,12 @@ class SelfRegistrationPromotionService
             ->get()
             ->getRowArray();
 
+        $gradeId = isset($registration['grade_id']) ? (int) $registration['grade_id'] : 0;
         $data = $this->filterColumns('user_profile_details', [
             'user_id' => $userId,
             'school_id' => (int) $registration['school_id'],
             'status' => 1,
-            'grade_id' => null,
+            'grade_id' => $gradeId,
             'doj' => $registration['submitted_at'] ?? $now,
             'created_by' => $actorId,
             'created_date' => $now,
@@ -333,8 +334,26 @@ class SelfRegistrationPromotionService
                 }
 
                 $builder->update(array_filter($data, static fn($value) => $value !== null && $value !== ''));
+                log_message(
+                    'debug',
+                    sprintf(
+                        'SelfRegistrationPromotionService::syncUserProfileDetails update user_id=%d school_id=%d payload=%s',
+                        $userId,
+                        (int) $registration['school_id'],
+                        json_encode(array_filter($data, static fn($value) => $value !== null && $value !== ''))
+                    )
+                );
             }
         } else {
+            log_message(
+                'debug',
+                sprintf(
+                    'SelfRegistrationPromotionService::syncUserProfileDetails insert user_id=%d school_id=%d payload=%s',
+                    $userId,
+                    (int) $registration['school_id'],
+                    json_encode($data)
+                )
+            );
             $this->db->table('user_profile_details')->insert($data);
         }
     }

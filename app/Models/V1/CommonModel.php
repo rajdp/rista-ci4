@@ -29,7 +29,20 @@ class CommonModel extends BaseModel
         
         // Get request parameters
         $request = Services::request();
-        $getParams = json_decode($request->getBody(), true);
+
+        $getParams = [];
+        $rawBody = $request->getBody();
+
+        if ($rawBody !== null) {
+            $rawBody = trim($rawBody);
+        }
+
+        if (!empty($rawBody)) {
+            $decoded = json_decode($rawBody, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $getParams = $decoded;
+            }
+        }
         
         // Set timezone based on school
         if (isset($getParams['school_id']) && $getParams['school_id'] != 0) {
