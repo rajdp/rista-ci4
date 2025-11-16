@@ -41,7 +41,8 @@ class CourseModel extends BaseModel
         'is_exclusive',
         'event',
         'display_order',
-        'contact_info'
+        'contact_info',
+        'entity_id'
     ];
 
     public function __construct()

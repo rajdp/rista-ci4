@@ -42,6 +42,7 @@ class Dashboard extends BaseController
                         'arr_cents' => 0,
                         'overdue_cents' => 0,
                     ],
+                    'charts' => $this->getEmptyChartData($fromDate, $toDate),
                     'period' => [
                         'from' => $fromDate,
                         'to' => $toDate,
@@ -108,6 +109,9 @@ class Dashboard extends BaseController
             // Get docs/consents coverage
             $docsCoverage = $this->calculateDocsCoverage($schoolId);
 
+            // Get time-series data for charts
+            $chartData = $this->getChartData($schoolId, $fromDate, $toDate);
+
             return $this->successResponse([
                 'tiles' => [
                     'leads' => (int) ($marketingData['total_leads'] ?? $leads),
@@ -130,6 +134,7 @@ class Dashboard extends BaseController
                     'arr_cents' => (int) ($revenueData['total_arr'] ?? 0),
                     'overdue_cents' => (int) ($revenueData['total_overdue'] ?? 0),
                 ],
+                'charts' => $chartData,
                 'period' => [
                     'from' => $fromDate,
                     'to' => $toDate,
@@ -274,6 +279,142 @@ class Dashboard extends BaseController
             'messaging_open_rate' => 0,
             'messaging_click_rate' => 0,
             'docs_coverage' => 0,
+        ];
+    }
+
+    /**
+     * Get empty chart data structure
+     */
+    private function getEmptyChartData(string $fromDate, string $toDate): array
+    {
+        // Generate empty date range
+        $dates = [];
+        $start = new \DateTime($fromDate);
+        $end = new \DateTime($toDate);
+        $interval = new \DateInterval('P1D');
+        $dateRange = new \DatePeriod($start, $interval, $end->modify('+1 day'));
+
+        foreach ($dateRange as $date) {
+            $dates[] = $date->format('M d');
+        }
+
+        return [
+            'leads_enrollments' => [
+                'dates' => $dates,
+                'leads' => array_fill(0, count($dates), 0),
+                'enrollments' => array_fill(0, count($dates), 0),
+            ],
+            'revenue' => [
+                'dates' => $dates,
+                'revenue' => array_fill(0, count($dates), 0),
+                'mrr' => array_fill(0, count($dates), 0),
+                'arr' => array_fill(0, count($dates), 0),
+            ],
+            'conversion_rate' => [
+                'dates' => $dates,
+                'rates' => array_fill(0, count($dates), 0),
+            ],
+        ];
+    }
+
+    /**
+     * Get time-series data for charts
+     */
+    private function getChartData(int $schoolId, string $fromDate, string $toDate): array
+    {
+        $db = Database::connect();
+        
+        // Get daily leads and enrollments
+        $dailyData = $db->table('t_marketing_kpi_daily')
+            ->where('school_id', $schoolId)
+            ->where('day >=', $fromDate)
+            ->where('day <=', $toDate)
+            ->select('day, SUM(leads) as leads, SUM(enrollments) as enrollments, SUM(revenue_cents) as revenue_cents')
+            ->groupBy('day')
+            ->orderBy('day', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        // Get daily revenue
+        $dailyRevenue = $db->table('t_revenue_daily')
+            ->where('school_id', $schoolId)
+            ->where('day >=', $fromDate)
+            ->where('day <=', $toDate)
+            ->select('day, mrr_cents, arr_cents')
+            ->orderBy('day', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        // Build chart data arrays
+        $dates = [];
+        $leadsData = [];
+        $enrollmentsData = [];
+        $revenueData = [];
+        $mrrData = [];
+        $arrData = [];
+        $conversionRateData = [];
+
+        // Create a map of dates for quick lookup
+        $dailyMap = [];
+        foreach ($dailyData as $row) {
+            $day = $row['day'];
+            $dailyMap[$day] = [
+                'leads' => (int) ($row['leads'] ?? 0),
+                'enrollments' => (int) ($row['enrollments'] ?? 0),
+                'revenue' => (int) ($row['revenue_cents'] ?? 0),
+            ];
+        }
+
+        $revenueMap = [];
+        foreach ($dailyRevenue as $row) {
+            $day = $row['day'];
+            $revenueMap[$day] = [
+                'mrr' => (int) ($row['mrr_cents'] ?? 0),
+                'arr' => (int) ($row['arr_cents'] ?? 0),
+            ];
+        }
+
+        // Generate date range and populate data
+        $start = new \DateTime($fromDate);
+        $end = new \DateTime($toDate);
+        $interval = new \DateInterval('P1D');
+        $dateRange = new \DatePeriod($start, $interval, $end->modify('+1 day'));
+
+        foreach ($dateRange as $date) {
+            $dayStr = $date->format('Y-m-d');
+            $dayLabel = $date->format('M d');
+            
+            $dates[] = $dayLabel;
+            $daily = $dailyMap[$dayStr] ?? ['leads' => 0, 'enrollments' => 0, 'revenue' => 0];
+            $revenue = $revenueMap[$dayStr] ?? ['mrr' => 0, 'arr' => 0];
+            
+            $leadsData[] = $daily['leads'];
+            $enrollmentsData[] = $daily['enrollments'];
+            $revenueData[] = round($daily['revenue'] / 100, 2); // Convert cents to dollars
+            $mrrData[] = round($revenue['mrr'] / 100, 2);
+            $arrData[] = round($revenue['arr'] / 100, 2);
+            
+            // Calculate conversion rate for this day
+            $convRate = $daily['leads'] > 0 ? ($daily['enrollments'] / $daily['leads']) * 100 : 0;
+            $conversionRateData[] = round($convRate, 2);
+        }
+
+        return [
+            'leads_enrollments' => [
+                'dates' => $dates,
+                'leads' => $leadsData,
+                'enrollments' => $enrollmentsData,
+            ],
+            'revenue' => [
+                'dates' => $dates,
+                'revenue' => $revenueData,
+                'mrr' => $mrrData,
+                'arr' => $arrData,
+            ],
+            'conversion_rate' => [
+                'dates' => $dates,
+                'rates' => $conversionRateData,
+            ],
         ];
     }
 }

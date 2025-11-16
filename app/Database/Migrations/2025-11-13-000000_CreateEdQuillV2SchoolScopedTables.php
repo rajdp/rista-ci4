@@ -262,7 +262,7 @@ class CreateEdQuillV2SchoolScopedTables extends Migration
             CREATE TABLE IF NOT EXISTS t_marketing_kpi_daily (
                 school_id BIGINT UNSIGNED NOT NULL,
                 day DATE NOT NULL,
-                source VARCHAR(64) NULL DEFAULT '',
+                source VARCHAR(64) NOT NULL DEFAULT '',
                 leads INT NOT NULL DEFAULT 0,
                 enrollments INT NOT NULL DEFAULT 0,
                 revenue_cents BIGINT NOT NULL DEFAULT 0,

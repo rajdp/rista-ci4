@@ -90,6 +90,20 @@ $routes->group('', function($routes) {
 
     // CRM public endpoints
     $routes->get('crm/report/view/(:segment)', 'Admin\ReportCards::viewByToken/$1');
+
+    $routes->group('api/appt', function($routes) {
+        $routes->get('hosts', 'Appt\HostsController::index');
+        $routes->get('availability', 'Appt\AvailabilityController::index');
+        $routes->post('availability', 'Appt\AvailabilityController::save');
+        $routes->get('exceptions', 'Appt\ExceptionsController::index');
+        $routes->post('exceptions', 'Appt\ExceptionsController::save');
+        $routes->get('slots', 'Appt\SlotsController::index');
+        $routes->get('bookings', 'Appt\BookingsController::index');
+        $routes->post('book', 'Appt\BookingsController::book');
+        $routes->match(['GET', 'POST'], 'policy', 'Appt\SettingsController::policy');
+        $routes->post('(:num)/reschedule', 'Appt\BookingsController::reschedule/$1');
+        $routes->post('(:num)/cancel', 'Appt\BookingsController::cancel/$1');
+    });
 });
 
 // Protected routes (authentication required)
@@ -105,6 +119,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('user/tcUpdate', 'User::tcUpdate');
     $routes->post('user/editStatus', 'User::editStatus');
     $routes->post('user/remove', 'User::remove');
+    $routes->post('user/list', 'User::list');
     $routes->post('user/configValues', 'User::configValues');
     $routes->post('user/setPassword', 'User::setPassword');
     $routes->post('user/dashBoard', 'User::dashBoard');
@@ -114,6 +129,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
 
     // Common endpoints
     $routes->post('common/settingList', 'Common::settingList');
+    $routes->post('common/settingEdit', 'Common::settingEdit');
     
     // Student endpoints
     $routes->get('student', 'Student::index');
@@ -208,6 +224,12 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('school/studentGradeList', 'School::studentGradeList');
     $routes->post('school/announcementList', 'School::announcementList');
     $routes->post('school/addAnnouncement', 'School::addAnnouncement');
+    $routes->post('school/editAnnouncement', 'School::editAnnouncement');
+    $routes->post('school/calendarList', 'School::calendarList_post');
+    $routes->post('school/addHolidayCalendar', 'School::addHolidayCalendar_post');
+    $routes->post('school/editHolidayCalendar', 'School::editHolidayCalendar_post');
+    $routes->post('school/deleteHolidayCalendar', 'School::deleteHolidayCalendar_post');
+    $routes->post('school/dateformat', 'School::dateformat_post');
     
     // Class endpoints
     $routes->get('class', 'Classes::index');

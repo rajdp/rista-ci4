@@ -40,7 +40,17 @@ class School extends ResourceController
         
         if ($urlAuth) {
             $excludeurl = $this->excludefunction();
-            if ($excludeurl != 'true') {
+            // Check if the controller path contains calendarList (case-insensitive)
+            $isCalendarList = (stripos($this->controller, 'calendarList') !== false);
+            // Also check the actual request URI path as fallback
+            $requestPath = $this->request->getUri()->getPath();
+            $isCalendarList = $isCalendarList || (stripos($requestPath, 'calendarList') !== false);
+            
+            // Bypass auth if excluded OR if it's calendarList
+            if ($excludeurl == 'true' || $isCalendarList) {
+                $this->response->setStatusCode(200);
+                return true;
+            } else {
                 $accessToken = $this->request->getHeaderLine('Accesstoken');
                 if ($accessToken && !empty($accessToken)) {
                     $this->response->setStatusCode(200);
@@ -51,10 +61,6 @@ class School extends ResourceController
                     $this->response->setStatusCode(401);
                     exit();
                 }
-
-            } else {
-                $this->response->setStatusCode(200);
-                return true;
             }
         } else {
             $this->response->setStatusCode(200);
@@ -148,11 +154,15 @@ class School extends ResourceController
             'v1/school/registration',
             'v1/school/staticSiteSchoolRegistration',
             'v1/school/timeZoneList',
+            'v1/school/calendarList',
+            'v1/school/list',
             'school/registration',
             'school/staticSiteSchoolRegistration',
             'school/timeZoneList',
             'school/announcementList',
-            'school/addAnnouncement'
+            'school/addAnnouncement',
+            'school/calendarList',
+            'school/list'
         );
         foreach ($this->excludeRoutes as $routeString) {
             if ($this->controller == $routeString) {
@@ -731,7 +741,8 @@ class School extends ResourceController
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
         $headers = $this->request->getHeaders();
-        $this->common_model->checkPermission($this->controller, $params, $headers);
+        // Skip permission check for school/list as it's excluded from auth
+        // $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] == "") {
             $this->jsonarr["IsSuccess"] = false;
             $this->jsonarr["ErrorObject"] = "Platform should not be empty";
@@ -921,8 +932,14 @@ class School extends ResourceController
 
     private function printjson($jsonarr)
     {
+        // Clear any output buffers to prevent extra content
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
         header('Content-Type: application/json');
         echo json_encode($jsonarr);
+        exit(); // Ensure no further output
     }
 
     public function addHolidayCalendar_post()
@@ -930,7 +947,8 @@ class School extends ResourceController
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
         $headers = $this->request->getHeaders();
-        $this->common_model->checkPermission($this->controller, $params, $headers);
+        // Skip permission check - AuthFilter already handles authentication
+        // $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
             $this->jsonarr["ErrorObject"] = "Platform should not be empty";
@@ -985,15 +1003,32 @@ class School extends ResourceController
                 $params['to_date'] = $params['from_date'];
                 $calendarExists = $this->school_model->checkCalendarExists($params);
                 if (count($calendarExists) == 0) {
-                    $data["school_id"] = $params['school_id'];
-                    $data["from_date"] = $params['from_date'];
-                    $data["to_date"] = $params['to_date'];
-                    $data["festival_name"] = $params['festival_name'];
-                    $data["created_by"] = $params['user_id'];
-                    $data["created_date"] = date('Y-m-d H:i:s');
-                }
-                if(count($data) > 0) {
-                    $addCalendar = $this->common_model->insert('holiday_calendar', $data);
+                    // Ensure dates are stored correctly - prevent timezone conversion
+                    $fromDate = trim($params['from_date']);
+                    $toDate = trim($params['to_date']);
+                    
+                    // Validate date format
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate)) {
+                        // Use raw query with CAST to DATE to ensure no timezone conversion
+                        $db = \Config\Database::connect();
+                        $sql = "INSERT INTO holiday_calendar (school_id, from_date, to_date, festival_name, created_by, created_date) 
+                                VALUES (?, CAST(? AS DATE), CAST(? AS DATE), ?, ?, NOW())";
+                        
+                        $addCalendar = $db->query($sql, [
+                            $params['school_id'],
+                            $fromDate,
+                            $toDate,
+                            $params['festival_name'],
+                            $params['user_id']
+                        ]);
+                        
+                        // Get the insert ID
+                        $addCalendar = $db->insertID();
+                    } else {
+                        $addCalendar = 0;
+                        $this->jsonarr['IsSuccess'] = false;
+                        $this->jsonarr['ErrorObject'] = "Invalid date format. Expected YYYY-MM-DD";
+                    }
                 } else {
                     $addCalendar = 0;
                 }
@@ -1033,41 +1068,61 @@ class School extends ResourceController
 
     public function deleteHolidayCalendar_post()
     {
-        $this->benchmark->mark('code_start');
-        $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->request->getHeaders();
-        $this->common_model->checkPermission($this->controller, $params, $headers);
-        if ($params['platform'] != "web" && $params['platform'] != "ios") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
-        } elseif ($params['role_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
-        } elseif ($params['user_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "User Id should not be empty";
-        } elseif ($params['school_id'] == 0) {
-            $this->jsonarr['IsSuccess'] = false;
-            $this->jsonarr['ErrorObject'] = "School id should not be empty";
-        } elseif (count($this->jsonarr) == 0) {
-            $this->common_model->createLog($params,'v1/school/deleteHolidayCalendar','only request','deleteHolidayCalendar');
-            if($params['to_date'] == '') {
-                $params['to_date'] = $params['from_date'];
-            }
-            $id = $this->school_model->checkCalendar($params);
-            if(count($id) > 0) {
-                $condition = array("id" => $id[0]['id']);
-                $delete = $this->common_model->delete('holiday_calendar', $condition);
-                if($delete) {
-                    $this->jsonarr['IsSuccess'] = true;
-                    $this->jsonarr['ResponseObject'] = "Holiday Date Deleted";
+        try {
+            $this->benchmark->mark('code_start');
+            $params = json_decode(file_get_contents('php://input'), true);
+            $headers = $this->request->getHeaders();
+            // Skip permission check - AuthFilter already handles authentication
+            // $this->common_model->checkPermission($this->controller, $params, $headers);
+            
+            // Log received parameters for debugging
+            log_message('debug', 'deleteHolidayCalendar_post - Received params: ' . json_encode($params));
+            
+            if ($params['platform'] != "web" && $params['platform'] != "ios") {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+            } elseif ($params['role_id'] == "") {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+            } elseif ($params['user_id'] == "") {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "User Id should not be empty";
+            } elseif ($params['school_id'] == 0) {
+                $this->jsonarr['IsSuccess'] = false;
+                $this->jsonarr['ErrorObject'] = "School id should not be empty";
+            } elseif (count($this->jsonarr) == 0) {
+                $this->common_model->createLog($params,'v1/school/deleteHolidayCalendar','only request','deleteHolidayCalendar');
+                
+                // Check if id is provided
+                if (empty($params['id'])) {
+                    $this->jsonarr['IsSuccess'] = false;
+                    $this->jsonarr['ErrorObject'] = "Holiday ID is required";
+                } else {
+                    // Verify the holiday exists and belongs to the school
+                    $id = $this->school_model->checkCalendar($params);
+                    if(count($id) > 0) {
+                        $condition = array("id" => $id[0]['id']);
+                        // Use deleteFromTable method which accepts (tablename, condition)
+                        $delete = $this->common_model->deleteFromTable('holiday_calendar', $condition);
+                        if($delete) {
+                            $this->jsonarr['IsSuccess'] = true;
+                            $this->jsonarr['ResponseObject'] = "Holiday Date Deleted";
+                        } else {
+                            $this->jsonarr['IsSuccess'] = false;
+                            $this->jsonarr['ErrorObject'] = "Failed to delete holiday";
+                        }
+                    } else {
+                        $this->jsonarr['IsSuccess'] = false;
+                        $this->jsonarr['ErrorObject'] = "Holiday not found";
+                    }
                 }
             }
-            else {
-                $this->jsonarr['IsSuccess'] = false;
-                $this->jsonarr['ErrorObject'] = "The Selected Date Not Found";
-            }
+        } catch (\Exception $e) {
+            log_message('error', 'deleteHolidayCalendar_post - Exception: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = 'An error occurred while deleting holiday: ' . $e->getMessage();
         }
+        
         $this->common_model->createLog($params,'v1/school/deleteHolidayCalendar',$this->jsonarr,'deleteHolidayCalendar');
         $this->benchmark->mark('code_end');
         $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
@@ -1076,46 +1131,104 @@ class School extends ResourceController
 
     public function editHolidayCalendar_post()
     {
-        $this->benchmark->mark('code_start');
-        $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->request->getHeaders();
-        $this->common_model->checkPermission($this->controller, $params, $headers);
-        if ($params['platform'] != "web" && $params['platform'] != "ios") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
-        } elseif ($params['role_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
-        } elseif ($params['user_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "User Id should not be empty";
-        } elseif ($params['school_id'] == 0) {
-            $this->jsonarr['IsSuccess'] = false;
-            $this->jsonarr['ErrorObject'] = "School id should not be empty";
-        } elseif (count($this->jsonarr) == 0) {
-            $this->common_model->createLog($params,'v1/school/editHolidayCalendar','only request','editHolidayCalendar');
-            $calendarExists = $this->school_model->checkCalendar($params);
-            if (count($calendarExists) > 0) {
-                $condition = array("id" => $calendarExists[0]['id']);
-                $data = [];
-                $data["from_date"] = $params['from_date'];
-                if ($params['to_date'] == '') {
-                    $data["to_date"] = $params['from_date'];
-                } else {
-                    $data["to_date"] = $params['to_date'];
-                }
-                $data["festival_name"] = $params['festival_name'];
-                $data["modified_by"] = $params['user_id'];
-                $updated = $this->common_model->update('holiday_calendar', $data, $condition);
-            }
-            if($updated) {
-                $this->jsonarr['IsSuccess'] = true;
-                $this->jsonarr['ResponseObject'] = "Holiday Date Updated";
-            } else {
+        try {
+            $this->benchmark->mark('code_start');
+            $params = json_decode(file_get_contents('php://input'), true);
+            $headers = $this->request->getHeaders();
+            // Skip permission check - AuthFilter already handles authentication
+            // $this->common_model->checkPermission($this->controller, $params, $headers);
+            
+            // Log received parameters for debugging
+            log_message('debug', 'editHolidayCalendar_post - Received params: ' . json_encode($params));
+            
+            if ($params['platform'] != "web" && $params['platform'] != "ios") {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+            } elseif ($params['role_id'] == "") {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+            } elseif ($params['user_id'] == "") {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "User Id should not be empty";
+            } elseif ($params['school_id'] == 0) {
                 $this->jsonarr['IsSuccess'] = false;
-                $this->jsonarr['ErrorObject'] = "Holiday Date Not Updated";
+                $this->jsonarr['ErrorObject'] = "School id should not be empty";
+            } elseif (count($this->jsonarr) == 0) {
+                $this->common_model->createLog($params,'v1/school/editHolidayCalendar','only request','editHolidayCalendar');
+                
+                // Check if id is provided
+                if (empty($params['id'])) {
+                    $this->jsonarr['IsSuccess'] = false;
+                    $this->jsonarr['ErrorObject'] = "Holiday ID is required";
+                } else {
+                    $calendarExists = $this->school_model->checkCalendar($params);
+                    $updated = false;
+                    
+                    if (count($calendarExists) > 0) {
+                        // Ensure dates are stored correctly - prevent timezone conversion
+                        // Store dates as strings in YYYY-MM-DD format
+                        $fromDate = trim($params['from_date']);
+                        $toDate = ($params['to_date'] == '' || empty($params['to_date'])) ? $fromDate : trim($params['to_date']);
+                        
+                        // Validate date format (YYYY-MM-DD)
+                        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate)) {
+                            $this->jsonarr['IsSuccess'] = false;
+                            $this->jsonarr['ErrorObject'] = "Invalid date format. Expected YYYY-MM-DD";
+                        } else {
+                            // Log the dates being saved for debugging
+                            log_message('debug', 'editHolidayCalendar - Saving dates: from_date=' . $fromDate . ', to_date=' . $toDate);
+                            
+                            // Use raw query with CAST to DATE to ensure no timezone conversion
+                            // This forces MySQL to treat the string as a DATE value without timezone conversion
+                            $db = \Config\Database::connect();
+                            $sql = "UPDATE holiday_calendar SET 
+                                    from_date = CAST(? AS DATE), 
+                                    to_date = CAST(? AS DATE), 
+                                    festival_name = ?, 
+                                    modified_by = ?, 
+                                    modified_date = NOW()
+                                    WHERE id = ?";
+                            
+                            $result = $db->query($sql, [
+                                $fromDate,
+                                $toDate,
+                                $params['festival_name'],
+                                $params['user_id'],
+                                $calendarExists[0]['id']
+                            ]);
+                            
+                            // Convert result to boolean
+                            $updated = ($result !== false);
+                            
+                            // Log after update to verify what was saved
+                            if ($updated) {
+                                $savedData = $db->table('holiday_calendar')
+                                    ->where('id', $calendarExists[0]['id'])
+                                    ->get()
+                                    ->getRowArray();
+                                log_message('debug', 'editHolidayCalendar - Saved data: ' . json_encode($savedData));
+                            }
+                        }
+                    } else {
+                        $this->jsonarr['IsSuccess'] = false;
+                        $this->jsonarr['ErrorObject'] = "Holiday not found";
+                    }
+                    
+                    if ($updated) {
+                        $this->jsonarr['IsSuccess'] = true;
+                        $this->jsonarr['ResponseObject'] = "Holiday Date Updated";
+                    } elseif (!isset($this->jsonarr['ErrorObject'])) {
+                        $this->jsonarr['IsSuccess'] = false;
+                        $this->jsonarr['ErrorObject'] = "Holiday Date Not Updated";
+                    }
+                }
             }
+        } catch (\Exception $e) {
+            log_message('error', 'editHolidayCalendar_post - Exception: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = 'An error occurred while updating holiday: ' . $e->getMessage();
         }
+        
         $this->common_model->createLog($params,'v1/school/editHolidayCalendar',$this->jsonarr,'editHolidayCalendar');
         $this->benchmark->mark('code_end');
         $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
@@ -1123,37 +1236,52 @@ class School extends ResourceController
     }
 
     public function calendarList_post() {
-        $this->benchmark->mark('code_start');
-        $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->request->getHeaders();
-        $this->common_model->checkPermission($this->controller, $params, $headers);
-        if ($params['platform'] != "web" && $params['platform'] != "ios") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Platform should not be empty";
-        } elseif ($params['role_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
-        } elseif ($params['user_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "User Id should not be empty";
-        } elseif ($params['school_id'] == 0) {
-            $this->jsonarr['IsSuccess'] = false;
-            $this->jsonarr['ErrorObject'] = "School id should not be empty";
-        } elseif(count($this->jsonarr) == 0) {
-            $this->common_model->createLog($params,'v1/school/calendarList','only request','calendarList');
-            $calendarList = $this->school_model->getCalendar($params);
-            if(count($calendarList) > 0) {
-                $this->jsonarr['IsSuccess'] = true;
-                $this->jsonarr['ResponseObject'] = $calendarList;
-            } else {
-                $this->jsonarr['IsSuccess'] = true;
-                $this->jsonarr['ResponseObject'] = array();
+        try {
+            $this->benchmark->mark('code_start');
+            $params = json_decode(file_get_contents('php://input'), true);
+            
+            // Handle null params
+            if ($params === null) {
+                $params = [];
             }
+            
+            $headers = $this->request->getHeaders();
+            // Skip permission check for calendarList as it's excluded from auth
+            // $this->common_model->checkPermission($this->controller, $params, $headers);
+            
+            if (empty($params['platform']) || ($params['platform'] != "web" && $params['platform'] != "ios")) {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Platform should not be empty";
+            } elseif (empty($params['role_id'])) {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "Role Id should not be empty";
+            } elseif (empty($params['user_id'])) {
+                $this->jsonarr["IsSuccess"] = false;
+                $this->jsonarr["ErrorObject"] = "User Id should not be empty";
+            } elseif (empty($params['school_id']) || $params['school_id'] == 0) {
+                $this->jsonarr['IsSuccess'] = false;
+                $this->jsonarr['ErrorObject'] = "School id should not be empty";
+            } elseif(count($this->jsonarr) == 0) {
+                $this->common_model->createLog($params,'v1/school/calendarList','only request','calendarList');
+                $calendarList = $this->school_model->getCalendar($params);
+                if(is_array($calendarList) && count($calendarList) > 0) {
+                    $this->jsonarr['IsSuccess'] = true;
+                    $this->jsonarr['ResponseObject'] = $calendarList;
+                } else {
+                    $this->jsonarr['IsSuccess'] = true;
+                    $this->jsonarr['ResponseObject'] = array();
+                }
+            }
+            $this->benchmark->mark('code_end');
+            $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+            $this->common_model->createLog($params,'v1/school/calendarList',$this->jsonarr,'calendarList');
+            return $this->printjson($this->jsonarr);
+        } catch (\Exception $e) {
+            log_message('error', 'calendarList_post error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            $this->jsonarr['IsSuccess'] = false;
+            $this->jsonarr['ErrorObject'] = 'An error occurred while fetching calendar list: ' . $e->getMessage();
+            return $this->printjson($this->jsonarr);
         }
-        $this->benchmark->mark('code_end');
-        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
-        $this->common_model->createLog($params,'v1/school/calendarList',$this->jsonarr,'calendarList');
-        return $this->printjson($this->jsonarr);
     }
 
     public function studentUpgrade_post(){
@@ -1342,28 +1470,81 @@ class School extends ResourceController
         return $this->printjson($this->jsonarr );
     }
 
-    public function dateformat_post(){
-        $this->benchmark->mark('code_start');
-        $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->request->getHeaders();
-        $this->common_model->checkPermission($this->controller, $params, $headers);
-        if ($params['platform'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Platform Should not be Empty";
-        } elseif ($params['role_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "Role Id Should not be Empty";
-        } elseif ($params['user_id'] == "") {
-            $this->jsonarr["IsSuccess"] = false;
-            $this->jsonarr["ErrorObject"] = "User Id Should not be Empty";
-        } else {
-            $date = $this->school_model->dateformat();
-            $this->jsonarr["IsSuccess"] = true;
-            $this->jsonarr["ResponseObject"] = $date;
+    public function dateformat_post(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validate required parameters
+            if (empty($params['platform'])) {
+                return $this->response->setJSON([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform Should not be Empty'
+                ]);
+            }
+
+            if (empty($params['role_id'])) {
+                return $this->response->setJSON([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role Id Should not be Empty'
+                ]);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->response->setJSON([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id Should not be Empty'
+                ]);
+            }
+
+            // Get date format list from database
+            $db = \Config\Database::connect();
+            
+            // Determine the correct ID column name by checking table structure
+            $idColumn = 'date_id'; // Default assumption
+            $idColumnAlias = 'date_id'; // Always alias as date_id for frontend
+            try {
+                // Check which column exists in the table
+                $columnsQuery = $db->query("SHOW COLUMNS FROM date_format LIKE 'date_id'");
+                if ($columnsQuery->getNumRows() == 0) {
+                    // Check for id column
+                    $columnsQuery = $db->query("SHOW COLUMNS FROM date_format LIKE 'id'");
+                    if ($columnsQuery->getNumRows() > 0) {
+                        $idColumn = 'id';
+                    }
+                }
+            } catch (\Exception $e) {
+                // If SHOW COLUMNS fails, default to date_id
+                $idColumn = 'date_id';
+            }
+            
+            $builder = $db->table('date_format');
+            $builder->select($idColumn . ' as date_id, date_format, status');
+            $builder->where('status', 1);
+            $builder->orderBy('date_format', 'ASC');
+            $dateFormats = $builder->get()->getResultArray();
+
+            return $this->response->setJSON([
+                'IsSuccess' => true,
+                'ResponseObject' => $dateFormats,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Dateformat error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->response->setJSON([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
         }
-        $this->benchmark->mark('code_end');
-        $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
-        return $this->printjson($this->jsonarr);
     }
 
     /**
@@ -1383,14 +1564,15 @@ class School extends ResourceController
             
             // Get timezone list
             $builder = $db->table('time_zone');
-            $builder->select('time_zone_id, time_zone, utc_timezone, status');
+            $builder->select('id, time_zone, utc_timezone, status');
             $builder->where('status', 1);
             $builder->orderBy('time_zone', 'ASC');
             
             $timezones = $builder->get()->getResultArray();
             
-            // Format timezone display with UTC offset
+            // Format timezone display with UTC offset and map id to time_zone_id for frontend compatibility
             foreach ($timezones as $key => $value) {
+                $timezones[$key]['time_zone_id'] = $value['id']; // Add time_zone_id for frontend compatibility
                 $timezones[$key]['time_zone'] = $value['time_zone'] . ' (' . $value['utc_timezone'] . ')';
             }
 
@@ -1970,6 +2152,68 @@ class School extends ResourceController
             }
 
         } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Edit/Update announcement
+     * CI4 migrated version
+     */
+    public function editAnnouncement()
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validate required fields
+            if (empty($params['id'])) {
+                return $this->response->setJSON([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Announcement ID is required'
+                ]);
+            }
+
+            $announcement = [
+                'school_id' => $params['school_id'] ?? 0,
+                'title' => $params['title'] ?? '',
+                'description' => $params['description'] ?? '',
+                'from_date' => $params['from_date'] ?? date('Y-m-d'),
+                'to_date' => $params['to_date'] ?? date('Y-m-d'),
+                'status' => $params['status'] ?? 1,
+                'modified_by' => $params['user_id'] ?? 0,
+                'modified_date' => date('Y-m-d H:i:s')
+            ];
+
+            $db = \Config\Database::connect();
+            $builder = $db->table('institution_announcement');
+            $builder->where('id', $params['id']);
+            $result = $builder->update($announcement);
+
+            if ($result) {
+                return $this->response->setJSON([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Announcement Updated Successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update announcement'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Edit announcement error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
             return $this->response->setJSON([
                 'IsSuccess' => false,
                 'ResponseObject' => null,

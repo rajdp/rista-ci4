@@ -278,14 +278,48 @@ class Common extends ResourceController
 
             $settingList = $this->commonModel->settingList($params);
             
+            // Ensure settingList is an array
+            if (!is_array($settingList)) {
+                $settingList = [];
+            }
+            
             // Process settings
-            for ($a = 0; $a < count($settingList); $a++) {
-                $settingList[$a]['date'] = '';
-                if ($settingList[$a]['name'] == 'date_format') {
-                    $dateFormat = $this->commonModel->dateFormat($settingList[$a]['value']);
-                    $settingList[$a]['date'] = $dateFormat != '' ? $dateFormat[0]['date_format'] : '';
+            $db = \Config\Database::connect();
+            
+            // Determine the correct ID column name for date_format table (check once, use for all iterations)
+            $dateFormatIdColumn = 'date_id'; // Default assumption
+            try {
+                // Check which column exists in the table
+                $columnsQuery = $db->query("SHOW COLUMNS FROM date_format LIKE 'date_id'");
+                if ($columnsQuery->getNumRows() == 0) {
+                    // Check for id column
+                    $columnsQuery = $db->query("SHOW COLUMNS FROM date_format LIKE 'id'");
+                    if ($columnsQuery->getNumRows() > 0) {
+                        $dateFormatIdColumn = 'id';
+                    }
                 }
-                if(isset($settingList[$a]['name']) && $settingList[$a]['name'] == 'zoom_user_email') {
+            } catch (\Exception $e) {
+                // If SHOW COLUMNS fails, default to date_id
+                $dateFormatIdColumn = 'date_id';
+            }
+            
+            for ($a = 0; $a < count($settingList); $a++) {
+                // Ensure each item is an array
+                if (!is_array($settingList[$a])) {
+                    continue;
+                }
+                
+                $settingList[$a]['date'] = '';
+                if (isset($settingList[$a]['name']) && $settingList[$a]['name'] == 'date_format' && !empty($settingList[$a]['value'])) {
+                    // Query date_format table to get the format string
+                    $dateFormatBuilder = $db->table('date_format');
+                    $dateFormatBuilder->select('date_format');
+                    $dateFormatBuilder->where($dateFormatIdColumn, $settingList[$a]['value']);
+                    $dateFormatResult = $dateFormatBuilder->get()->getRowArray();
+                    
+                    $settingList[$a]['date'] = $dateFormatResult ? $dateFormatResult['date_format'] : '';
+                }
+                if(isset($settingList[$a]['name']) && $settingList[$a]['name'] == 'zoom_user_email' && !empty($settingList[$a]['value'])) {
                     $settingList[$a]['value'] = explode(',', $settingList[$a]['value']);
                 }
             }
@@ -297,6 +331,121 @@ class Common extends ResourceController
             ]);
 
         } catch (\Exception $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Edit/Update settings
+     */
+    public function settingEdit(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getPost();
+            
+            if (empty($params)) {
+                $params = $this->request->getJSON(true) ?? [];
+            }
+
+            // Validation
+            if (empty($params['platform'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty'
+                ]);
+            }
+
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['school_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'School Id should not be empty'
+                ]);
+            }
+
+            // Prepare update data
+            $data = [
+                'description' => $params['description'] ?? '',
+                'value' => is_array($params['value']) ? implode(',', $params['value']) : $params['value'],
+                'modified_date' => date('Y-m-d H:i:s')
+            ];
+
+            // Update the setting in admin_settings_school table
+            // IMPORTANT: Filter by both id AND school_id to prevent cross-school updates
+            $db = \Config\Database::connect();
+            
+            // First verify the record exists and belongs to the correct school
+            $builder = $db->table('admin_settings_school');
+            $builder->where('id', $params['id']);
+            $builder->where('school_id', $params['school_id']);
+            $existing = $builder->get()->getRowArray();
+            
+            if (!$existing) {
+                log_message('error', 'Setting edit: Record not found. ID: ' . $params['id'] . ', School ID: ' . $params['school_id']);
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Setting not found or does not belong to the specified school'
+                ]);
+            }
+            
+            // Log the update for debugging
+            log_message('debug', 'Setting edit: Updating ID ' . $params['id'] . ' for school ' . $params['school_id'] . 
+                       '. Old value: ' . ($existing['value'] ?? '') . ', New value: ' . (is_array($params['value']) ? implode(',', $params['value']) : $params['value']) .
+                       '. Old description: ' . ($existing['description'] ?? '') . ', New description: ' . ($params['description'] ?? ''));
+            
+            // Now perform the update with both conditions
+            $builder = $db->table('admin_settings_school');
+            $builder->where('id', $params['id']);
+            $builder->where('school_id', $params['school_id']);
+            $update = $builder->update($data);
+
+            if ($update) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Settings Updated Successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                log_message('error', 'Setting edit: Update failed. ID: ' . $params['id'] . ', School ID: ' . $params['school_id']);
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update settings. Please verify the setting ID and school ID are correct.'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Setting edit error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,

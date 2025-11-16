@@ -109,3 +109,4 @@ class AddCourseDecisionFieldsToSelfRegistrationCourses extends Migration
 }
 
 
+

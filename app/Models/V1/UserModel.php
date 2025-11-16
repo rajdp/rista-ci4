@@ -472,8 +472,9 @@ class UserModel extends BaseModel
             COALESCE(up.profile_thumb_url, "") AS profile_thumb_url, up.birthday');
         $builder->join('user_profile up', 'u.user_id = up.user_id', 'left');
         
-        if (isset($data['role_id'])) {
-            $builder->where('u.role_id', $data['role_id']);
+        $targetRoleId = $data['filter_role_id'] ?? $data['role_id'] ?? null;
+        if ($targetRoleId !== null && $targetRoleId !== '') {
+            $builder->where('u.role_id', $targetRoleId);
         }
         
         if (isset($data['status'])) {

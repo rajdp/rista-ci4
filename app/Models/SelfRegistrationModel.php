@@ -38,6 +38,7 @@ class SelfRegistrationModel extends Model
             s.state,
             s.country,
             s.postal_code,
+            s.institution_type,
             COALESCE(ps.portal_enabled, 1) AS portal_enabled,
             ps.primary_color,
             ps.secondary_color,
@@ -248,7 +249,7 @@ class SelfRegistrationModel extends Model
             g.relationship
         ');
         $builder->join('guardians g', 'g.id = sg.guardian_id', 'inner');
-        $builder->where('sg.student_user_id', $studentUserId);
+        $builder->where('sg.student_id', $studentUserId);
         $builder->orderBy('sg.is_primary', 'DESC');
 
         $rows = $builder->get()->getResultArray();

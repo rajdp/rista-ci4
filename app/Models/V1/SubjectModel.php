@@ -41,30 +41,61 @@ class SubjectModel extends Model
     public function getSubjects($data)
     {
         $params = is_object($data) ? (array) $data : (array) $data;
-        $builder = $this->db->table($this->table);
+        $builder = $this->db->table($this->table . ' s');
         $fields = $this->getTableFields();
+
+        // Build select fields dynamically based on what exists in the table
+        $selectFields = ['s.subject_id', 's.subject_name', 's.description', 's.status', 's.school_id'];
+        
+        // Add fee_amount and deposit_amount only if they exist in the table
+        if (in_array('fee_amount', $fields, true)) {
+            $selectFields[] = 's.fee_amount';
+        }
+        if (in_array('deposit_amount', $fields, true)) {
+            $selectFields[] = 's.deposit_amount';
+        }
+        
+        // Add standard fields if they exist
+        if (in_array('created_by', $fields, true)) {
+            $selectFields[] = 's.created_by';
+        }
+        if (in_array('created_date', $fields, true)) {
+            $selectFields[] = 's.created_date';
+        }
+        if (in_array('modified_by', $fields, true)) {
+            $selectFields[] = 's.modified_by';
+        }
+        if (in_array('modified_date', $fields, true)) {
+            $selectFields[] = 's.modified_date';
+        }
+        
+        // Add school name from join
+        $selectFields[] = 'COALESCE(sc.name, "") AS school_name';
+        
+        $builder->select(implode(', ', $selectFields));
+        $builder->join('school sc', 's.school_id = sc.school_id', 'left');
 
         // Filter by school if the column exists and the caller provided a value
         if (in_array('school_id', $fields, true) && !empty($params['school_id'])) {
-            $builder->where('school_id', $params['school_id']);
+            $builder->where('s.school_id', $params['school_id']);
         }
 
         // Filter by status when explicitly provided, otherwise default to active subjects for backwards compatibility
         if (isset($params['status']) && $params['status'] !== '' && $params['status'] !== null) {
-            $builder->where('status', $params['status']);
+            $builder->where('s.status', $params['status']);
         } elseif (in_array('status', $fields, true)) {
-            $builder->where('status', 1);
+            $builder->where('s.status', 1);
         }
 
         if (!empty($params['search'])) {
             $searchTerm = trim((string) $params['search']);
             $builder->groupStart()
-                ->like('subject_name', $searchTerm)
-                ->orLike('description', $searchTerm)
+                ->like('s.subject_name', $searchTerm)
+                ->orLike('s.description', $searchTerm)
                 ->groupEnd();
         }
 
-        $builder->orderBy('subject_name', 'ASC');
+        $builder->orderBy('s.subject_name', 'ASC');
 
         return $builder->get()->getResultArray();
     }
@@ -112,9 +143,10 @@ class SubjectModel extends Model
      */
     public function getTableFields(): array
     {
-        if (empty($this->tableFields)) {
-            $this->tableFields = $this->db->getFieldNames($this->table);
-        }
+        // Always refresh to ensure we detect newly added columns
+        // Clear cache if it exists to force refresh
+        $this->tableFields = [];
+        $this->tableFields = $this->db->getFieldNames($this->table);
 
         return $this->tableFields;
     }

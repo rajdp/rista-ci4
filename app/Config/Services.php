@@ -42,4 +42,46 @@ class Services extends BaseService
 
         return new \App\Services\MessagingService();
     }
+
+    public static function slotgenerator(bool $getShared = true)
+    {
+        if ($getShared) {
+            return static::getSharedInstance('slotgenerator');
+        }
+
+        return new \App\Services\Appt\SlotGenerator(
+            new \App\Models\Appt\AvailabilityModel(),
+            new \App\Models\Appt\ExceptionModel(),
+            new \App\Models\Appt\BookingModel()
+        );
+    }
+
+    public static function apptpolicy(bool $getShared = true)
+    {
+        if ($getShared) {
+            return static::getSharedInstance('apptpolicy');
+        }
+
+        return new \App\Services\Appt\PolicyService();
+    }
+
+    public static function icsservice(bool $getShared = true)
+    {
+        if ($getShared) {
+            return static::getSharedInstance('icsservice');
+        }
+
+        return new \App\Services\Appt\IcsService();
+    }
+
+    public static function apptnotifications(bool $getShared = true)
+    {
+        if ($getShared) {
+            return static::getSharedInstance('apptnotifications');
+        }
+
+        return new \App\Services\Appt\NotificationService(
+            new \App\Models\Appt\NotificationModel()
+        );
+    }
 }

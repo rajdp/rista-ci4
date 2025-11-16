@@ -55,6 +55,7 @@ class SelfRegistration extends BaseController
                 'contact_phone' => $school['portal_contact_phone'] ?? '',
                 'support_email' => $school['support_email'] ?? '',
                 'support_phone' => $school['support_phone'] ?? '',
+                'institution_type' => isset($school['institution_type']) ? (int) $school['institution_type'] : null,
                 'address' => [
                     'line1' => $school['address1'] ?? '',
                     'line2' => $school['address2'] ?? '',
@@ -194,7 +195,8 @@ class SelfRegistration extends BaseController
         $courses = $payload['courses'] ?? [];
         $documents = $payload['documents'] ?? [];
 
-        $validationErrors = $this->validateSubmission($student, $payment, $guardian);
+        $institutionType = isset($school['institution_type']) ? (int) $school['institution_type'] : null;
+        $validationErrors = $this->validateSubmission($student, $payment, $guardian, $institutionType);
         if (!empty($validationErrors)) {
             return $this->errorResponse(implode(', ', $validationErrors));
         }
@@ -288,7 +290,7 @@ class SelfRegistration extends BaseController
     /**
      * Validate core requirements for a submission.
      */
-    private function validateSubmission(array $student, array $payment, array $guardian): array
+    private function validateSubmission(array $student, array $payment, array $guardian, ?int $institutionType = null): array
     {
         $errors = [];
 
@@ -305,8 +307,11 @@ class SelfRegistration extends BaseController
             $errors[] = 'Mobile number is required';
         }
 
+        // Skip guardian validation for Adult coaching centers (institution_type = 6)
+        $requiresGuardian = ($institutionType !== 6);
+        
         $isMinor = !empty($student['is_minor']);
-        if ($isMinor) {
+        if ($isMinor && $requiresGuardian) {
             $primaryGuardian = $guardian['primary'] ?? [];
             if (empty($primaryGuardian['name'])) {
                 $errors[] = 'Primary guardian name is required for minors';

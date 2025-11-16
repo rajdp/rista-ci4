@@ -1,0 +1,121 @@
+DEBUG - 2025-11-16 00:50:47 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-16 00:50:47 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-16 00:50:47 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-16 00:50:47 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 153.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:47 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 154.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:47 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 155.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:47 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 156.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('common/settingList', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:47 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:47 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-16 00:50:48 --> AuthFilter: Route = api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+DEBUG - 2025-11-16 00:50:48 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-16 00:50:48 --> AuthFilter: Token validated successfully for route: api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+WARNING - 2025-11-16 00:50:48 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 153.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('api/dashboard', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:48 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 154.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('api/dashboard', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:48 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 155.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('api/dashboard', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:48 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 156.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('api/dashboard', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-16 00:50:52 --> AuthFilter: Route = api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+DEBUG - 2025-11-16 00:50:52 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-16 00:50:52 --> AuthFilter: Token validated successfully for route: api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+WARNING - 2025-11-16 00:50:52 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user is deprecated in APPPATH/Filters/AuthFilter.php on line 153.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('api/dashboard', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:52 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$user_id is deprecated in APPPATH/Filters/AuthFilter.php on line 154.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('api/dashboard', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:52 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$school_id is deprecated in APPPATH/Filters/AuthFilter.php on line 155.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('api/dashboard', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-16 00:50:52 --> [DEPRECATED] Creation of dynamic property CodeIgniter\HTTP\IncomingRequest::$is_admin is deprecated in APPPATH/Filters/AuthFilter.php on line 156.
+ 1 SYSTEMPATH/Filters/Filters.php(241): App\Filters\AuthFilter->before(Object(CodeIgniter\HTTP\IncomingRequest), null)
+ 2 SYSTEMPATH/Filters/Filters.php(221): CodeIgniter\Filters\Filters->runBefore([...])
+ 3 SYSTEMPATH/CodeIgniter.php(479): CodeIgniter\Filters\Filters->run('api/dashboard', 'before')
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))

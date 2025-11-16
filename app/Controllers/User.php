@@ -859,4 +859,32 @@ class User extends ResourceController
             ], 500);
         }
     }
+
+    /**
+     * List users matching provided filters.
+     */
+    public function list(): ResponseInterface
+    {
+        try {
+            $payload = $this->request->getJSON(true) ?? [];
+
+            if (empty($payload)) {
+                $payload = $this->request->getPost() ?? [];
+            }
+
+            $users = $this->model->userList($payload ?? []);
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $users,
+                'ErrorObject' => ''
+            ]);
+        } catch (\Throwable $e) {
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => [],
+                'ErrorObject' => $e->getMessage()
+            ], ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

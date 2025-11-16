@@ -59,11 +59,13 @@ class SelfRegistrationPromotionService
         try {
             [$studentUserId, $studentSummary] = $this->promoteStudent($registration, $actorId, $now);
             $guardianSummary = $this->promoteGuardians($registration, $studentUserId, $actorId, $now);
+            $enrolledClasses = $this->enrollApprovedCourses($payload['courses'] ?? [], $studentUserId, $actorId, $now);
 
             $conversionPayload = [
                 'student' => $studentSummary,
                 'guardians' => $guardianSummary,
                 'courses' => $payload['courses'],
+                'enrolled_classes' => $enrolledClasses,
                 'documents' => array_map(static function ($doc) {
                     return [
                         'id' => $doc['id'],
@@ -98,6 +100,7 @@ class SelfRegistrationPromotionService
                 'student_generated_password' => $studentSummary['generated_password'] ?? null,
                 'primary_guardian_id' => $guardianSummary['primary']['id'] ?? null,
                 'secondary_guardian_id' => $guardianSummary['secondary']['id'] ?? null,
+                'enrolled_classes' => $enrolledClasses,
             ];
         } catch (\Throwable $e) {
             $this->db->transRollback();
@@ -185,6 +188,142 @@ class SelfRegistrationPromotionService
         }
 
         return $summary;
+    }
+
+    /**
+     * Enroll approved courses into the student's active classes.
+     *
+     * @param array<int,array<string,mixed>> $courses
+     * @return array<int,int> List of class IDs the student was enrolled into.
+     */
+    private function enrollApprovedCourses(array $courses, int $studentUserId, int $actorId, string $now): array
+    {
+        if (empty($courses)) {
+            return [];
+        }
+
+        $enrolled = [];
+        foreach ($courses as $course) {
+            $status = strtolower((string) ($course['decision_status'] ?? 'pending'));
+            if ($status !== 'approved') {
+                continue;
+            }
+
+            $classId = $this->resolveClassIdForApprovedCourse($course);
+            if (!$classId) {
+                log_message(
+                    'warning',
+                    sprintf(
+                        '[SelfRegistration] Unable to resolve class_id for course decision: %s',
+                        json_encode($course)
+                    )
+                );
+                continue;
+            }
+
+            if ($this->ensureStudentClassEnrollment($studentUserId, $classId, $actorId, $now)) {
+                $enrolled[] = $classId;
+            }
+        }
+
+        return array_values(array_unique($enrolled));
+    }
+
+    private function resolveClassIdForApprovedCourse(array $course): ?int
+    {
+        $candidates = [
+            $course['class_id'] ?? null,
+            $course['approved_class_id'] ?? null,
+            $course['schedule_class_id'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate !== null && $candidate !== '') {
+                return (int) $candidate;
+            }
+        }
+
+        if (!empty($course['approved_schedule_id'])) {
+            $schedule = $this->db->table('class_schedule')
+                ->select('class_id')
+                ->where('id', (int) $course['approved_schedule_id'])
+                ->get()
+                ->getRowArray();
+
+            if (!empty($schedule['class_id'])) {
+                return (int) $schedule['class_id'];
+            }
+        }
+
+        if (!empty($course['course_id'])) {
+            $class = $this->db->table('class')
+                ->select('class_id')
+                ->where('course_id', (int) $course['course_id'])
+                ->orderBy('start_date', 'ASC')
+                ->limit(1)
+                ->get()
+                ->getRowArray();
+
+            if (!empty($class['class_id'])) {
+                return (int) $class['class_id'];
+            }
+        }
+
+        return null;
+    }
+
+    private function ensureStudentClassEnrollment(int $studentUserId, int $classId, int $actorId, string $now): bool
+    {
+        $class = $this->db->table('class')
+            ->select('class_id, class_name, end_date, status')
+            ->where('class_id', $classId)
+            ->get()
+            ->getRowArray();
+
+        if (empty($class)) {
+            log_message('warning', sprintf('[SelfRegistration] Class %d not found while enrolling student %d', $classId, $studentUserId));
+            return false;
+        }
+
+        $validity = (!empty($class['end_date']) && $class['end_date'] !== '0000-00-00')
+            ? $class['end_date']
+            : '2099-12-31';
+
+        $existing = $this->db->table('student_class')
+            ->where('student_id', $studentUserId)
+            ->where('class_id', $classId)
+            ->get()
+            ->getRowArray();
+
+        if ($existing) {
+            $needsUpdate = ($existing['status'] ?? '0') !== '1';
+            if ($needsUpdate) {
+                $this->db->table('student_class')
+                    ->where('student_id', $studentUserId)
+                    ->where('class_id', $classId)
+                    ->update([
+                        'status' => '1',
+                        'joining_date' => $existing['joining_date'] ?? date('Y-m-d'),
+                        'validity' => $validity,
+                        'modified_by' => $actorId,
+                        'modified_date' => $now,
+                    ]);
+            }
+            return true;
+        }
+
+        $this->db->table('student_class')->insert([
+            'class_id' => $classId,
+            'student_id' => $studentUserId,
+            'status' => '1',
+            'joining_date' => date('Y-m-d'),
+            'validity' => $validity,
+            'class_type' => 1,
+            'created_by' => $actorId,
+            'created_date' => $now,
+        ]);
+
+        return true;
     }
 
     private function findStudent(array $registration): ?array

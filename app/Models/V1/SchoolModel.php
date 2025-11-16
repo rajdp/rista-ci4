@@ -190,14 +190,20 @@ class SchoolModel extends BaseModel
     {
         $builder = $this->getBuilder('holiday_calendar');
         $builder->select('id, school_id, from_date, to_date, festival_name');
-        $builder->where('school_id', $params['school_id']);
         
-        if (isset($params['from_date']) && isset($params['to_date'])) {
-            $builder->where('from_date >=', $params['from_date']);
-            $builder->where('to_date <=', $params['to_date']);
+        if (isset($params['school_id']) && $params['school_id'] > 0) {
+            $builder->where('school_id', $params['school_id']);
         }
         
-        $builder->orderBy('from_date');
+        // Filter by date range if provided - check for overlapping dates
+        if (!empty($params['from_date']) && !empty($params['to_date'])) {
+            // Find holidays that overlap with the requested date range
+            // A holiday overlaps if: holiday.from_date <= request.to_date AND holiday.to_date >= request.from_date
+            $builder->where('from_date <=', $params['to_date']);
+            $builder->where('to_date >=', $params['from_date']);
+        }
+        
+        $builder->orderBy('from_date', 'ASC');
         return $this->getResult($builder);
     }
 

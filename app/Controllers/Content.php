@@ -519,7 +519,7 @@ class Content extends ResourceController
                     'editor_type' => $params['editor_type'] ?? '',
                     'file_path' => isset($params['file_path']) && $params['file_path'] != '' ? json_encode($params['file_path']) : '',
                     'answerkey_path' => isset($params['answerkey_path']) && is_array($params['answerkey_path']) && count($params['answerkey_path']) > 0 ? json_encode($params['answerkey_path']) : '',
-                    'teacher_version' => isset($params['teacher_version']) && $params['teacher_version'] != '' ? json_encode($params['teacher_version']) : '',
+                    'teacher_version' => isset($params['teacher_version']) && is_array($params['teacher_version']) && count($params['teacher_version']) > 0 ? json_encode($params['teacher_version']) : '',
                     'allow_answer_key' => isset($params['allow_answer_key']) ? $params['allow_answer_key'] : 0,
                     'links' => isset($params['links']) && count($params['links']) > 0 ? json_encode($params['links']) : '',
                     'file_text' => $params['file_text'] ?? '',
@@ -1655,6 +1655,13 @@ class Content extends ResourceController
             if (isset($params['file_path'])) $updateData['file_path'] = json_encode($params['file_path']);
             if (isset($params['file_text'])) $updateData['file_text'] = $params['file_text'];
             if (isset($params['links'])) $updateData['links'] = json_encode($params['links']);
+            if (isset($params['answerkey_path'])) {
+                $updateData['answerkey_path'] = is_array($params['answerkey_path']) && count($params['answerkey_path']) > 0 ? json_encode($params['answerkey_path']) : '';
+            }
+            if (isset($params['teacher_version'])) {
+                $updateData['teacher_version'] = is_array($params['teacher_version']) && count($params['teacher_version']) > 0 ? json_encode($params['teacher_version']) : '';
+            }
+            if (isset($params['allow_answer_key'])) $updateData['allow_answer_key'] = $params['allow_answer_key'];
             if (isset($params['access'])) $updateData['access'] = $params['access'];
             if (isset($params['status'])) $updateData['status'] = $params['status'];
             if (isset($params['download'])) $updateData['download'] = $params['download'];

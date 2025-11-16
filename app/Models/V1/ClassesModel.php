@@ -87,7 +87,7 @@ class ClassesModel extends BaseModel
             'meeting_id' => $payload['meeting_id'] ?? '',
             'passcode' => $payload['passcode'] ?? '',
             'telephone_number' => $payload['telephone_number'] ?? '',
-            'course_id' => $this->normalizeScalar($payload['course_id'] ?? null),
+            'course_id' => $this->normalizeCourseId($payload['course_id'] ?? null),
             'registration_start_date' => $this->normalizeDate($payload['registration_start_date'] ?? null),
             'registration_end_date' => $this->normalizeDate($payload['registration_end_date'] ?? null),
             'payment_type' => $payload['payment_type'] ?? '',
@@ -103,15 +103,44 @@ class ClassesModel extends BaseModel
             'created_date' => date('Y-m-d H:i:s'),
         ];
 
-        $classFieldNames = array_flip($this->getTableFields('class'));
+        $classFieldNames = $this->getTableFields('class');
+        
+        // Fallback to allowedFields if getTableFields fails or returns empty
+        if (empty($classFieldNames)) {
+            $classFieldNames = $this->allowedFields;
+            log_message('warning', 'getTableFields returned empty, using allowedFields as fallback');
+        }
+        
+        $classFieldNames = array_flip($classFieldNames);
         $insertData = array_intersect_key($classData, $classFieldNames);
+        
+        // Handle course_id specifically - if it's null/empty and column doesn't allow NULL,
+        // we need to set a default value (0) to avoid "cannot be null" error
+        // normalizeCourseId already converts empty/0 to null, so we set it to 0 here if null
+        if (isset($insertData['course_id']) && $insertData['course_id'] === null) {
+            // Check if course_id field exists in table
+            if (isset($classFieldNames['course_id'])) {
+                // Set to 0 instead of null to avoid "cannot be null" error
+                // 0 can represent "no course associated"
+                $insertData['course_id'] = 0;
+            }
+        }
+        
+        // Filter out null values for other fields to avoid "cannot be null" errors
+        $insertData = array_filter($insertData, function($value) {
+            return $value !== null;
+        });
 
         if (empty($insertData)) {
-            throw new \RuntimeException('No valid class data to insert.');
+            $availableFields = implode(', ', array_keys($classFieldNames));
+            $attemptedFields = implode(', ', array_keys($classData));
+            throw new \RuntimeException('No valid class data to insert. Available fields: ' . $availableFields . '. Attempted fields: ' . $attemptedFields);
         }
 
-        if (!$this->db->table('class')->insert($insertData)) {
-            return false;
+        $builder = $this->db->table('class');
+        if (!$builder->insert($insertData)) {
+            $error = $this->db->error();
+            throw new \RuntimeException('Database insert failed: ' . ($error['message'] ?? 'Unknown error'));
         }
 
         $classId = (int)$this->db->insertID();
@@ -175,7 +204,7 @@ class ClassesModel extends BaseModel
             'meeting_id' => $payload['meeting_id'] ?? '',
             'passcode' => $payload['passcode'] ?? '',
             'telephone_number' => $payload['telephone_number'] ?? '',
-            'course_id' => $this->normalizeScalar($payload['course_id'] ?? null),
+            'course_id' => $this->normalizeCourseId($payload['course_id'] ?? null),
             'registration_start_date' => $this->normalizeDate($payload['registration_start_date'] ?? null),
             'registration_end_date' => $this->normalizeDate($payload['registration_end_date'] ?? null),
             'payment_type' => $payload['payment_type'] ?? '',
@@ -509,6 +538,35 @@ class ClassesModel extends BaseModel
         return trim((string)$value);
     }
 
+    private function normalizeCourseId($value)
+    {
+        // Handle course_id specifically - preserve valid numeric IDs
+        if ($value === null || $value === '') {
+            return null;
+        }
+        
+        // Convert to integer if it's numeric
+        if (is_numeric($value)) {
+            $intValue = (int)$value;
+            // Return null only if it's 0, otherwise return the integer value
+            return $intValue === 0 ? null : $intValue;
+        }
+        
+        // If it's a string that can be converted to a number, do so
+        $trimmed = trim((string)$value);
+        if ($trimmed === '' || $trimmed === '0') {
+            return null;
+        }
+        
+        if (is_numeric($trimmed)) {
+            $intValue = (int)$trimmed;
+            return $intValue === 0 ? null : $intValue;
+        }
+        
+        // If it's not numeric, return null
+        return null;
+    }
+
     private function normalizeNumber($value): ?float
     {
         if ($value === null || $value === '') {
@@ -609,8 +667,13 @@ class ClassesModel extends BaseModel
     private function getTableFields(string $table): array
     {
         try {
-            return $this->db->getFieldNames($table);
+            $fields = $this->db->getFieldNames($table);
+            if (empty($fields)) {
+                log_message('error', "getTableFields: No fields found for table '{$table}'");
+            }
+            return $fields;
         } catch (\Throwable $e) {
+            log_message('error', "getTableFields error for table '{$table}': " . $e->getMessage());
             return [];
         }
     }

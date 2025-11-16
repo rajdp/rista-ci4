@@ -67,7 +67,8 @@ class Classes extends BaseController
             $builder->select('c.class_id, c.class_name, c.subject, c.grade, c.start_date, c.end_date,
                              c.status, c.class_status, c.class_type, c.tags, c.class_code, c.batch_id,
                              c.meeting_link, c.meeting_id, c.passcode, c.announcement_type,
-                             s.subject_name, g.grade_name,
+                             (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name,
+                             (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name,
                              (SELECT COUNT(*) FROM student_class sc 
                               WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students,
                              (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
@@ -76,12 +77,15 @@ class Classes extends BaseController
                               FROM class_schedule cs2
                               LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
                               WHERE cs2.class_id = c.class_id) as teacher_name');
-            $builder->join('subject s', 'c.subject = s.subject_id', 'left');
-            $builder->join('grade g', 'c.grade = g.grade_id', 'left');
             
             // Apply filters
             if (isset($params['school_id']) && !empty($params['school_id'])) {
                 $builder->where('c.school_id', $params['school_id']);
+            }
+            
+            // Always filter by active status unless explicitly overridden
+            if (!isset($params['include_inactive']) || $params['include_inactive'] != '1') {
+                $builder->where('c.status', '1');
             }
             
             // Unified search: search for class name OR student name
@@ -154,7 +158,7 @@ class Classes extends BaseController
             
             if (isset($params['type']) && !empty($params['type'])) {
                 // Type filtering logic from CI3
-                $builder->where('c.status', '1');
+                // Note: status filter already applied above, so we don't need to apply it again
                 
                 // Type 2: Upcoming classes
                 if ($params['type'] == 2) {
@@ -175,6 +179,10 @@ class Classes extends BaseController
             $builder->distinct();
             $builder->orderBy('c.class_id', 'DESC');
             
+            // Log the query for debugging
+            log_message('debug', 'Class list query: ' . $builder->getCompiledSelect(false));
+            log_message('debug', 'Class list params: ' . json_encode($params));
+            
             // Pagination
             if (isset($params['page_no']) && isset($params['records_per_page'])) {
                 $offset = ($params['page_no'] - 1) * $params['records_per_page'];
@@ -182,6 +190,12 @@ class Classes extends BaseController
             }
 
             $classes = $builder->get()->getResultArray();
+            
+            // Log results for debugging
+            log_message('debug', 'Class list results count: ' . count($classes));
+            if (!empty($classes)) {
+                log_message('debug', 'First class: ' . json_encode($classes[0]));
+            }
 
             // Get all class IDs
             $classIds = array_column($classes, 'class_id');
@@ -316,11 +330,12 @@ class Classes extends BaseController
                 'ErrorObject' => $e->getMessage()
             ], ResponseInterface::HTTP_BAD_REQUEST);
         } catch (\Throwable $e) {
-            log_message('error', 'Class create error: ' . $e->getMessage());
+            log_message('error', 'Class create error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            log_message('error', 'Class create error trace: ' . $e->getTraceAsString());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,
-                'ErrorObject' => 'Failed to create class'
+                'ErrorObject' => 'Failed to create class: ' . $e->getMessage()
             ], ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

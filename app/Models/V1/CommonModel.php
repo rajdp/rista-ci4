@@ -304,6 +304,10 @@ class CommonModel extends BaseModel
      */
     public function verifyAccessToken(int $userId, string $accessToken): array
     {
+        // Ensure authorization helper is loaded
+        if (!class_exists('AUTHORIZATION')) {
+            helper('authorization');
+        }
         $decoded = \AUTHORIZATION::validateToken($accessToken);
         if (! $decoded) {
             return [
@@ -665,9 +669,15 @@ class CommonModel extends BaseModel
 
     public function settingList($params)
     {
-        $builder = $this->getBuilder('admin_settings');
-        $builder->select('id, name, value');
+        $builder = $this->getBuilder('admin_settings_school');
+        $builder->select('id, name, description, value');
         $builder->where('status', 1);
+        
+        // Filter by school_id if provided
+        if (isset($params['school_id']) && !empty($params['school_id'])) {
+            $builder->where('school_id', $params['school_id']);
+        }
+        
         return $this->getResult($builder);
     }
 
@@ -740,15 +750,30 @@ class CommonModel extends BaseModel
 
     public function createLog($data, $url, $responseArray, $usage)
     {
-        $logData = [
-            'request_data' => json_encode($data),
-            'url' => $url,
-            'response_data' => json_encode($responseArray),
-            'usage' => $usage,
-            'created_date' => date('Y-m-d H:i:s')
-        ];
-        
-        return $this->insert('api_logs', $logData);
+        try {
+            // Check if api_logs table exists before trying to insert
+            if (!$this->db->tableExists('api_logs')) {
+                // Table doesn't exist, skip logging
+                return false;
+            }
+            
+            $logData = [
+                'request_data' => json_encode($data),
+                'url' => $url,
+                'response_data' => json_encode($responseArray),
+                'usage' => $usage,
+                'created_date' => date('Y-m-d H:i:s')
+            ];
+            
+            // Use builder directly to insert into api_logs table
+            $builder = $this->getBuilder('api_logs');
+            $builder->insert($logData);
+            return $this->db->insertID();
+        } catch (\Exception $e) {
+            // Log the error but don't fail the request
+            log_message('error', 'createLog failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
     public function insertLog($table, $logTable, $condition)
