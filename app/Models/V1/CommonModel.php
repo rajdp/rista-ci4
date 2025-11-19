@@ -536,7 +536,7 @@ class CommonModel extends BaseModel
 
     public function countryList()
     {
-        $builder = $this->getBuilder('countries');
+        $builder = $this->getBuilder('country');
         $builder->select('id, name');
         $builder->orderBy('name', 'ASC');
         return $this->getResult($builder);
@@ -544,10 +544,57 @@ class CommonModel extends BaseModel
 
     public function stateList($countryId)
     {
-        $builder = $this->getBuilder('states');
+        $builder = $this->getBuilder('state');
         $builder->select('id, name');
         $builder->where('country_id', $countryId);
         $builder->orderBy('name', 'ASC');
+        return $this->getResult($builder);
+    }
+
+    /**
+     * Helper used by the new Common controller.
+     */
+    public function getCountries($params = [])
+    {
+        return $this->countryList();
+    }
+
+    /**
+     * Helper used by the new Common controller.
+     */
+    public function getStates($params = [])
+    {
+        $countryId = $params['country_id'] ?? $params['countryId'] ?? null;
+        if (empty($countryId)) {
+            return [];
+        }
+        return $this->stateList($countryId);
+    }
+
+    /**
+     * Helper used by the new Common controller.
+     */
+    public function getCities($params = [])
+    {
+        if (! $this->db->tableExists('cities')) {
+            return [];
+        }
+
+        $builder = $this->getBuilder('cities');
+        $builder->select('cities.id, cities.name');
+
+        if (! empty($params['state_id'])) {
+            $builder->where('cities.state_id', $params['state_id']);
+        } elseif (! empty($params['stateId'])) {
+            $builder->where('cities.state_id', $params['stateId']);
+        }
+
+        if (! empty($params['country_id'])) {
+            $builder->join('states', 'states.id = cities.state_id', 'inner');
+            $builder->where('states.country_id', $params['country_id']);
+        }
+
+        $builder->orderBy('cities.name', 'ASC');
         return $this->getResult($builder);
     }
 

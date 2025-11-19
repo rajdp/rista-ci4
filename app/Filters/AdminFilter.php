@@ -6,6 +6,7 @@ use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Libraries\Authorization;
+use App\Services\AuthContext;
 
 class AdminFilter implements FilterInterface
 {
@@ -27,12 +28,16 @@ class AdminFilter implements FilterInterface
     public function before(RequestInterface $request, $arguments = null)
     {
         // Check if user is authenticated (AuthFilter should have run first)
-        if (!isset($request->user)) {
+        /** @var AuthContext $authContext */
+        $authContext = service('authcontext');
+        $userPayload = $authContext->getUserPayload();
+
+        if (!$userPayload) {
             return $this->unauthorizedResponse('Authentication required');
         }
 
         // Check if user has admin role
-        if (!Authorization::isAdmin($request->user)) {
+        if (!Authorization::isAdmin($userPayload)) {
             return $this->forbiddenResponse('Admin access required');
         }
 

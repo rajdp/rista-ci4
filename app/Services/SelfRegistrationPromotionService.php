@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\SelfRegistrationModel;
+use App\Services\CourseEnrollmentService;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use RuntimeException;
@@ -11,14 +12,17 @@ class SelfRegistrationPromotionService
 {
     private SelfRegistrationModel $registrations;
     private BaseConnection $db;
+    private CourseEnrollmentService $courseEnrollmentService;
     private array $tableColumnCache = [];
 
     public function __construct(
         ?SelfRegistrationModel $registrations = null,
-        ?BaseConnection $db = null
+        ?BaseConnection $db = null,
+        ?CourseEnrollmentService $courseEnrollmentService = null
     ) {
         $this->registrations = $registrations ?? new SelfRegistrationModel();
         $this->db = $db ?? Database::connect();
+        $this->courseEnrollmentService = $courseEnrollmentService ?? new CourseEnrollmentService();
     }
 
     /**
@@ -191,10 +195,10 @@ class SelfRegistrationPromotionService
     }
 
     /**
-     * Enroll approved courses into the student's active classes.
+     * Enroll approved courses into the student's active classes with automatic fee assignment.
      *
      * @param array<int,array<string,mixed>> $courses
-     * @return array<int,int> List of class IDs the student was enrolled into.
+     * @return array<int,mixed> List of enrollment results with course and fee details.
      */
     private function enrollApprovedCourses(array $courses, int $studentUserId, int $actorId, string $now): array
     {
@@ -203,30 +207,143 @@ class SelfRegistrationPromotionService
         }
 
         $enrolled = [];
+        $schoolId = null;
+
         foreach ($courses as $course) {
             $status = strtolower((string) ($course['decision_status'] ?? 'pending'));
             if ($status !== 'approved') {
                 continue;
             }
 
-            $classId = $this->resolveClassIdForApprovedCourse($course);
-            if (!$classId) {
-                log_message(
-                    'warning',
-                    sprintf(
-                        '[SelfRegistration] Unable to resolve class_id for course decision: %s',
-                        json_encode($course)
-                    )
-                );
+            $courseId = (int) ($course['course_id'] ?? 0);
+            if (!$courseId) {
+                log_message('warning', '[SelfRegistration] Missing course_id in approved course');
                 continue;
             }
 
-            if ($this->ensureStudentClassEnrollment($studentUserId, $classId, $actorId, $now)) {
-                $enrolled[] = $classId;
+            // Get school_id from course or student
+            if (!$schoolId) {
+                $schoolId = $this->getStudentSchoolId($studentUserId);
+            }
+
+            if (!$schoolId) {
+                log_message('error', sprintf('[SelfRegistration] Unable to determine school_id for student %d', $studentUserId));
+                continue;
+            }
+
+            // Prepare enrollment options
+            $enrollmentOptions = [
+                'registration_id' => $course['registration_id'] ?? null,
+                'enrollment_date' => date('Y-m-d'),
+                'added_by' => $actorId,
+                'notes' => $course['decision_notes'] ?? null,
+            ];
+
+            // Use custom fee if admin set one during approval
+            if (isset($course['approved_fee_amount']) && $course['approved_fee_amount'] > 0) {
+                $enrollmentOptions['fee_amount'] = (float) $course['approved_fee_amount'];
+            }
+
+            // Get approved class IDs if specified
+            $classIds = $this->resolveClassIdsForApprovedCourse($course);
+            if (!empty($classIds)) {
+                $enrollmentOptions['class_ids'] = $classIds;
+            }
+
+            try {
+                // Use CourseEnrollmentService to enroll with automatic fee calculation and class assignment
+                $result = $this->courseEnrollmentService->enrollStudentInCourse(
+                    $studentUserId,
+                    $courseId,
+                    $schoolId,
+                    $enrollmentOptions
+                );
+
+                if ($result['success']) {
+                    $enrolled[] = [
+                        'course_id' => $courseId,
+                        'course_name' => $course['course_name'] ?? null,
+                        'student_course_id' => $result['student_course_id'],
+                        'fee_amount' => $result['fee_amount'],
+                        'student_fee_plan_id' => $result['student_fee_plan_id'],
+                        'class_enrollments' => $result['class_enrollments'] ?? [],
+                    ];
+
+                    log_message('info', sprintf(
+                        '[SelfRegistration] Enrolled student %d in course %d with fee $%s',
+                        $studentUserId,
+                        $courseId,
+                        number_format($result['fee_amount'] ?? 0, 2)
+                    ));
+                } else {
+                    log_message('error', sprintf(
+                        '[SelfRegistration] Failed to enroll student %d in course %d: %s',
+                        $studentUserId,
+                        $courseId,
+                        $result['message'] ?? 'Unknown error'
+                    ));
+                }
+            } catch (\Exception $e) {
+                log_message('error', sprintf(
+                    '[SelfRegistration] Exception enrolling student %d in course %d: %s',
+                    $studentUserId,
+                    $courseId,
+                    $e->getMessage()
+                ));
             }
         }
 
-        return array_values(array_unique($enrolled));
+        return $enrolled;
+    }
+
+    /**
+     * Get student's school ID
+     */
+    private function getStudentSchoolId(int $studentUserId): ?int
+    {
+        $student = $this->db->table('user')
+            ->select('school_id')
+            ->where('user_id', $studentUserId)
+            ->get()
+            ->getRowArray();
+
+        return $student['school_id'] ?? null;
+    }
+
+    /**
+     * Resolve class IDs for an approved course
+     */
+    private function resolveClassIdsForApprovedCourse(array $course): array
+    {
+        $classIds = [];
+
+        // Check for explicitly approved class
+        $candidates = [
+            $course['approved_class_id'] ?? null,
+            $course['class_id'] ?? null,
+            $course['schedule_class_id'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate !== null && $candidate !== '') {
+                $classIds[] = (int) $candidate;
+            }
+        }
+
+        // Check for class from approved schedule
+        if (!empty($course['approved_schedule_id'])) {
+            $schedule = $this->db->table('class_schedule')
+                ->select('class_id')
+                ->where('id', (int) $course['approved_schedule_id'])
+                ->get()
+                ->getRowArray();
+
+            if (!empty($schedule['class_id'])) {
+                $classIds[] = (int) $schedule['class_id'];
+            }
+        }
+
+        return array_values(array_unique($classIds));
     }
 
     private function resolveClassIdForApprovedCourse(array $course): ?int

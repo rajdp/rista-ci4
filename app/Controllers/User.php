@@ -887,4 +887,161 @@ class User extends ResourceController
             ], ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+     * Check student details for annotation purposes
+     * Returns student and teacher annotations along with PDF path
+     */
+    public function checkDetails(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validate required fields
+            if (empty($params['student_content_id']) || $params['student_content_id'] === '0' || $params['student_content_id'] === 0) {
+                log_message('debug', '⚠️ checkDetails: student_content_id is missing or invalid. Received: ' . json_encode($params['student_content_id'] ?? 'NOT SET'));
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student content ID is required'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+            $studentContentId = (int)$params['student_content_id'];
+
+            // Get student content with annotations
+            $query = "SELECT 
+                        sc.annotation AS student_annotation, 
+                        sc.teacher_annotation,
+                        sc.answer_sheet_annotation,
+                        c.file_path,
+                        c.annotation AS content_annotation,
+                        c.questionAnnotation
+                      FROM student_content sc
+                      LEFT JOIN content c ON c.content_id = sc.content_id
+                      WHERE sc.id = {$studentContentId}
+                      LIMIT 1";
+
+            $result = $db->query($query)->getRowArray();
+
+            if (empty($result)) {
+                // Return empty annotations instead of 404 to allow frontend to handle gracefully
+                log_message('debug', '⚠️ checkDetails: Student content not found for ID: ' . $studentContentId);
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => [
+                        'pdfpath' => '',
+                        'student_annotation' => [],
+                        'teacher_annotation' => []
+                    ],
+                    'ErrorObject' => ''
+                ]);
+            }
+
+            // Helper function to decode annotation (similar to TeacherModel)
+            $decodeAnnotation = function($data) {
+                if (empty($data) || $data === '[]') {
+                    return '[]';
+                }
+                try {
+                    // Decode 4 times as per CI3 logic (stored as base64(base64(base64(base64(JSON)))))
+                    $decoded = base64_decode($data);
+                    $decoded = base64_decode($decoded);
+                    $decoded = base64_decode($decoded);
+                    $decoded = base64_decode($decoded);
+                    return $decoded ?: '[]';
+                } catch (\Exception $e) {
+                    log_message('error', 'Annotation decode error: ' . $e->getMessage());
+                    return '[]';
+                }
+            };
+
+            // Process annotations
+            $studentAnnotation = $result['student_annotation'] ?? '';
+            if (!empty($studentAnnotation) && $studentAnnotation !== '[]') {
+                // Check if it's a file path (starts with "uploads/")
+                if (strpos($studentAnnotation, 'uploads/') === 0) {
+                    // It's a file path - read the file
+                    $filePath = FCPATH . $studentAnnotation;
+                    log_message('debug', '🟢 checkDetails: Reading annotation from file: ' . $filePath);
+                    
+                    if (file_exists($filePath)) {
+                        $fileContent = file_get_contents($filePath);
+                        if ($fileContent !== false) {
+                            $studentAnnotation = json_decode($fileContent, true);
+                            if (!is_array($studentAnnotation)) {
+                                log_message('warning', '⚠️ checkDetails: Failed to decode annotation JSON from file');
+                                $studentAnnotation = [];
+                            } else {
+                                log_message('debug', '🟢 checkDetails: Successfully loaded ' . count($studentAnnotation) . ' annotations from file');
+                            }
+                        } else {
+                            log_message('error', '❌ checkDetails: Failed to read annotation file: ' . $filePath);
+                            $studentAnnotation = [];
+                        }
+                    } else {
+                        log_message('warning', '⚠️ checkDetails: Annotation file not found: ' . $filePath);
+                        $studentAnnotation = [];
+                    }
+                } else {
+                    // It's base64-encoded data - decode it
+                    $decoded = $decodeAnnotation($studentAnnotation);
+                    $studentAnnotation = json_decode($decoded, true);
+                    if (!is_array($studentAnnotation)) {
+                        $studentAnnotation = [];
+                    }
+                }
+            } else {
+                $studentAnnotation = [];
+            }
+
+            $teacherAnnotation = $result['teacher_annotation'] ?? '';
+            if (!empty($teacherAnnotation) && $teacherAnnotation !== '[]') {
+                $decoded = $decodeAnnotation($teacherAnnotation);
+                $teacherAnnotation = json_decode($decoded, true);
+                if (!is_array($teacherAnnotation)) {
+                    $teacherAnnotation = [];
+                }
+            } else {
+                $teacherAnnotation = [];
+            }
+
+            // Process file_path (PDF path)
+            $pdfPath = $result['file_path'] ?? '';
+            if (!empty($pdfPath) && $pdfPath !== '[]') {
+                $filePath = json_decode($pdfPath, true);
+                if (!is_array($filePath)) {
+                    $pdfPath = '';
+                } else {
+                    // Keep as JSON string for frontend to decode
+                    $pdfPath = $pdfPath;
+                }
+            } else {
+                $pdfPath = '';
+            }
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => [
+                    'pdfpath' => $pdfPath,
+                    'student_annotation' => $studentAnnotation,
+                    'teacher_annotation' => $teacherAnnotation
+                ],
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'User checkDetails error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

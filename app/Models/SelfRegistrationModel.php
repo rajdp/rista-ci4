@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use CodeIgniter\Model;
+use App\Models\CrmNoteModel;
 
 /**
  * Data access for the public self-registration portal.
@@ -15,6 +16,16 @@ class SelfRegistrationModel extends Model
     protected $useSoftDeletes = false;
     protected $protectFields = false; // dynamic inserts handled manually
     protected $useTimestamps = false;
+    protected ?CrmNoteModel $crmNotes = null;
+
+    protected function notes(): CrmNoteModel
+    {
+        if ($this->crmNotes === null) {
+            $this->crmNotes = new CrmNoteModel();
+        }
+
+        return $this->crmNotes;
+    }
 
     /**
      * Fetch school information and portal settings using a school key, portal domain, or ID.
@@ -166,7 +177,7 @@ class SelfRegistrationModel extends Model
     }
 
     /**
-     * Look up an existing student profile by email for a specific school.
+     * Look up an existing student or lead profile by email for a specific school.
      */
     public function findExistingStudentProfile(string $email, int $schoolId): ?array
     {
@@ -175,6 +186,23 @@ class SelfRegistrationModel extends Model
             return null;
         }
 
+        $studentProfile = $this->findApprovedStudentProfile($email, $schoolId);
+        if ($studentProfile) {
+            $studentProfile['record_type'] = 'student';
+            return $studentProfile;
+        }
+
+        $leadProfile = $this->findLeadRegistrationProfile($email, $schoolId);
+        if ($leadProfile) {
+            $leadProfile['record_type'] = 'lead';
+            return $leadProfile;
+        }
+
+        return null;
+    }
+
+    private function findApprovedStudentProfile(string $email, int $schoolId): ?array
+    {
         $builder = $this->db->table('user u');
         $builder->select("
             u.user_id,
@@ -206,6 +234,7 @@ class SelfRegistrationModel extends Model
 
         $profile = [
             'student_id' => (int) $record['user_id'],
+            'registration_id' => null,
             'first_name' => $record['first_name'] ?? '',
             'last_name' => $record['last_name'] ?? '',
             'email' => strtolower($record['email_id'] ?? ''),
@@ -229,6 +258,90 @@ class SelfRegistrationModel extends Model
         }
 
         return $profile;
+    }
+
+    private function findLeadRegistrationProfile(string $email, int $schoolId): ?array
+    {
+        $builder = $this->db->table('student_self_registrations');
+        $builder->select('
+            id,
+            student_first_name,
+            student_last_name,
+            email,
+            mobile,
+            date_of_birth,
+            address_line1,
+            address_line2,
+            city,
+            state,
+            postal_code,
+            country,
+            guardian1_name,
+            guardian1_email,
+            guardian1_phone,
+            guardian2_name,
+            guardian2_email,
+            guardian2_phone,
+            status,
+            submitted_at,
+            schedule_preference
+        ');
+        $builder->where('school_id', $schoolId);
+        $builder->where('LOWER(email)', $email);
+        $builder->orderBy('submitted_at', 'DESC');
+        $builder->limit(1);
+
+        $record = $builder->get()->getRowArray();
+        if (!$record || empty($record['id'])) {
+            return null;
+        }
+
+        $guardians = [];
+        if (!empty($record['guardian1_name']) || !empty($record['guardian1_email']) || !empty($record['guardian1_phone'])) {
+            $guardians[] = [
+                'name' => $record['guardian1_name'] ?? null,
+                'email' => $record['guardian1_email'] ?? null,
+                'phone' => $record['guardian1_phone'] ?? null,
+                'type' => 'primary',
+            ];
+        }
+        if (!empty($record['guardian2_name']) || !empty($record['guardian2_email']) || !empty($record['guardian2_phone'])) {
+            $guardians[] = [
+                'name' => $record['guardian2_name'] ?? null,
+                'email' => $record['guardian2_email'] ?? null,
+                'phone' => $record['guardian2_phone'] ?? null,
+                'type' => 'secondary',
+            ];
+        }
+
+        $address = [
+            'line1' => $record['address_line1'] ?? null,
+            'line2' => $record['address_line2'] ?? null,
+            'city' => $record['city'] ?? null,
+            'state' => $record['state'] ?? null,
+            'postal_code' => $record['postal_code'] ?? null,
+            'country' => $record['country'] ?? null,
+        ];
+        if (!array_filter($address, static fn($value) => $value !== null && $value !== '')) {
+            $address = null;
+        }
+
+        return [
+            'student_id' => null,
+            'registration_id' => (int) $record['id'],
+            'first_name' => $record['student_first_name'] ?? '',
+            'last_name' => $record['student_last_name'] ?? '',
+            'email' => strtolower($record['email'] ?? ''),
+            'mobile' => $record['mobile'] ?? '',
+            'date_of_birth' => $record['date_of_birth'] ?? null,
+            'address' => $address,
+            'guardians' => $guardians,
+            'active_courses' => $this->getLeadCourseSelections((int) $record['id']),
+            'last_enrolled_at' => null,
+            'lead_status' => $record['status'] ?? null,
+            'submitted_at' => $record['submitted_at'] ?? null,
+            'schedule_preference' => $record['schedule_preference'] ?? null,
+        ];
     }
 
     /**
@@ -299,6 +412,34 @@ class SelfRegistrationModel extends Model
                 'course_id' => isset($row['class_id']) ? (int) $row['class_id'] : null,
                 'course_name' => $row['class_name'] ?? ($row['class_code'] ?? null),
                 'schedule_title' => null,
+            ];
+        }, $rows);
+    }
+
+    /**
+     * Fetch selected courses for a self-registration lead.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function getLeadCourseSelections(int $registrationId): array
+    {
+        $rows = $this->db->table('student_self_registration_courses')
+            ->select('course_id, course_name, schedule_title')
+            ->where('registration_id', $registrationId)
+            ->orderBy('created_at', 'DESC')
+            ->limit(5)
+            ->get()
+            ->getResultArray();
+
+        if (empty($rows)) {
+            return [];
+        }
+
+        return array_map(static function ($row) {
+            return [
+                'course_id' => isset($row['course_id']) ? (int) $row['course_id'] : null,
+                'course_name' => $row['course_name'] ?? null,
+                'schedule_title' => $row['schedule_title'] ?? null,
             ];
         }, $rows);
     }
@@ -563,17 +704,45 @@ class SelfRegistrationModel extends Model
 
     public function getRegistrationNotes(int $registrationId): array
     {
-        return $this->db->table('student_self_registration_notes')
-            ->where('registration_id', $registrationId)
-            ->orderBy('created_at', 'DESC')
-            ->get()
-            ->getResultArray();
+        return $this->getTimelineNotes([
+            'registration_id' => $registrationId,
+            'entity_type' => 'registration'
+        ]);
     }
 
     public function createRegistrationNote(array $data): int
     {
-        $this->db->table('student_self_registration_notes')->insert($data);
-        return (int) $this->db->insertID();
+        $metadata = $data['metadata'] ?? null;
+        if (is_array($metadata)) {
+            $metadata = json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+
+        return $this->notes()->createNote([
+            'entity_type' => 'registration',
+            'entity_id' => isset($data['registration_id']) ? (string) $data['registration_id'] : ($data['entity_id'] ?? ''),
+            'registration_id' => $data['registration_id'] ?? null,
+            'student_user_id' => $data['student_user_id'] ?? null,
+            'note_type' => $data['note_type'] ?? 'internal',
+            'interaction_type' => $data['interaction_type'] ?? 'workflow',
+            'channel' => $data['channel'] ?? 'internal',
+            'origin' => $data['origin'] ?? (($data['note_type'] ?? '') === 'history' ? 'automatic' : 'manual'),
+            'title' => $data['title'] ?? null,
+            'body' => $data['message'] ?? '',
+            'metadata' => $metadata,
+            'tags' => $data['tags'] ?? null,
+            'created_by' => $data['created_by'] ?? null,
+            'created_by_name' => $data['created_by_name'] ?? null,
+            'created_at' => $data['created_at'] ?? date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function attachRegistrationNotesToStudent(int $registrationId, int $studentUserId): void
+    {
+        if ($registrationId <= 0 || $studentUserId <= 0) {
+            return;
+        }
+
+        $this->notes()->linkRegistrationNotesToStudent($registrationId, $studentUserId);
     }
 
     public function updateRegistration(int $registrationId, array $data): bool
@@ -718,17 +887,107 @@ class SelfRegistrationModel extends Model
 
     public function logCommunication(array $data): int
     {
-        $this->db->table('student_self_registration_messages')->insert($data);
-        return (int) $this->db->insertID();
+        $metadata = $data['metadata'] ?? [];
+        if (is_string($metadata)) {
+            $decoded = json_decode($metadata, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $metadata = $decoded;
+            }
+        }
+
+        $metaPayload = is_array($metadata) ? $metadata : [];
+        $metaPayload = array_merge($metaPayload, [
+            'status' => $data['status'] ?? 'sent',
+            'error_message' => $data['error_message'] ?? null,
+            'recipient' => $data['recipient'] ?? null,
+            'subject' => $data['subject'] ?? null,
+        ]);
+
+        return $this->createRegistrationNote([
+            'registration_id' => $data['registration_id'] ?? null,
+            'note_type' => 'message',
+            'message' => $data['message'] ?? '',
+            'title' => $data['subject'] ?? null,
+            'channel' => $data['channel'] ?? 'email',
+            'interaction_type' => $data['channel'] ?? 'email',
+            'origin' => $data['origin'] ?? 'automatic',
+            'metadata' => $metaPayload,
+            'tags' => ['communication'],
+            'created_by' => $data['sent_by'] ?? null,
+            'created_by_name' => $data['created_by_name'] ?? null,
+            'created_at' => $data['sent_at'] ?? date('Y-m-d H:i:s'),
+        ]);
     }
 
     public function getRegistrationMessages(int $registrationId): array
     {
-        return $this->db->table('student_self_registration_messages')
-            ->where('registration_id', $registrationId)
-            ->orderBy('sent_at', 'DESC')
-            ->get()
-            ->getResultArray();
+        $notes = $this->getTimelineNotes([
+            'registration_id' => $registrationId,
+            'channels' => ['email', 'sms']
+        ]);
+
+        return array_map(static function (array $note): array {
+            $metadata = [];
+            if (!empty($note['metadata'])) {
+                $decoded = json_decode($note['metadata'], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $metadata = $decoded;
+                }
+            }
+
+            return [
+                'id' => (int) ($note['id'] ?? 0),
+                'registration_id' => (int) ($note['registration_id'] ?? 0),
+                'channel' => $note['channel'] ?? 'email',
+                'recipient' => $metadata['recipient'] ?? null,
+                'subject' => $note['title'] ?? ($metadata['subject'] ?? null),
+                'message' => $note['body'] ?? '',
+                'status' => $metadata['status'] ?? 'sent',
+                'error_message' => $metadata['error_message'] ?? null,
+                'metadata' => $note['metadata'] ?? null,
+                'sent_by' => $note['created_by'] ?? null,
+                'sent_at' => $note['created_at'] ?? null,
+            ];
+        }, $notes);
+    }
+
+    /**
+     * Fetch timeline notes using flexible filters.
+     *
+     * @param array<string,mixed> $filters
+     * @return array<int,array<string,mixed>>
+     */
+    public function getTimelineNotes(array $filters): array
+    {
+        $notes = $this->notes()->getNotes([
+            'registration_id' => $filters['registration_id'] ?? null,
+            'student_user_id' => $filters['student_user_id'] ?? null,
+            'contact_id' => $filters['contact_id'] ?? null,
+            'entity_type' => $filters['entity_type'] ?? null,
+            'entity_id' => $filters['entity_id'] ?? null,
+            'channels' => $filters['channels'] ?? null,
+        ]);
+
+        return array_map(static function (array $note): array {
+            return [
+                'id' => (int) ($note['id'] ?? 0),
+                'registration_id' => $note['registration_id'] ?? null,
+                'student_user_id' => $note['student_user_id'] ?? null,
+                'contact_id' => $note['contact_id'] ?? null,
+                'note_type' => $note['note_type'] ?? 'internal',
+                'interaction_type' => $note['interaction_type'] ?? 'workflow',
+                'channel' => $note['channel'] ?? 'internal',
+                'origin' => $note['origin'] ?? 'manual',
+                'title' => $note['title'] ?? null,
+                'body' => $note['body'] ?? '',
+                'message' => $note['body'] ?? '',
+                'created_by' => $note['created_by'] ?? null,
+                'created_by_name' => $note['created_by_name'] ?? null,
+                'created_at' => $note['created_at'] ?? null,
+                'metadata' => $note['metadata'] ?? null,
+                'tags' => $note['tags'] ?? null,
+            ];
+        }, $notes);
     }
 
     public function getCommunicationProvider(int $schoolId, string $channel): ?array

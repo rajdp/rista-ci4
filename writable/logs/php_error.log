@@ -396,3 +396,215 @@ Stack trace:
 [15-Nov-2025 06:13:03 UTC] PHP Fatal error:  Declaration of App\Controllers\Grade::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Grade.php on line 121
 [15-Nov-2025 06:13:29 UTC] PHP Fatal error:  Declaration of App\Controllers\Grade::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Grade.php on line 121
 [15-Nov-2025 06:13:29 UTC] PHP Fatal error:  Declaration of App\Controllers\Grade::edit(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::edit($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Grade.php on line 121
+[17-Nov-2025 04:55:55 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-17 04:55:55
+[17-Nov-2025 04:55:55 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1246","1262","1278","1362","1366","1092","1257"]}
+[17-Nov-2025 04:55:55 UTC] ✅ All validations passed
+[17-Nov-2025 04:55:55 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1246,1262,1278,1362,1366,1092,1257) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[17-Nov-2025 04:55:55 UTC] 📦 Query returned 0 rows: []
+[17-Nov-2025 04:55:55 UTC] ✅ Prepared response with 7 items: [{"class_id":"1246","newMessage":0},{"class_id":"1262","newMessage":0},{"class_id":"1278","newMessage":0},{"class_id":"1362","newMessage":0},{"class_id":"1366","newMessage":0},{"class_id":"1092","newMessage":0},{"class_id":"1257","newMessage":0}]
+[17-Nov-2025 04:55:55 UTC] ✅ SSE response sent successfully
+[17-Nov-2025 05:25:04 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-17 05:25:04
+[17-Nov-2025 05:25:04 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1160","1259","1353","1359","1370","1300","1284","1332","1294","1302","1316","1342","1360","1274","1292","1295","1298","1303","1307","1309","1311","1314","1318","1320","1327","1328","1330","1338","1133","1225","1281","1283","1286","1287","1290","1291","1301","1312","1317","1319","1321","1326","1329","1331","1336","1337","1339","1263","1024","1224","1227","1248","1256","1272","1273","1288","1289","1293","1299","1304","1305","1308","1310","1313","1315","1322","1323","1325","1333","1334","1335","1340","1341"]}
+[17-Nov-2025 05:25:04 UTC] ✅ All validations passed
+[17-Nov-2025 05:25:04 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1160,1259,1353,1359,1370,1300,1284,1332,1294,1302,1316,1342,1360,1274,1292,1295,1298,1303,1307,1309,1311,1314,1318,1320,1327,1328,1330,1338,1133,1225,1281,1283,1286,1287,1290,1291,1301,1312,1317,1319,1321,1326,1329,1331,1336,1337,1339,1263,1024,1224,1227,1248,1256,1272,1273,1288,1289,1293,1299,1304,1305,1308,1310,1313,1315,1322,1323,1325,1333,1334,1335,1340,1341) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[17-Nov-2025 05:25:04 UTC] 📦 Query returned 0 rows: []
+[17-Nov-2025 05:25:04 UTC] ✅ Prepared response with 73 items: [{"class_id":"1160","newMessage":0},{"class_id":"1259","newMessage":0},{"class_id":"1353","newMessage":0},{"class_id":"1359","newMessage":0},{"class_id":"1370","newMessage":0},{"class_id":"1300","newMessage":0},{"class_id":"1284","newMessage":0},{"class_id":"1332","newMessage":0},{"class_id":"1294","newMessage":0},{"class_id":"1302","newMessage":0},{"class_id":"1316","newMessage":0},{"class_id":"1342","newMessage":0},{"class_id":"1360","newMessage":0},{"class_id":"1274","newMessage":0},{"class_id":"1292","newMessage":0},{"class_id":"1295","newMessage":0},{"class_id":"1298","newMessage":0},{"class_id":"1303","newMessage":0},{"class_id":"1307","newMessage":0},{"class_id":"1309","newMessage":0},{"class_id":"1311","newMessage":0},{"class_id":"1314","newMessage":0},{"class_id":"1318","newMessage":0},{"class_id":"1320","newMessage":0},{"class_id":"1327","newMessage":0},{"class_id":"1328","newMessage":0},{"class_id":"1330","newMessage":0},{"class_id":"1338","newMessage":0},{"class_id":"1133","newMessage":0},{"class_id":"1225","newMessage":0},{"class_id":"1281","newMessage":0},{"class_id":"1283","newMessage":0},{"class_id":"1286","newMessage":0},{"class_id":"1287","newMessage":0},{"class_id":"1290","newMessage":0},{"class_id":"1291","newMessage":0},{"class_id":"1301","newMessage":0},{"class_id":"1312","newMessage":0},{"class_id":"1317","newMessage":0},{"class_id":"1319","newMessage":0},{"class_id":"1321","newMessage":0},{"class_id":"1326","newMessage":0},{"class_id":"1329","newMessage":0},{"class_id":"1331","newMessage":0},{"class_id":"1336","newMessage":0},{"class_id":"1337","newMessage":0},{"class_id":"1339","newMessage":0},{"class_id":"1263","newMessage":0},{"class_id":"1024","newMessage":0},{"class_id":"1224","newMessage":0},{"class_id":"1227","newMessage":0},{"class_id":"1248","newMessage":0},{"class_id":"1256","newMessage":0},{"class_id":"1272","newMessage":0},{"class_id":"1273","newMessage":0},{"class_id":"1288","newMessage":0},{"class_id":"1289","newMessage":0},{"class_id":"1293","newMessage":0},{"class_id":"1299","newMessage":0},{"class_id":"1304","newMessage":0},{"class_id":"1305","newMessage":0},{"class_id":"1308","newMessage":0},{"class_id":"1310","newMessage":0},{"class_id":"1313","newMessage":0},{"class_id":"1315","newMessage":0},{"class_id":"1322","newMessage":0},{"class_id":"1323","newMessage":0},{"class_id":"1325","newMessage":0},{"class_id":"1333","newMessage":0},{"class_id":"1334","newMessage":0},{"class_id":"1335","newMessage":0},{"class_id":"1340","newMessage":0},{"class_id":"1341","newMessage":0}]
+[17-Nov-2025 05:25:04 UTC] ✅ SSE response sent successfully
+[17-Nov-2025 05:42:41 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-17 05:42:41
+[17-Nov-2025 05:42:41 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1160","1259","1353","1359","1370","1300","1284","1332","1294","1302","1316","1342","1360","1274","1292","1295","1298","1303","1307","1309","1311","1314","1318","1320","1327","1328","1330","1338","1133","1225","1281","1283","1286","1287","1290","1291","1301","1312","1317","1319","1321","1326","1329","1331","1336","1337","1339","1263","1024","1224","1227","1248","1256","1272","1273","1288","1289","1293","1299","1304","1305","1308","1310","1313","1315","1322","1323","1325","1333","1334","1335","1340","1341"]}
+[17-Nov-2025 05:42:41 UTC] ✅ All validations passed
+[17-Nov-2025 05:42:41 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1160,1259,1353,1359,1370,1300,1284,1332,1294,1302,1316,1342,1360,1274,1292,1295,1298,1303,1307,1309,1311,1314,1318,1320,1327,1328,1330,1338,1133,1225,1281,1283,1286,1287,1290,1291,1301,1312,1317,1319,1321,1326,1329,1331,1336,1337,1339,1263,1024,1224,1227,1248,1256,1272,1273,1288,1289,1293,1299,1304,1305,1308,1310,1313,1315,1322,1323,1325,1333,1334,1335,1340,1341) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[17-Nov-2025 05:42:41 UTC] 📦 Query returned 0 rows: []
+[17-Nov-2025 05:42:41 UTC] ✅ Prepared response with 73 items: [{"class_id":"1160","newMessage":0},{"class_id":"1259","newMessage":0},{"class_id":"1353","newMessage":0},{"class_id":"1359","newMessage":0},{"class_id":"1370","newMessage":0},{"class_id":"1300","newMessage":0},{"class_id":"1284","newMessage":0},{"class_id":"1332","newMessage":0},{"class_id":"1294","newMessage":0},{"class_id":"1302","newMessage":0},{"class_id":"1316","newMessage":0},{"class_id":"1342","newMessage":0},{"class_id":"1360","newMessage":0},{"class_id":"1274","newMessage":0},{"class_id":"1292","newMessage":0},{"class_id":"1295","newMessage":0},{"class_id":"1298","newMessage":0},{"class_id":"1303","newMessage":0},{"class_id":"1307","newMessage":0},{"class_id":"1309","newMessage":0},{"class_id":"1311","newMessage":0},{"class_id":"1314","newMessage":0},{"class_id":"1318","newMessage":0},{"class_id":"1320","newMessage":0},{"class_id":"1327","newMessage":0},{"class_id":"1328","newMessage":0},{"class_id":"1330","newMessage":0},{"class_id":"1338","newMessage":0},{"class_id":"1133","newMessage":0},{"class_id":"1225","newMessage":0},{"class_id":"1281","newMessage":0},{"class_id":"1283","newMessage":0},{"class_id":"1286","newMessage":0},{"class_id":"1287","newMessage":0},{"class_id":"1290","newMessage":0},{"class_id":"1291","newMessage":0},{"class_id":"1301","newMessage":0},{"class_id":"1312","newMessage":0},{"class_id":"1317","newMessage":0},{"class_id":"1319","newMessage":0},{"class_id":"1321","newMessage":0},{"class_id":"1326","newMessage":0},{"class_id":"1329","newMessage":0},{"class_id":"1331","newMessage":0},{"class_id":"1336","newMessage":0},{"class_id":"1337","newMessage":0},{"class_id":"1339","newMessage":0},{"class_id":"1263","newMessage":0},{"class_id":"1024","newMessage":0},{"class_id":"1224","newMessage":0},{"class_id":"1227","newMessage":0},{"class_id":"1248","newMessage":0},{"class_id":"1256","newMessage":0},{"class_id":"1272","newMessage":0},{"class_id":"1273","newMessage":0},{"class_id":"1288","newMessage":0},{"class_id":"1289","newMessage":0},{"class_id":"1293","newMessage":0},{"class_id":"1299","newMessage":0},{"class_id":"1304","newMessage":0},{"class_id":"1305","newMessage":0},{"class_id":"1308","newMessage":0},{"class_id":"1310","newMessage":0},{"class_id":"1313","newMessage":0},{"class_id":"1315","newMessage":0},{"class_id":"1322","newMessage":0},{"class_id":"1323","newMessage":0},{"class_id":"1325","newMessage":0},{"class_id":"1333","newMessage":0},{"class_id":"1334","newMessage":0},{"class_id":"1335","newMessage":0},{"class_id":"1340","newMessage":0},{"class_id":"1341","newMessage":0}]
+[17-Nov-2025 05:42:41 UTC] ✅ SSE response sent successfully
+[17-Nov-2025 05:42:48 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-17 05:42:48
+[17-Nov-2025 05:42:48 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1160","1259","1353","1359","1370","1300","1284","1332","1294","1302","1316","1342","1360","1274","1292","1295","1298","1303","1307","1309","1311","1314","1318","1320","1327","1328","1330","1338","1133","1225","1281","1283","1286","1287","1290","1291","1301","1312","1317","1319","1321","1326","1329","1331","1336","1337","1339","1263","1024","1224","1227","1248","1256","1272","1273","1288","1289","1293","1299","1304","1305","1308","1310","1313","1315","1322","1323","1325","1333","1334","1335","1340","1341"]}
+[17-Nov-2025 05:42:48 UTC] ✅ All validations passed
+[17-Nov-2025 05:42:48 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1160,1259,1353,1359,1370,1300,1284,1332,1294,1302,1316,1342,1360,1274,1292,1295,1298,1303,1307,1309,1311,1314,1318,1320,1327,1328,1330,1338,1133,1225,1281,1283,1286,1287,1290,1291,1301,1312,1317,1319,1321,1326,1329,1331,1336,1337,1339,1263,1024,1224,1227,1248,1256,1272,1273,1288,1289,1293,1299,1304,1305,1308,1310,1313,1315,1322,1323,1325,1333,1334,1335,1340,1341) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[17-Nov-2025 05:42:48 UTC] 📦 Query returned 0 rows: []
+[17-Nov-2025 05:42:48 UTC] ✅ Prepared response with 73 items: [{"class_id":"1160","newMessage":0},{"class_id":"1259","newMessage":0},{"class_id":"1353","newMessage":0},{"class_id":"1359","newMessage":0},{"class_id":"1370","newMessage":0},{"class_id":"1300","newMessage":0},{"class_id":"1284","newMessage":0},{"class_id":"1332","newMessage":0},{"class_id":"1294","newMessage":0},{"class_id":"1302","newMessage":0},{"class_id":"1316","newMessage":0},{"class_id":"1342","newMessage":0},{"class_id":"1360","newMessage":0},{"class_id":"1274","newMessage":0},{"class_id":"1292","newMessage":0},{"class_id":"1295","newMessage":0},{"class_id":"1298","newMessage":0},{"class_id":"1303","newMessage":0},{"class_id":"1307","newMessage":0},{"class_id":"1309","newMessage":0},{"class_id":"1311","newMessage":0},{"class_id":"1314","newMessage":0},{"class_id":"1318","newMessage":0},{"class_id":"1320","newMessage":0},{"class_id":"1327","newMessage":0},{"class_id":"1328","newMessage":0},{"class_id":"1330","newMessage":0},{"class_id":"1338","newMessage":0},{"class_id":"1133","newMessage":0},{"class_id":"1225","newMessage":0},{"class_id":"1281","newMessage":0},{"class_id":"1283","newMessage":0},{"class_id":"1286","newMessage":0},{"class_id":"1287","newMessage":0},{"class_id":"1290","newMessage":0},{"class_id":"1291","newMessage":0},{"class_id":"1301","newMessage":0},{"class_id":"1312","newMessage":0},{"class_id":"1317","newMessage":0},{"class_id":"1319","newMessage":0},{"class_id":"1321","newMessage":0},{"class_id":"1326","newMessage":0},{"class_id":"1329","newMessage":0},{"class_id":"1331","newMessage":0},{"class_id":"1336","newMessage":0},{"class_id":"1337","newMessage":0},{"class_id":"1339","newMessage":0},{"class_id":"1263","newMessage":0},{"class_id":"1024","newMessage":0},{"class_id":"1224","newMessage":0},{"class_id":"1227","newMessage":0},{"class_id":"1248","newMessage":0},{"class_id":"1256","newMessage":0},{"class_id":"1272","newMessage":0},{"class_id":"1273","newMessage":0},{"class_id":"1288","newMessage":0},{"class_id":"1289","newMessage":0},{"class_id":"1293","newMessage":0},{"class_id":"1299","newMessage":0},{"class_id":"1304","newMessage":0},{"class_id":"1305","newMessage":0},{"class_id":"1308","newMessage":0},{"class_id":"1310","newMessage":0},{"class_id":"1313","newMessage":0},{"class_id":"1315","newMessage":0},{"class_id":"1322","newMessage":0},{"class_id":"1323","newMessage":0},{"class_id":"1325","newMessage":0},{"class_id":"1333","newMessage":0},{"class_id":"1334","newMessage":0},{"class_id":"1335","newMessage":0},{"class_id":"1340","newMessage":0},{"class_id":"1341","newMessage":0}]
+[17-Nov-2025 05:42:48 UTC] ✅ SSE response sent successfully
+[17-Nov-2025 05:43:47 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-17 05:43:47
+[17-Nov-2025 05:43:47 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1160","1259","1353","1359","1370","1300","1284","1332","1294","1302","1316","1342","1360","1274","1292","1295","1298","1303","1307","1309","1311","1314","1318","1320","1327","1328","1330","1338","1133","1225","1281","1283","1286","1287","1290","1291","1301","1312","1317","1319","1321","1326","1329","1331","1336","1337","1339","1263","1024","1224","1227","1248","1256","1272","1273","1288","1289","1293","1299","1304","1305","1308","1310","1313","1315","1322","1323","1325","1333","1334","1335","1340","1341"]}
+[17-Nov-2025 05:43:47 UTC] ✅ All validations passed
+[17-Nov-2025 05:43:47 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1160,1259,1353,1359,1370,1300,1284,1332,1294,1302,1316,1342,1360,1274,1292,1295,1298,1303,1307,1309,1311,1314,1318,1320,1327,1328,1330,1338,1133,1225,1281,1283,1286,1287,1290,1291,1301,1312,1317,1319,1321,1326,1329,1331,1336,1337,1339,1263,1024,1224,1227,1248,1256,1272,1273,1288,1289,1293,1299,1304,1305,1308,1310,1313,1315,1322,1323,1325,1333,1334,1335,1340,1341) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[17-Nov-2025 05:43:47 UTC] 📦 Query returned 0 rows: []
+[17-Nov-2025 05:43:47 UTC] ✅ Prepared response with 73 items: [{"class_id":"1160","newMessage":0},{"class_id":"1259","newMessage":0},{"class_id":"1353","newMessage":0},{"class_id":"1359","newMessage":0},{"class_id":"1370","newMessage":0},{"class_id":"1300","newMessage":0},{"class_id":"1284","newMessage":0},{"class_id":"1332","newMessage":0},{"class_id":"1294","newMessage":0},{"class_id":"1302","newMessage":0},{"class_id":"1316","newMessage":0},{"class_id":"1342","newMessage":0},{"class_id":"1360","newMessage":0},{"class_id":"1274","newMessage":0},{"class_id":"1292","newMessage":0},{"class_id":"1295","newMessage":0},{"class_id":"1298","newMessage":0},{"class_id":"1303","newMessage":0},{"class_id":"1307","newMessage":0},{"class_id":"1309","newMessage":0},{"class_id":"1311","newMessage":0},{"class_id":"1314","newMessage":0},{"class_id":"1318","newMessage":0},{"class_id":"1320","newMessage":0},{"class_id":"1327","newMessage":0},{"class_id":"1328","newMessage":0},{"class_id":"1330","newMessage":0},{"class_id":"1338","newMessage":0},{"class_id":"1133","newMessage":0},{"class_id":"1225","newMessage":0},{"class_id":"1281","newMessage":0},{"class_id":"1283","newMessage":0},{"class_id":"1286","newMessage":0},{"class_id":"1287","newMessage":0},{"class_id":"1290","newMessage":0},{"class_id":"1291","newMessage":0},{"class_id":"1301","newMessage":0},{"class_id":"1312","newMessage":0},{"class_id":"1317","newMessage":0},{"class_id":"1319","newMessage":0},{"class_id":"1321","newMessage":0},{"class_id":"1326","newMessage":0},{"class_id":"1329","newMessage":0},{"class_id":"1331","newMessage":0},{"class_id":"1336","newMessage":0},{"class_id":"1337","newMessage":0},{"class_id":"1339","newMessage":0},{"class_id":"1263","newMessage":0},{"class_id":"1024","newMessage":0},{"class_id":"1224","newMessage":0},{"class_id":"1227","newMessage":0},{"class_id":"1248","newMessage":0},{"class_id":"1256","newMessage":0},{"class_id":"1272","newMessage":0},{"class_id":"1273","newMessage":0},{"class_id":"1288","newMessage":0},{"class_id":"1289","newMessage":0},{"class_id":"1293","newMessage":0},{"class_id":"1299","newMessage":0},{"class_id":"1304","newMessage":0},{"class_id":"1305","newMessage":0},{"class_id":"1308","newMessage":0},{"class_id":"1310","newMessage":0},{"class_id":"1313","newMessage":0},{"class_id":"1315","newMessage":0},{"class_id":"1322","newMessage":0},{"class_id":"1323","newMessage":0},{"class_id":"1325","newMessage":0},{"class_id":"1333","newMessage":0},{"class_id":"1334","newMessage":0},{"class_id":"1335","newMessage":0},{"class_id":"1340","newMessage":0},{"class_id":"1341","newMessage":0}]
+[17-Nov-2025 05:43:47 UTC] ✅ SSE response sent successfully
+[17-Nov-2025 19:51:30 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-17 19:51:30
+[17-Nov-2025 19:51:30 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1370"]}
+[17-Nov-2025 19:51:30 UTC] ✅ All validations passed
+[17-Nov-2025 19:51:30 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[17-Nov-2025 19:51:30 UTC] 📦 Query returned 0 rows: []
+[17-Nov-2025 19:51:30 UTC] ✅ Prepared response with 1 items: [{"class_id":"1370","newMessage":0}]
+[17-Nov-2025 19:51:30 UTC] ✅ SSE response sent successfully
+[17-Nov-2025 19:53:58 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-17 19:53:58
+[17-Nov-2025 19:53:58 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1370"]}
+[17-Nov-2025 19:53:58 UTC] ✅ All validations passed
+[17-Nov-2025 19:53:58 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[17-Nov-2025 19:53:58 UTC] 📦 Query returned 0 rows: []
+[17-Nov-2025 19:53:58 UTC] ✅ Prepared response with 1 items: [{"class_id":"1370","newMessage":0}]
+[17-Nov-2025 19:53:58 UTC] ✅ SSE response sent successfully
+[18-Nov-2025 02:54:42 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-18 02:54:42
+[18-Nov-2025 02:54:42 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1370"]}
+[18-Nov-2025 02:54:42 UTC] ✅ All validations passed
+[18-Nov-2025 02:54:42 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[18-Nov-2025 02:54:42 UTC] 📦 Query returned 0 rows: []
+[18-Nov-2025 02:54:42 UTC] ✅ Prepared response with 1 items: [{"class_id":"1370","newMessage":0}]
+[18-Nov-2025 02:54:42 UTC] ✅ SSE response sent successfully
+[18-Nov-2025 02:56:30 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-18 02:56:30
+[18-Nov-2025 02:56:30 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1370"]}
+[18-Nov-2025 02:56:30 UTC] ✅ All validations passed
+[18-Nov-2025 02:56:30 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[18-Nov-2025 02:56:30 UTC] 📦 Query returned 0 rows: []
+[18-Nov-2025 02:56:30 UTC] ✅ Prepared response with 1 items: [{"class_id":"1370","newMessage":0}]
+[18-Nov-2025 02:56:30 UTC] ✅ SSE response sent successfully
+[18-Nov-2025 02:56:43 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-18 02:56:43
+[18-Nov-2025 02:56:43 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1370"]}
+[18-Nov-2025 02:56:43 UTC] ✅ All validations passed
+[18-Nov-2025 02:56:43 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[18-Nov-2025 02:56:43 UTC] 📦 Query returned 0 rows: []
+[18-Nov-2025 02:56:43 UTC] ✅ Prepared response with 1 items: [{"class_id":"1370","newMessage":0}]
+[18-Nov-2025 02:56:43 UTC] ✅ SSE response sent successfully
+[18-Nov-2025 03:10:49 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-18 03:10:49
+[18-Nov-2025 03:10:49 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1370"]}
+[18-Nov-2025 03:10:49 UTC] ✅ All validations passed
+[18-Nov-2025 03:10:49 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[18-Nov-2025 03:10:49 UTC] 📦 Query returned 0 rows: []
+[18-Nov-2025 03:10:49 UTC] ✅ Prepared response with 1 items: [{"class_id":"1370","newMessage":0}]
+[18-Nov-2025 03:10:49 UTC] ✅ SSE response sent successfully
+[18-Nov-2025 03:13:31 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-18 03:13:31
+[18-Nov-2025 03:13:31 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1370"]}
+[18-Nov-2025 03:13:31 UTC] ✅ All validations passed
+[18-Nov-2025 03:13:31 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[18-Nov-2025 03:13:31 UTC] 📦 Query returned 0 rows: []
+[18-Nov-2025 03:13:31 UTC] ✅ Prepared response with 1 items: [{"class_id":"1370","newMessage":0}]
+[18-Nov-2025 03:13:31 UTC] ✅ SSE response sent successfully
+[18-Nov-2025 04:29:31 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-18 04:29:31
+[18-Nov-2025 04:29:31 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1370"]}
+[18-Nov-2025 04:29:31 UTC] ✅ All validations passed
+[18-Nov-2025 04:29:31 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[18-Nov-2025 04:29:31 UTC] 📦 Query returned 0 rows: []
+[18-Nov-2025 04:29:31 UTC] ✅ Prepared response with 1 items: [{"class_id":"1370","newMessage":0}]
+[18-Nov-2025 04:29:31 UTC] ✅ SSE response sent successfully
+[18-Nov-2025 04:37:45 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-18 04:37:45
+[18-Nov-2025 04:37:45 UTC] 📦 Params received: {"platform":"web","user_id":"220","role_id":"5","class_id":["1370"]}
+[18-Nov-2025 04:37:45 UTC] ✅ All validations passed
+[18-Nov-2025 04:37:45 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370) 
+                        AND md.user_id = 220 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[18-Nov-2025 04:37:45 UTC] 📦 Query returned 0 rows: []
+[18-Nov-2025 04:37:45 UTC] ✅ Prepared response with 1 items: [{"class_id":"1370","newMessage":0}]
+[18-Nov-2025 04:37:45 UTC] ✅ SSE response sent successfully
+[18-Nov-2025 20:33:07 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-18 20:33:07
+[18-Nov-2025 20:33:07 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1370","1344"]}
+[18-Nov-2025 20:33:07 UTC] ✅ All validations passed
+[18-Nov-2025 20:33:07 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370,1344) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[18-Nov-2025 20:33:07 UTC] 📦 Query returned 0 rows: []
+[18-Nov-2025 20:33:07 UTC] ✅ Prepared response with 2 items: [{"class_id":"1370","newMessage":0},{"class_id":"1344","newMessage":0}]
+[18-Nov-2025 20:33:07 UTC] ✅ SSE response sent successfully
+[18-Nov-2025 20:35:54 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-11-18 20:35:54
+[18-Nov-2025 20:35:54 UTC] 📦 Params received: {"platform":"web","user_id":"1774","role_id":"5","class_id":["1370","1344"]}
+[18-Nov-2025 20:35:54 UTC] ✅ All validations passed
+[18-Nov-2025 20:35:54 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1370,1344) 
+                        AND md.user_id = 1774 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[18-Nov-2025 20:35:54 UTC] 📦 Query returned 0 rows: []
+[18-Nov-2025 20:35:54 UTC] ✅ Prepared response with 2 items: [{"class_id":"1370","newMessage":0},{"class_id":"1344","newMessage":0}]
+[18-Nov-2025 20:35:54 UTC] ✅ SSE response sent successfully
+[19-Nov-2025 09:06:58 UTC] PHP Fatal error:  Declaration of App\Controllers\Admin\FollowUps::update(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::update($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Admin/FollowUps.php on line 174
+[19-Nov-2025 09:08:35 UTC] PHP Fatal error:  Declaration of App\Controllers\Admin\FollowUps::update(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::update($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Admin/FollowUps.php on line 174
+[19-Nov-2025 09:09:48 UTC] PHP Fatal error:  Declaration of App\Controllers\Admin\FollowUps::update(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::update($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Admin/FollowUps.php on line 174
+[19-Nov-2025 09:10:49 UTC] PHP Fatal error:  Declaration of App\Controllers\Admin\FollowUps::update(): CodeIgniter\HTTP\ResponseInterface must be compatible with CodeIgniter\RESTful\ResourceController::update($id = null) in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Admin/FollowUps.php on line 174

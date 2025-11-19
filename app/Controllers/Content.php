@@ -159,8 +159,50 @@ class Content extends ResourceController
                     $contentList['answerkey_path'] = [];
                 }
                 
+                // Process teacher version
+                if (!empty($contentList['teacher_version']) && $contentList['teacher_version'] != '[]') {
+                    $teacherVersion = json_decode($contentList['teacher_version'], true);
+                    $contentList['teacher_version'] = is_array($teacherVersion) ? $teacherVersion : [];
+                } else {
+                    $contentList['teacher_version'] = [];
+                }
+                
+                // Process links
+                if (!empty($contentList['links']) && $contentList['links'] != '[]') {
+                    $links = json_decode($contentList['links'], true);
+                    $contentList['links'] = is_array($links) ? $links : [];
+                } else {
+                    $contentList['links'] = [];
+                }
+                
+                // Process tags
+                if (!empty($contentList['tags'])) {
+                    $tags = explode(',', $contentList['tags']);
+                    $contentList['tags'] = array_filter($tags);
+                } else {
+                    $contentList['tags'] = [];
+                }
+                
+                // Process grade and subject
+                if (!empty($contentList['grade'])) {
+                    $grades = explode(',', $contentList['grade']);
+                    $contentList['grade'] = array_map('intval', array_filter($grades));
+                } else {
+                    $contentList['grade'] = [];
+                }
+                
+                if (!empty($contentList['subject'])) {
+                    $subjects = explode(',', $contentList['subject']);
+                    $contentList['subject'] = array_map('intval', array_filter($subjects));
+                } else {
+                    $contentList['subject'] = [];
+                }
+                
                 // Get answers for the content
+                log_message('debug', '🔍 [CONTENT DETAIL] Loading answers for content_id: ' . ($params['content_id'] ?? 'NOT SET'));
                 $answers = $this->contentModel->answerList($params);
+                log_message('debug', '🔍 [CONTENT DETAIL] Answers returned: ' . count($answers));
+                log_message('debug', '🔍 [CONTENT DETAIL] Answers data: ' . json_encode($answers));
                 $contentList['answers'] = is_array($answers) ? $answers : [];
                 
                 // Get questions from text_questions table (for content_format = 3)
@@ -223,9 +265,115 @@ class Content extends ResourceController
                     $contentList['questions'] = [];
                 }
                 
+                // Process annotation fields - ensure they are arrays
+                if (isset($contentList['annotation'])) {
+                    if (is_string($contentList['annotation']) && !empty($contentList['annotation'])) {
+                        $decoded = json_decode($contentList['annotation'], true);
+                        $contentList['annotation'] = is_array($decoded) ? $decoded : [];
+                    } elseif (!is_array($contentList['annotation'])) {
+                        $contentList['annotation'] = [];
+                    }
+                } else {
+                    $contentList['annotation'] = [];
+                }
+                
+                if (isset($contentList['questionAnnotation'])) {
+                    if (is_string($contentList['questionAnnotation']) && !empty($contentList['questionAnnotation'])) {
+                        $decoded = json_decode($contentList['questionAnnotation'], true);
+                        $contentList['questionAnnotation'] = is_array($decoded) ? $decoded : [];
+                    } elseif (!is_array($contentList['questionAnnotation'])) {
+                        $contentList['questionAnnotation'] = [];
+                    }
+                } else {
+                    $contentList['questionAnnotation'] = [];
+                }
+                
                 // Ensure batch_id is set if it exists (for assignments)
                 if (!isset($contentList['batch_id'])) {
                     $contentList['batch_id'] = null;
+                }
+                
+                // For students, ensure student_content_id is set - find or create student_content record if needed
+                if (isset($params['role_id']) && $params['role_id'] == 5 && isset($params['student_id']) && $params['student_id'] > 0) {
+                    $studentId = (int)$params['student_id'];
+                    $contentId = (int)$params['content_id'];
+                    $classContentId = isset($params['class_content_id']) && $params['class_content_id'] > 0 
+                        ? (int)$params['class_content_id'] 
+                        : null;
+                    $classId = isset($params['class_id']) && $params['class_id'] > 0 
+                        ? (int)$params['class_id'] 
+                        : null;
+                    
+                    // If student_content_id is missing or 0, try to find or create it
+                    if (empty($params['student_content_id']) || $params['student_content_id'] == '0' || $params['student_content_id'] == 0) {
+                        $db = \Config\Database::connect();
+                        
+                        // First, try to find existing student_content record
+                        $studentContentBuilder = $db->table('student_content');
+                        $studentContentBuilder->where('student_id', $studentId);
+                        $studentContentBuilder->where('content_id', $contentId);
+                        if ($classContentId) {
+                            $studentContentBuilder->where('class_content_id', $classContentId);
+                        }
+                        if ($classId) {
+                            $studentContentBuilder->where('class_id', $classId);
+                        }
+                        $studentContent = $studentContentBuilder->get()->getRowArray();
+                        
+                        if ($studentContent) {
+                            $contentList['student_content_id'] = $studentContent['id'];
+                            log_message('debug', '✅ [CONTENT DETAIL] Found existing student_content_id: ' . $studentContent['id']);
+                        } elseif ($classContentId && $classId) {
+                            // Try to create student_content record if we have the required info
+                            try {
+                                // Get class_content to get dates
+                                $classContent = $db->table('class_content')
+                                    ->where('id', $classContentId)
+                                    ->get()
+                                    ->getRowArray();
+                                
+                                if ($classContent) {
+                                    // Get student's grade from class
+                                    $studentGrade = $db->table('student_class sc')
+                                        ->select('c.grade as grade_id')
+                                        ->join('class c', 'sc.class_id = c.class_id', 'left')
+                                        ->where('sc.student_id', $studentId)
+                                        ->where('sc.class_id', $classId)
+                                        ->get()
+                                        ->getRowArray();
+                                    
+                                    $studentContentData = [
+                                        'student_id' => $studentId,
+                                        'content_id' => $contentId,
+                                        'class_content_id' => $classContentId,
+                                        'class_id' => $classId,
+                                        'grade_id' => $studentGrade['grade_id'] ?? null,
+                                        'start_date' => $classContent['start_date'] ?? null,
+                                        'end_date' => $classContent['end_date'] ?? null,
+                                        'status' => 1,
+                                        'draft_status' => '1',
+                                        'created_by' => $params['user_id'] ?? null,
+                                        'created_date' => date('Y-m-d H:i:s'),
+                                        'modified_by' => $params['user_id'] ?? null,
+                                        'modified_date' => date('Y-m-d H:i:s')
+                                    ];
+                                    
+                                    $db->table('student_content')->insert($studentContentData);
+                                    $newStudentContentId = $db->insertID();
+                                    $contentList['student_content_id'] = $newStudentContentId;
+                                    log_message('debug', '✅ [CONTENT DETAIL] Created new student_content_id: ' . $newStudentContentId);
+                                }
+                            } catch (\Exception $e) {
+                                log_message('error', '❌ [CONTENT DETAIL] Failed to create student_content: ' . $e->getMessage());
+                                $contentList['student_content_id'] = 0;
+                            }
+                        } else {
+                            $contentList['student_content_id'] = 0;
+                            log_message('debug', '⚠️ [CONTENT DETAIL] Could not find or create student_content - missing class_content_id or class_id');
+                        }
+                    } else {
+                        $contentList['student_content_id'] = $params['student_content_id'];
+                    }
                 }
                 
                 // Check if all questions are auto-gradable (for students)
@@ -289,8 +437,8 @@ class Content extends ResourceController
             
             // If content_id is provided, filter by content
             if (!empty($params['content_id'])) {
-                $builder->join('question q', 'q.content_id = ' . $params['content_id'], 'left');
-                $builder->where('q.passage_id = p.passage_id');
+                $builder->join('text_questions tq', 'tq.content_id = ' . $params['content_id'], 'left');
+                $builder->where('tq.passage_id = p.passage_id');
             }
             
             $builder->where('p.status', 1);
@@ -335,75 +483,276 @@ class Content extends ResourceController
                 ]);
             }
 
-            $contentDetails = $this->contentModel->contentIdList($params);
-            
-            if ($contentDetails) {
-                // Process file paths
-                if (!empty($contentDetails['file_path']) && $contentDetails['file_path'] != '[]') {
-                    $filePaths = json_decode($contentDetails['file_path'], true);
-                    $contentDetails['file_path'] = is_array($filePaths) ? $filePaths : [];
-                } else {
-                    $contentDetails['file_path'] = [];
-                }
+            // Check if this is an update request (has update fields like name, description, etc.)
+            $isUpdateRequest = isset($params['name']) || isset($params['description']) || isset($params['teacher_version']) || 
+                               isset($params['answerkey_path']) || isset($params['file_path']) || isset($params['answers']);
+
+            if ($isUpdateRequest) {
+                // Handle update operation
+                $db = \Config\Database::connect();
                 
-                // Process answer key paths
-                if (!empty($contentDetails['answerkey_path']) && $contentDetails['answerkey_path'] != '[]') {
-                    $answerKeyPaths = json_decode($contentDetails['answerkey_path'], true);
-                    $contentDetails['answerkey_path'] = is_array($answerKeyPaths) ? $answerKeyPaths : [];
-                } else {
-                    $contentDetails['answerkey_path'] = [];
+                // Prepare update data
+                $updateData = [];
+                if (isset($params['name'])) $updateData['name'] = $params['name'];
+                if (isset($params['description'])) $updateData['description'] = $params['description'];
+                if (isset($params['grade'])) {
+                    $updateData['grade'] = is_array($params['grade']) ? implode(',', array_map('strval', $this->flattenArray($params['grade']))) : $params['grade'];
                 }
-
-                // Process teacher version
-                if (!empty($contentDetails['teacher_version']) && $contentDetails['teacher_version'] != '[]') {
-                    $teacherVersion = json_decode($contentDetails['teacher_version'], true);
-                    $contentDetails['teacher_version'] = is_array($teacherVersion) ? $teacherVersion : [];
-                } else {
-                    $contentDetails['teacher_version'] = [];
+                if (isset($params['subject'])) {
+                    $updateData['subject'] = is_array($params['subject']) ? implode(',', array_map('strval', $this->flattenArray($params['subject']))) : $params['subject'];
                 }
-
-                // Process links
-                if (!empty($contentDetails['links']) && $contentDetails['links'] != '[]') {
-                    $links = json_decode($contentDetails['links'], true);
-                    $contentDetails['links'] = is_array($links) ? $links : [];
-                } else {
-                    $contentDetails['links'] = [];
+                if (isset($params['tags'])) {
+                    $updateData['tags'] = is_array($params['tags']) ? implode(',', $params['tags']) : $params['tags'];
                 }
-
-                // Process tags
-                if (!empty($contentDetails['tags'])) {
-                    $tags = explode(',', $contentDetails['tags']);
-                    $contentDetails['tags'] = $tags;
-                } else {
-                    $contentDetails['tags'] = [];
+                if (isset($params['content_type'])) $updateData['content_type'] = $params['content_type'];
+                if (isset($params['content_format'])) $updateData['content_format'] = $params['content_format'];
+                if (isset($params['file_path'])) {
+                    $updateData['file_path'] = is_array($params['file_path']) ? json_encode($params['file_path']) : $params['file_path'];
                 }
-
-                // Process grade and subject
-                if (!empty($contentDetails['grade'])) {
-                    $grades = explode(',', $contentDetails['grade']);
-                    $contentDetails['grade'] = array_map('intval', $grades);
-                } else {
-                    $contentDetails['grade'] = [];
+                if (isset($params['file_text'])) $updateData['file_text'] = $params['file_text'];
+                if (isset($params['links'])) {
+                    $updateData['links'] = is_array($params['links']) ? json_encode($params['links']) : $params['links'];
                 }
-
-                if (!empty($contentDetails['subject'])) {
-                    $subjects = explode(',', $contentDetails['subject']);
-                    $contentDetails['subject'] = array_map('intval', $subjects);
-                } else {
-                    $contentDetails['subject'] = [];
+                if (isset($params['answerkey_path'])) {
+                    $updateData['answerkey_path'] = is_array($params['answerkey_path']) && count($params['answerkey_path']) > 0 ? json_encode($params['answerkey_path']) : '';
                 }
+                if (isset($params['teacher_version'])) {
+                    // Handle teacher_version - ensure it's properly encoded even if empty array
+                    if (is_array($params['teacher_version'])) {
+                        $updateData['teacher_version'] = count($params['teacher_version']) > 0 ? json_encode($params['teacher_version']) : '';
+                    } else {
+                        $updateData['teacher_version'] = $params['teacher_version'];
+                    }
+                }
+                if (isset($params['allow_answer_key'])) $updateData['allow_answer_key'] = $params['allow_answer_key'];
+                if (isset($params['access'])) $updateData['access'] = $params['access'];
+                if (isset($params['status'])) $updateData['status'] = $params['status'];
+                if (isset($params['download'])) $updateData['download'] = $params['download'];
+                if (isset($params['profile_url'])) $updateData['profile_url'] = $params['profile_url'];
+                if (isset($params['profile_thumb_url'])) $updateData['profile_thumb_url'] = $params['profile_thumb_url'];
                 
-                return $this->respond([
-                    'IsSuccess' => true,
-                    'ResponseObject' => $contentDetails,
-                    'ErrorObject' => ''
-                ]);
+                $updateData['modified_date'] = date('Y-m-d H:i:s');
+
+                // Update content
+                $builder = $db->table('content');
+                $builder->where('content_id', $params['content_id']);
+                $result = $builder->update($updateData);
+
+                // Handle answers update if provided
+                if (isset($params['answers']) && is_array($params['answers']) && count($params['answers']) > 0) {
+                    log_message('debug', '📝 [CONTENT EDIT] Processing answers - count: ' . count($params['answers']));
+                    log_message('debug', '📝 [CONTENT EDIT] Answers structure: ' . json_encode($params['answers']));
+                    
+                    // Delete existing answers
+                    $deletedCount = $db->table('answers')->where('content_id', $params['content_id'])->delete();
+                    log_message('debug', '📝 [CONTENT EDIT] Deleted ' . $deletedCount . ' existing answers');
+                    
+                    // Insert new answers
+                    $answersBuilder = $db->table('answers');
+                    $insertedCount = 0;
+                    foreach ($params['answers'] as $answerSection) {
+                        log_message('debug', '📝 [CONTENT EDIT] Processing section - heading: ' . ($answerSection['heading'] ?? 'N/A'));
+                        if (isset($answerSection['section']) && is_array($answerSection['section'])) {
+                            log_message('debug', '📝 [CONTENT EDIT] Section has ' . count($answerSection['section']) . ' sub-sections');
+                            foreach ($answerSection['section'] as $section) {
+                                if (isset($section['sub_questions']) && is_array($section['sub_questions'])) {
+                                    log_message('debug', '📝 [CONTENT EDIT] Sub-section has ' . count($section['sub_questions']) . ' questions');
+                                    foreach ($section['sub_questions'] as $subQuestion) {
+                                        $answerData = [
+                                            'content_id' => $params['content_id'],
+                                            'has_sub_question' => $section['has_sub_question'] ?? 0,
+                                            'question_no' => $subQuestion['question_no'] ?? '',
+                                            'section_heading' => $answerSection['heading'] ?? '',
+                                            'question' => $subQuestion['question'] ?? '',
+                                            'sub_question_no' => $subQuestion['sub_question_no'] ?? '',
+                                            'question_type_id' => $subQuestion['question_type_id'] ?? '',
+                                            'page_no' => $subQuestion['page_no'] ?? 0,
+                                            'options' => $subQuestion['options'] ?? '',
+                                            'array' => isset($subQuestion['array']) ? json_encode($subQuestion['array']) : '',
+                                            'answer' => isset($subQuestion['answer']) ? (is_array($subQuestion['answer']) ? json_encode($subQuestion['answer']) : $subQuestion['answer']) : '',
+                                            'editor_answer' => $subQuestion['editor_answer'] ?? '',
+                                            'answer_explanation' => $subQuestion['answer_explanation'] ?? '',
+                                            'auto_grade' => $subQuestion['auto_grade'] ?? 0,
+                                            'points' => $subQuestion['points'] ?? 0,
+                                            'difficulty' => $subQuestion['difficulty'] ?? 0,
+                                            'allow_exact_match' => $subQuestion['allow_exact_match'] ?? 0,
+                                            'allow_any_text' => $subQuestion['allow_any_text'] ?? 0,
+                                            'match_case' => $subQuestion['match_case'] ?? 0,
+                                            'minimum_line' => $subQuestion['minimum_line'] ?? 0,
+                                            'status' => 1, // Set status to 1 so questions are retrievable
+                                            'created_by' => $params['user_id'] ?? null,
+                                            'created_date' => date('Y-m-d H:i:s')
+                                        ];
+                                        
+                                        try {
+                                            $answersBuilder->insert($answerData);
+                                            $insertedCount++;
+                                            log_message('debug', '📝 [CONTENT EDIT] Inserted question: ' . ($subQuestion['question_no'] ?? 'N/A') . ' - ' . substr($subQuestion['question'] ?? '', 0, 50));
+                                        } catch (\Exception $e) {
+                                            log_message('error', '❌ [CONTENT EDIT] Failed to insert question: ' . $e->getMessage());
+                                            log_message('error', '❌ [CONTENT EDIT] Answer data: ' . json_encode($answerData));
+                                        }
+                                    }
+                                } else {
+                                    log_message('warning', '⚠️ [CONTENT EDIT] Sub-section missing sub_questions array');
+                                }
+                            }
+                        } else {
+                            log_message('warning', '⚠️ [CONTENT EDIT] Answer section missing section array - heading: ' . ($answerSection['heading'] ?? 'N/A'));
+                        }
+                    }
+                    log_message('debug', '📝 [CONTENT EDIT] Total questions inserted: ' . $insertedCount);
+                } else {
+                    log_message('warning', '⚠️ [CONTENT EDIT] No answers provided or answers is empty');
+                }
+
+                if ($result) {
+                    // Get updated content details
+                    $contentDetails = $this->contentModel->contentIdList(['content_id' => $params['content_id']]);
+                    
+                    // Process the response similar to retrieval
+                    if ($contentDetails) {
+                        // Process file paths
+                        if (!empty($contentDetails['file_path']) && $contentDetails['file_path'] != '[]') {
+                            $filePaths = json_decode($contentDetails['file_path'], true);
+                            $contentDetails['file_path'] = is_array($filePaths) ? $filePaths : [];
+                        } else {
+                            $contentDetails['file_path'] = [];
+                        }
+                        
+                        // Process answer key paths
+                        if (!empty($contentDetails['answerkey_path']) && $contentDetails['answerkey_path'] != '[]') {
+                            $answerKeyPaths = json_decode($contentDetails['answerkey_path'], true);
+                            $contentDetails['answerkey_path'] = is_array($answerKeyPaths) ? $answerKeyPaths : [];
+                        } else {
+                            $contentDetails['answerkey_path'] = [];
+                        }
+
+                        // Process teacher version
+                        if (!empty($contentDetails['teacher_version']) && $contentDetails['teacher_version'] != '[]') {
+                            $teacherVersion = json_decode($contentDetails['teacher_version'], true);
+                            $contentDetails['teacher_version'] = is_array($teacherVersion) ? $teacherVersion : [];
+                        } else {
+                            $contentDetails['teacher_version'] = [];
+                        }
+
+                        // Process links
+                        if (!empty($contentDetails['links']) && $contentDetails['links'] != '[]') {
+                            $links = json_decode($contentDetails['links'], true);
+                            $contentDetails['links'] = is_array($links) ? $links : [];
+                        } else {
+                            $contentDetails['links'] = [];
+                        }
+
+                        // Process tags
+                        if (!empty($contentDetails['tags'])) {
+                            $tags = explode(',', $contentDetails['tags']);
+                            $contentDetails['tags'] = $tags;
+                        } else {
+                            $contentDetails['tags'] = [];
+                        }
+
+                        // Process grade and subject
+                        if (!empty($contentDetails['grade'])) {
+                            $grades = explode(',', $contentDetails['grade']);
+                            $contentDetails['grade'] = array_map('intval', $grades);
+                        } else {
+                            $contentDetails['grade'] = [];
+                        }
+
+                        if (!empty($contentDetails['subject'])) {
+                            $subjects = explode(',', $contentDetails['subject']);
+                            $contentDetails['subject'] = array_map('intval', $subjects);
+                        } else {
+                            $contentDetails['subject'] = [];
+                        }
+                    }
+                    
+                    return $this->respond([
+                        'IsSuccess' => true,
+                        'Contentdetails' => $contentDetails,
+                        'ResponseObject' => 'Content updated successfully',
+                        'ErrorObject' => ''
+                    ]);
+                } else {
+                    return $this->respond([
+                        'IsSuccess' => false,
+                        'ResponseObject' => null,
+                        'ErrorObject' => 'Failed to update content'
+                    ]);
+                }
             } else {
-                return $this->respond([
-                    'IsSuccess' => false,
-                    'ResponseObject' => null,
-                    'ErrorObject' => 'Content not found'
-                ]);
+                // Handle retrieval operation (original behavior)
+                $contentDetails = $this->contentModel->contentIdList($params);
+                
+                if ($contentDetails) {
+                    // Process file paths
+                    if (!empty($contentDetails['file_path']) && $contentDetails['file_path'] != '[]') {
+                        $filePaths = json_decode($contentDetails['file_path'], true);
+                        $contentDetails['file_path'] = is_array($filePaths) ? $filePaths : [];
+                    } else {
+                        $contentDetails['file_path'] = [];
+                    }
+                    
+                    // Process answer key paths
+                    if (!empty($contentDetails['answerkey_path']) && $contentDetails['answerkey_path'] != '[]') {
+                        $answerKeyPaths = json_decode($contentDetails['answerkey_path'], true);
+                        $contentDetails['answerkey_path'] = is_array($answerKeyPaths) ? $answerKeyPaths : [];
+                    } else {
+                        $contentDetails['answerkey_path'] = [];
+                    }
+
+                    // Process teacher version
+                    if (!empty($contentDetails['teacher_version']) && $contentDetails['teacher_version'] != '[]') {
+                        $teacherVersion = json_decode($contentDetails['teacher_version'], true);
+                        $contentDetails['teacher_version'] = is_array($teacherVersion) ? $teacherVersion : [];
+                    } else {
+                        $contentDetails['teacher_version'] = [];
+                    }
+
+                    // Process links
+                    if (!empty($contentDetails['links']) && $contentDetails['links'] != '[]') {
+                        $links = json_decode($contentDetails['links'], true);
+                        $contentDetails['links'] = is_array($links) ? $links : [];
+                    } else {
+                        $contentDetails['links'] = [];
+                    }
+
+                    // Process tags
+                    if (!empty($contentDetails['tags'])) {
+                        $tags = explode(',', $contentDetails['tags']);
+                        $contentDetails['tags'] = $tags;
+                    } else {
+                        $contentDetails['tags'] = [];
+                    }
+
+                    // Process grade and subject
+                    if (!empty($contentDetails['grade'])) {
+                        $grades = explode(',', $contentDetails['grade']);
+                        $contentDetails['grade'] = array_map('intval', $grades);
+                    } else {
+                        $contentDetails['grade'] = [];
+                    }
+
+                    if (!empty($contentDetails['subject'])) {
+                        $subjects = explode(',', $contentDetails['subject']);
+                        $contentDetails['subject'] = array_map('intval', $subjects);
+                    } else {
+                        $contentDetails['subject'] = [];
+                    }
+                    
+                    return $this->respond([
+                        'IsSuccess' => true,
+                        'ResponseObject' => $contentDetails,
+                        'ErrorObject' => ''
+                    ]);
+                } else {
+                    return $this->respond([
+                        'IsSuccess' => false,
+                        'ResponseObject' => null,
+                        'ErrorObject' => 'Content not found'
+                    ]);
+                }
             }
 
         } catch (\Exception $e) {
@@ -491,6 +840,9 @@ class Content extends ResourceController
             if (empty($params)) {
                 $params = $this->request->getJSON(true) ?? [];
             }
+            
+            // Log incoming data for debugging
+            log_message('debug', '🔍 [CONTENT ADD] Received params: ' . json_encode($params));
 
             // Basic validation - only for new content creation (assign = 0)
             if (isset($params['assign']) && $params['assign'] == 0 && empty($params['name'])) {
@@ -511,25 +863,43 @@ class Content extends ResourceController
                     'name' => $params['name'],
                     'description' => $params['description'] ?? '',
                     'school_id' => $params['school_id'] ?? null,
-                    'grade' => isset($params['grade']) && is_array($params['grade']) ? implode(',', $params['grade']) : ($params['grade'] ?? ''),
-                    'subject' => isset($params['subject']) && is_array($params['subject']) ? implode(',', $params['subject']) : ($params['subject'] ?? ''),
+                    'grade' => isset($params['grade']) ? (is_array($params['grade']) ? implode(',', array_map('strval', $this->flattenArray($params['grade']))) : (is_string($params['grade']) || is_numeric($params['grade']) ? (string)$params['grade'] : '')) : '',
+                    'subject' => isset($params['subject']) ? (is_array($params['subject']) ? implode(',', array_map('strval', $this->flattenArray($params['subject']))) : (is_string($params['subject']) || is_numeric($params['subject']) ? (string)$params['subject'] : '')) : '',
                     'tags' => isset($params['tags']) && is_array($params['tags']) && count($params['tags']) > 0 ? implode(',', $params['tags']) : '',
                     'content_type' => $params['content_type'] ?? '',
                     'content_format' => $params['content_format'] ?? '',
                     'editor_type' => $params['editor_type'] ?? '',
-                    'file_path' => isset($params['file_path']) && $params['file_path'] != '' ? json_encode($params['file_path']) : '',
+                    'file_path' => isset($params['file_path']) && is_array($params['file_path']) && count($params['file_path']) > 0 ? json_encode($params['file_path']) : '',
                     'answerkey_path' => isset($params['answerkey_path']) && is_array($params['answerkey_path']) && count($params['answerkey_path']) > 0 ? json_encode($params['answerkey_path']) : '',
                     'teacher_version' => isset($params['teacher_version']) && is_array($params['teacher_version']) && count($params['teacher_version']) > 0 ? json_encode($params['teacher_version']) : '',
                     'allow_answer_key' => isset($params['allow_answer_key']) ? $params['allow_answer_key'] : 0,
-                    'links' => isset($params['links']) && count($params['links']) > 0 ? json_encode($params['links']) : '',
+                    'links' => isset($params['links']) && is_array($params['links']) && count($params['links']) > 0 ? json_encode($params['links']) : '',
                     'file_text' => $params['file_text'] ?? '',
                     'download' => isset($params['download']) ? $params['download'] : 0,
                     'access' => $params['access'] ?? 0,
                     'status' => $params['status'] ?? 1,
                     'content_duration' => isset($params['content_duration']) && $params['content_duration'] != '' ? $params['content_duration'] : 0,
+                    'annotation' => isset($params['annotation']) && is_array($params['annotation']) && count($params['annotation']) > 0 ? json_encode($params['annotation']) : '',
+                    'questionAnnotation' => isset($params['questionAnnotation']) && is_array($params['questionAnnotation']) && count($params['questionAnnotation']) > 0 ? json_encode($params['questionAnnotation']) : '',
                     'created_by' => $params['user_id'] ?? null,
                     'created_date' => date('Y-m-d H:i:s')
                 ];
+                
+                // Ensure no arrays remain in data (safety check)
+                foreach ($data as $key => $value) {
+                    if (is_array($value)) {
+                        log_message('error', '❌ [CONTENT ADD] Found array in data field: ' . $key . ' = ' . json_encode($value));
+                        $data[$key] = count($value) > 0 ? json_encode($value) : '';
+                    } elseif (is_object($value)) {
+                        log_message('error', '❌ [CONTENT ADD] Found object in data field: ' . $key . ' = ' . json_encode($value));
+                        $data[$key] = json_encode($value);
+                    } elseif (!is_scalar($value) && !is_null($value)) {
+                        log_message('error', '❌ [CONTENT ADD] Found non-scalar value in data field: ' . $key . ' (type: ' . gettype($value) . ')');
+                        $data[$key] = is_string($value) ? $value : (string)$value;
+                    }
+                }
+                
+                log_message('debug', '🔍 [CONTENT ADD] Final data after cleanup: ' . json_encode($data));
 
                 if (isset($params['role_id']) && $params['role_id'] == 6 && isset($params['corporate_id'])) {
                     $data['corporate_id'] = $params['corporate_id'];
@@ -541,9 +911,17 @@ class Content extends ResourceController
                 }
 
                 // Insert content
-                $builder = $db->table('content');
-                $builder->insert($data);
-                $contentId = $db->insertID();
+                try {
+                    log_message('debug', '🔍 [CONTENT ADD] Prepared data for insert: ' . json_encode($data));
+                    $builder = $db->table('content');
+                    $builder->insert($data);
+                    $contentId = $db->insertID();
+                    log_message('debug', '🔍 [CONTENT ADD] Insert successful, content_id: ' . $contentId);
+                } catch (\Exception $e) {
+                    log_message('error', '❌ [CONTENT ADD] Database insert error: ' . $e->getMessage());
+                    log_message('error', '❌ [CONTENT ADD] Data that caused error: ' . json_encode($data));
+                    throw $e;
+                }
 
                 if (!$contentId) {
                     throw new \Exception('Failed to insert content');
@@ -552,9 +930,18 @@ class Content extends ResourceController
                 // Insert classroom_content if batch_id is provided
                 if (isset($params['batch_id']) && !empty($params['batch_id'])) {
                     $classroomContent = [];
-                    $batchIds = is_array($params['batch_id']) ? $params['batch_id'] : [$params['batch_id']];
+                    // Handle batch_id - can be null, array, or single value
+                    if (is_array($params['batch_id'])) {
+                        $batchIds = array_filter($params['batch_id']); // Remove null/empty values
+                    } else {
+                        $batchIds = $params['batch_id'] !== null ? [$params['batch_id']] : [];
+                    }
                     
                     foreach ($batchIds as $batchId) {
+                        // Skip if batchId is null or empty
+                        if (empty($batchId)) {
+                            continue;
+                        }
                         // Check if batch content already exists
                         $existing = $this->contentModel->checkBatchContent($batchId, $contentId);
                         if (empty($existing)) {
@@ -607,6 +994,7 @@ class Content extends ResourceController
                                             'allow_any_text' => $subQuestion['allow_any_text'] ?? 0,
                                             'match_case' => $subQuestion['match_case'] ?? 0,
                                             'minimum_line' => $subQuestion['minimum_line'] ?? 0,
+                                            'status' => 1, // Set status to 1 so questions are retrievable
                                             'created_by' => $params['user_id'] ?? null,
                                             'created_date' => date('Y-m-d H:i:s')
                                         ];
@@ -774,8 +1162,91 @@ class Content extends ResourceController
                         $classContentTable
                             ->where('id', $existingClassContent['id'])
                             ->update($updateData);
+                        $classContentId = $existingClassContent['id'];
                     } else {
                         $classContentTable->insert($classContentData);
+                        $classContentId = $db->insertID();
+                    }
+
+                    // If assigned to individual students (all_student = 0), create student_content records
+                    if (isset($details['all_student']) && $details['all_student'] == '0' && !empty($details['student_id'])) {
+                        $studentIds = is_array($details['student_id']) 
+                            ? $details['student_id'] 
+                            : explode(',', $details['student_id']);
+                        
+                        log_message('debug', '🔍 [CONTENT ADD] Creating student_content records for class_content_id: ' . $classContentId . ', student_ids: ' . json_encode($studentIds));
+                        
+                        $studentContentTable = $db->table('student_content');
+                        $createdCount = 0;
+                        $skippedCount = 0;
+                        
+                        foreach ($studentIds as $studentId) {
+                            $studentId = trim($studentId);
+                            if (empty($studentId)) {
+                                log_message('debug', '⚠️ [CONTENT ADD] Skipping empty student_id');
+                                continue;
+                            }
+                            
+                            // Check if student_content already exists
+                            $existingStudentContent = $studentContentTable
+                                ->where('class_content_id', $classContentId)
+                                ->where('student_id', $studentId)
+                                ->where('content_id', $contentId)
+                                ->get()
+                                ->getRowArray();
+                            
+                            if (!$existingStudentContent) {
+                                // Get student's grade
+                                $studentGrade = $db->table('student_class sc')
+                                    ->select('c.grade as grade_id')
+                                    ->join('class c', 'sc.class_id = c.class_id', 'left')
+                                    ->where('sc.student_id', $studentId)
+                                    ->where('sc.class_id', $classId)
+                                    ->get()
+                                    ->getRowArray();
+                                
+                                $studentContentData = [
+                                    'student_id' => $studentId,
+                                    'content_id' => $contentId,
+                                    'class_content_id' => $classContentId,
+                                    'class_id' => $classId,
+                                    'grade_id' => $studentGrade['grade_id'] ?? null,
+                                    'start_date' => $startDate,
+                                    'end_date' => $endDate != '0000-00-00' ? $endDate : null,
+                                    'status' => 1, // Yet to start
+                                    'created_by' => $params['user_id'] ?? null,
+                                    'created_date' => date('Y-m-d H:i:s'),
+                                    'modified_by' => $params['user_id'] ?? null,
+                                    'modified_date' => date('Y-m-d H:i:s')
+                                ];
+                                
+                                log_message('debug', '✅ [CONTENT ADD] Inserting student_content: ' . json_encode($studentContentData));
+                                $studentContentTable->insert($studentContentData);
+                                $createdCount++;
+                            } else {
+                                log_message('debug', '⏭️ [CONTENT ADD] student_content already exists for student_id: ' . $studentId);
+                                $skippedCount++;
+                            }
+                        }
+                        
+                        log_message('debug', '📊 [CONTENT ADD] Created ' . $createdCount . ' student_content records, skipped ' . $skippedCount);
+                        
+                        // Remove student_content records for students not in the list (if updating)
+                        if ($existingAssignment && !empty($details['student_id'])) {
+                            $studentIdsArray = is_array($details['student_id']) 
+                                ? array_map('trim', $details['student_id']) 
+                                : array_map('trim', explode(',', $details['student_id']));
+                            
+                            $studentContentTable
+                                ->where('class_content_id', $classContentId)
+                                ->whereNotIn('student_id', $studentIdsArray)
+                                ->delete();
+                        }
+                    } elseif (isset($details['all_student']) && $details['all_student'] == '1') {
+                        // If switching to class-wide, remove individual student_content records
+                        $db->table('student_content')
+                            ->where('class_content_id', $classContentId)
+                            ->delete();
                     }
                 }
 
@@ -793,6 +1264,9 @@ class Content extends ResourceController
             ]);
 
         } catch (\Exception $e) {
+            log_message('error', '❌ [CONTENT ADD] Exception: ' . $e->getMessage());
+            log_message('error', '❌ [CONTENT ADD] File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            log_message('error', '❌ [CONTENT ADD] Trace: ' . $e->getTraceAsString());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,
@@ -1642,10 +2116,10 @@ class Content extends ResourceController
             if (isset($params['name'])) $updateData['name'] = $params['name'];
             if (isset($params['description'])) $updateData['description'] = $params['description'];
             if (isset($params['grade'])) {
-                $updateData['grade'] = is_array($params['grade']) ? implode(',', $params['grade']) : $params['grade'];
+                $updateData['grade'] = is_array($params['grade']) ? implode(',', array_map('strval', $this->flattenArray($params['grade']))) : $params['grade'];
             }
             if (isset($params['subject'])) {
-                $updateData['subject'] = is_array($params['subject']) ? implode(',', $params['subject']) : $params['subject'];
+                $updateData['subject'] = is_array($params['subject']) ? implode(',', array_map('strval', $this->flattenArray($params['subject']))) : $params['subject'];
             }
             if (isset($params['tags'])) {
                 $updateData['tags'] = is_array($params['tags']) ? implode(',', $params['tags']) : $params['tags'];
@@ -1906,6 +2380,28 @@ class Content extends ResourceController
     /**
      * Normalize mixed time payloads from the UI into HH:MM:SS strings for SQL inserts.
      */
+    /**
+     * Flatten nested arrays to a single level
+     * Handles cases like [[10]] -> [10] or [[10], [20]] -> [10, 20]
+     */
+    private function flattenArray($array): array
+    {
+        if (!is_array($array)) {
+            return [];
+        }
+        
+        $result = [];
+        foreach ($array as $item) {
+            if (is_array($item)) {
+                $result = array_merge($result, $this->flattenArray($item));
+            } else {
+                $result[] = $item;
+            }
+        }
+        
+        return $result;
+    }
+
     private function normalizeTimeValue($value, string $default): string
     {
         if (empty($value) && $value !== '0' && $value !== 0) {
@@ -1945,5 +2441,220 @@ class Content extends ResourceController
         }
 
         return $default;
+    }
+
+    /**
+     * Add/update student answer for a content
+     * This saves student answers and updates the student_content status
+     */
+    public function addStudentAnswer(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📝 Content::addStudentAnswer called with params: ' . json_encode($params));
+
+            // Validation
+            if (empty($params['platform']) || !in_array($params['platform'], ['web', 'ios'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty'
+                ]);
+            }
+
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Content Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['student_content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student Content Id should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            $commonModel = new \App\Models\V1\CommonModel();
+
+            // Get student platform info
+            $platformQuery = $db->table('student_content')
+                ->select('platform')
+                ->where('id', $params['student_content_id'])
+                ->get()
+                ->getRowArray();
+            
+            $platform = $params['platform'] == 'web' ? 1 : 2;
+            if ($platformQuery && $platformQuery['platform'] != 0 && $platformQuery['platform'] != $platform) {
+                $platform = 3; // Both platforms
+            }
+
+            // Determine status
+            $statusQuery = $db->table('student_content')
+                ->select('status, redo_test')
+                ->where('id', $params['student_content_id'])
+                ->get()
+                ->getRowArray();
+
+            $status = $params['status'] ?? 1;
+            if ($statusQuery) {
+                $redoTest = $statusQuery['redo_test'] ?? 0;
+                $currentStatus = $statusQuery['status'] ?? 1;
+                
+                // Only allow status change if redo is allowed or status is not submitted (4)
+                if (!(($redoTest == 0 && $currentStatus != 4) || ($redoTest == 1 || $redoTest == 2))) {
+                    $status = $currentStatus;
+                }
+            }
+
+            // Update student_content
+            $updateData = [
+                'status' => $status,
+                'student_feedback' => $params['overall_student_feedback'] ?? '',
+                'upload_answer' => isset($params['upload_answer']) && !empty($params['upload_answer']) ? json_encode($params['upload_answer']) : '',
+                'answer_completed_date' => date('Y-m-d H:i:s'),
+                'platform' => $platform,
+                'laq_id' => $params['laq_id'] ?? 0
+            ];
+
+            $updateCondition = ['id' => $params['student_content_id']];
+            $updateResult = $db->table('student_content')->update($updateData, $updateCondition);
+
+            // Update student_work if exists
+            $workData = [
+                'student_content_status' => $status,
+                'answer_completed_date' => date('Y-m-d H:i:s')
+            ];
+            $workCondition = ['student_content_id' => $params['student_content_id']];
+            $db->table('student_work')->update($workData, $workCondition);
+
+            // Save answers if provided (non-PDF content)
+            if (isset($params['answers']) && is_array($params['answers']) && !empty($params['answers'])) {
+                $contentFormat = $params['content_format'] ?? 1;
+                
+                if ($contentFormat != 3) { // Not PDF format
+                    // Process and save answers
+                    // This is a simplified version - full implementation would handle all question types
+                    foreach ($params['answers'] as $answerGroup) {
+                        if (isset($answerGroup['section']) && is_array($answerGroup['section'])) {
+                            foreach ($answerGroup['section'] as $section) {
+                                if (isset($section['sub_questions']) && is_array($section['sub_questions'])) {
+                                    foreach ($section['sub_questions'] as $subQ) {
+                                        $answerData = [
+                                            'answer_id' => $subQ['answer_id'] ?? 0,
+                                            'content_id' => $params['content_id'],
+                                            'student_id' => $params['student_id'] ?? $params['user_id'],
+                                            'student_content_id' => $params['student_content_id'],
+                                            'question_no' => $subQ['question_no'] ?? $subQ['sub_question_no'] ?? '',
+                                            'correct_answer' => $subQ['answer'] ?? '',
+                                            'student_answer' => $subQ['student_answer'] ?? '',
+                                            'actual_points' => $subQ['points'] ?? 0,
+                                            'earned_points' => $subQ['earned_points'] ?? 0,
+                                            'answer_status' => $status == 4 ? 4 : 0,
+                                            'created_by' => $params['user_id'],
+                                            'created_date' => date('Y-m-d H:i:s')
+                                        ];
+
+                                        if (isset($subQ['class_id'])) {
+                                            $answerData['class_id'] = $subQ['class_id'];
+                                        }
+
+                                        // Check if answer already exists
+                                        $existing = $db->table('student_answers')
+                                            ->where('answer_id', $answerData['answer_id'])
+                                            ->where('student_content_id', $params['student_content_id'])
+                                            ->get()
+                                            ->getRowArray();
+
+                                        if ($existing) {
+                                            // Update existing answer
+                                            unset($answerData['created_by'], $answerData['created_date']);
+                                            $db->table('student_answers')
+                                                ->where('answer_id', $answerData['answer_id'])
+                                                ->where('student_content_id', $params['student_content_id'])
+                                                ->update($answerData);
+                                        } else {
+                                            // Insert new answer
+                                            $db->table('student_answers')->insert($answerData);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ($updateResult) {
+                // Calculate total score if status is submitted
+                if ($status == 4) {
+                    // Calculate earned points and total points
+                    $totalScore = $db->query("
+                        SELECT COALESCE(SUM(earned_points), 0) as earned_points,
+                               COALESCE(SUM(actual_points), 0) as points
+                        FROM student_answers
+                        WHERE student_content_id = {$params['student_content_id']}
+                    ")->getRowArray();
+
+                    if ($totalScore) {
+                        $db->table('student_content')
+                            ->where('id', $params['student_content_id'])
+                            ->update([
+                                'earned_points' => $totalScore['earned_points'],
+                                'points' => $totalScore['points']
+                            ]);
+                    }
+                }
+
+                $message = $status == 4 ? 'Answers Submitted Successfully' : 'Answers Saved Successfully';
+                
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => $message,
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Unable to Submit Answers'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Content::addStudentAnswer error: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
     }
 }

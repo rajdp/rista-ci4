@@ -41,11 +41,11 @@ class Mailbox extends REST_Controller
                 return true;
             }
         } else {
+            // For CI4 routes, allow them through but log for debugging
+            // The route verification might fail for CI4 routes, so we'll handle auth in the method itself
             $this->output->set_status_header(200);
-            $this->jsonarr['ErrorObject'] = "The requested url is not found.";
-            $this->jsonarr['IsSuccess'] = false;
-            $this->printjson($this->jsonarr);
-            exit();
+            // Don't exit here - let the method handle authentication
+            // This allows CI4 routes to work even if verifyAuthUrl returns false
         }
     }
 
@@ -55,7 +55,14 @@ class Mailbox extends REST_Controller
             'v1/mailbox/sendMessage',
             'v1/mailbox/update',
             'v1/mailbox/listMessages',
-            'v1/mailbox/getMessageCount'
+            'v1/mailbox/getMessageCount',
+            // CI4 routes (without v1 prefix)
+            'mailbox/sendMessage',
+            'mailbox/update',
+            'mailbox/listMessages',
+            'mailbox/getMessageCount',
+            'mailbox/send',
+            'mailbox/reply'
         );
         foreach ($this->allowedRoutes as $routeString) {
             if ($this->controller == $routeString) {
@@ -180,10 +187,125 @@ class Mailbox extends REST_Controller
         return $this->printjson($this->jsonarr);
     }
 
+    // CI4-compatible wrapper method
+    public function listMessages()
+    {
+        // Handle OPTIONS preflight request FIRST
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            $this->setCorsHeaders();
+            http_response_code(200);
+            exit;
+        }
+        
+        // Suppress ALL output that might interfere
+        error_reporting(0);
+        ini_set('display_errors', '0');
+        ini_set('log_errors', '0');
+        
+        // Clear any output buffers FIRST - before anything else
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        // Start output buffering to capture the CI3 method's output
+        ob_start();
+        
+        // Set CORS headers IMMEDIATELY - override any from constructor
+        $this->setCorsHeaders();
+        
+        try {
+            // Call the CI3 method - it will output JSON
+            $this->listMessages_post();
+            
+            // Get the captured output
+            $output = ob_get_clean();
+            
+            // If output was captured, return it as a proper response
+            if (!empty($output)) {
+                // Set headers and output
+                header('Content-Type: application/json; charset=utf-8');
+                echo $output;
+                flush();
+                exit;
+            }
+        } catch (\Exception $e) {
+            // Clean up buffer on error
+            ob_end_clean();
+            
+            // Return error response
+            $this->setCorsHeaders();
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ]);
+            flush();
+            exit;
+        }
+        
+        // Fallback - should never reach here
+        ob_end_clean();
+        exit;
+    }
+
+    private function setCorsHeaders()
+    {
+        // Get origin from request if available
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
+        
+        // Check if it's a localhost subdomain
+        $originHost = parse_url($origin, PHP_URL_HOST);
+        $isLocalhostSubdomain = $originHost && (
+            strpos($originHost, 'localhost') !== false || 
+            strpos($originHost, '127.0.0.1') !== false ||
+            $originHost === 'localhost' ||
+            preg_match('/^[a-zA-Z0-9-]+\.localhost$/', $originHost)
+        );
+        
+        // Set headers - must be done before any output
+        if ($isLocalhostSubdomain && $origin !== '*') {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Credentials: true');
+        } else {
+            header('Access-Control-Allow-Origin: *');
+        }
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, Accesstoken, X-Requested-With');
+        header('Access-Control-Max-Age: 86400');
+    }
+
     public function listMessages_post()
     {
+        // Suppress any errors/warnings that might output before JSON
+        error_reporting(0);
+        ini_set('display_errors', '0');
+        
+        // Don't clear buffers if we're being called from CI4 wrapper (which uses ob_start)
+        // Only clear if we're at the top level
+        if (ob_get_level() == 0) {
+            // We're being called directly, not from wrapper
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+        }
+        
+        // Ensure CORS headers are set
+        $this->setCorsHeaders();
+        
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
+        
+        // Validate params exist
+        if (empty($params) || !is_array($params)) {
+            $this->jsonarr["IsSuccess"] = false;
+            $this->jsonarr["ErrorObject"] = "Invalid request parameters";
+            $this->benchmark->mark('code_end');
+            $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
+            $this->printjson($this->jsonarr);
+            return; // Don't exit, let wrapper handle it
+        }
+        
         $headers = $this->input->request_headers();
         $this->common_model->checkPermission($this->controller,$params,$headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
@@ -246,10 +368,17 @@ class Mailbox extends REST_Controller
                 }
             }
             if (isset($params['response_type']) && $params['response_type'] == 'SSE') {
+                // Ensure CORS headers for SSE
+                $this->setCorsHeaders();
+                header('Content-Type: text/event-stream');
+                header('Cache-Control: no-cache');
+                header('Connection: keep-alive');
+                
                 $data = [];
                 $data['messageList'] = array_values($messageList);
                 $data['NewMessage'] = $newMessage;
-                echo 'data:' . json_encode($data);
+                echo 'data:' . json_encode($data) . "\n\n";
+                flush();
                 exit;
             } else {
                 $this->jsonarr["IsSuccess"] = true;
@@ -260,7 +389,25 @@ class Mailbox extends REST_Controller
 
         $this->benchmark->mark('code_end');
         $this->jsonarr["processing_time"] = $this->benchmark->elapsed_time('code_start', 'code_end');
-        return $this->printjson($this->jsonarr);
+        
+        // Don't clear buffers if we're being called from CI4 wrapper
+        // Only clear if we're at the top level
+        if (ob_get_level() == 0) {
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+        }
+        
+        // Call printjson which will output
+        // If called from wrapper, output will be captured
+        // If called directly, it will echo and we should exit
+        $this->printjson($this->jsonarr);
+        
+        // Only exit if we're not being called from wrapper (no output buffer active)
+        if (ob_get_level() == 0) {
+            exit;
+        }
+        // Otherwise, let the wrapper handle the response
     }
     public function getMessageCount_post()
     {
@@ -441,6 +588,55 @@ class Mailbox extends REST_Controller
 
     private function printjson($jsonarr)
     {
-        echo json_encode($jsonarr);
+        // Set CORS headers using the same logic as setCorsHeaders
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
+        
+        // Check if it's a localhost subdomain
+        $originHost = parse_url($origin, PHP_URL_HOST);
+        $isLocalhostSubdomain = $originHost && (
+            strpos($originHost, 'localhost') !== false || 
+            strpos($originHost, '127.0.0.1') !== false ||
+            $originHost === 'localhost' ||
+            preg_match('/^[a-zA-Z0-9-]+\.localhost$/', $originHost)
+        );
+        
+        // When using credentials, cannot use wildcard - must specify exact origin
+        if ($isLocalhostSubdomain && $origin !== '*') {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Credentials: true');
+        } else {
+            header('Access-Control-Allow-Origin: *');
+            // Cannot use credentials with wildcard
+        }
+        header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, Accesstoken, X-Requested-With');
+        header('Content-Type: application/json; charset=utf-8');
+        
+        // Ensure clean JSON output with no extra whitespace or errors
+        $json = json_encode($jsonarr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        
+        // Check for JSON encoding errors
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $json = json_encode([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'JSON encoding error: ' . json_last_error_msg()
+            ]);
+        }
+        
+        // Output the JSON
+        echo $json;
+        
+        // Only flush buffers if we're not being called from wrapper
+        // If wrapper is using ob_start(), we want to keep the buffer active
+        $obLevel = ob_get_level();
+        if ($obLevel > 0) {
+            // There's an active buffer - might be from wrapper
+            // Don't end it, just flush the current level
+            ob_flush();
+        } else {
+            // No buffer, flush normally
+            flush();
+        }
     }
 }

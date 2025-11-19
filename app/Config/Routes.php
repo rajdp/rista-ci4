@@ -48,7 +48,9 @@ $routes->group('', function($routes) {
     
     // Common endpoints
     $routes->get('common/countries', 'Common::countries');
-    $routes->get('common/states', 'Common::states');
+    $routes->match(['POST', 'OPTIONS'], 'common/state', 'Common::states');
+    $routes->match(['POST', 'OPTIONS'], 'common/states', 'Common::states');
+    $routes->match(['POST', 'OPTIONS'], 'common/cities', 'Common::cities');
     $routes->get('common/cities', 'Common::cities');
     $routes->get('common/timezones', 'Common::timezones');
     $routes->post('common/tagsList', 'Common::tagsList');
@@ -64,6 +66,8 @@ $routes->group('', function($routes) {
     $routes->get('self-registration/config/(:segment)', 'SelfRegistration::config/$1');
     $routes->post('self-registration/submit', 'SelfRegistration::submit');
     $routes->post('self-registration/lookup', 'SelfRegistration::lookup');
+    $routes->get('self-registration/countries', 'SelfRegistration::countries');
+    $routes->get('self-registration/states/(:num)', 'SelfRegistration::states/$1');
     
     // Teacher endpoints
     $routes->post('teacher/list', 'Teacher::list');
@@ -87,6 +91,7 @@ $routes->group('', function($routes) {
     $routes->post('content/addQuestion', 'Content::addQuestion');
     $routes->post('content/editQuestion', 'Content::editQuestion');
     $routes->post('content/deleteQuestion', 'Content::deleteQuestion');
+    $routes->post('content/addStudentAnswer', 'Content::addStudentAnswer');
 
     // CRM public endpoints
     $routes->get('crm/report/view/(:segment)', 'Admin\ReportCards::viewByToken/$1');
@@ -97,8 +102,10 @@ $routes->group('', function($routes) {
         $routes->post('availability', 'Appt\AvailabilityController::save');
         $routes->get('exceptions', 'Appt\ExceptionsController::index');
         $routes->post('exceptions', 'Appt\ExceptionsController::save');
+        $routes->get('slots/aggregated', 'Appt\SlotsController::aggregated'); // Must come before 'slots'
         $routes->get('slots', 'Appt\SlotsController::index');
         $routes->get('bookings', 'Appt\BookingsController::index');
+        $routes->post('bookings/auto-assign', 'Appt\BookingsController::autoAssign'); // For external portal
         $routes->post('book', 'Appt\BookingsController::book');
         $routes->match(['GET', 'POST'], 'policy', 'Appt\SettingsController::policy');
         $routes->post('(:num)/reschedule', 'Appt\BookingsController::reschedule/$1');
@@ -142,11 +149,17 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('student/detail', 'Student::detail');
     $routes->post('student/curriculumList', 'Student::curriculumList');
     $routes->post('student/classList', 'Student::classList');
+    $routes->post('student/studentClassList', 'Student::studentClassList');
     $routes->post('student/assessmentList', 'Student::assessmentList');
     $routes->post('student/assignmentList', 'Student::assignmentList');
     $routes->post('student/resourcesList', 'Student::resourcesList');
+    $routes->post('student/checkContentTime', 'Student::checkContentTime');
     $routes->post('student/studentAllClassList', 'Student::studentAllClassList');
     $routes->post('student/attendanceDetail', 'Student::attendanceDetail');
+    $routes->post('student/myCourses', 'Student::myCourses');
+    $routes->post('student/classDetail', 'Classes::classDetail'); // Student class detail endpoint
+    $routes->post('student/ClassRecording', 'Student::classRecording'); // Student class recording endpoint
+    $routes->match(['POST', 'OPTIONS'], 'student/saveAnnotation', 'Student::saveAnnotation');
     
     // Self-registration admin actions
     $routes->post('admin/self-registration/list', 'Admin\SelfRegistration::list');
@@ -158,12 +171,32 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('admin/self-registration/note', 'Admin\SelfRegistration::addNote');
     $routes->post('admin/self-registration/message', 'Admin\SelfRegistration::sendMessage');
     $routes->post('admin/self-registration/promote', 'Admin\SelfRegistration::promote');
-    $routes->post('admin/self-registration/document/review', 'Admin\SelfRegistration::reviewDocument');
-    $routes->post('admin/self-registration/assignees', 'Admin\SelfRegistration::assignees');
-    $routes->post('admin/self-registration/course-decisions', 'Admin\SelfRegistration::updateCourseDecisions');
-    $routes->post('admin/self-registration/assign-class', 'Admin\SelfRegistration::assignClass');
+$routes->post('admin/self-registration/document/review', 'Admin\SelfRegistration::reviewDocument');
+$routes->post('admin/self-registration/assignees', 'Admin\SelfRegistration::assignees');
+$routes->post('admin/self-registration/course-decisions', 'Admin\SelfRegistration::updateCourseDecisions');
+$routes->post('admin/self-registration/assign-class', 'Admin\SelfRegistration::assignClass');
     $routes->post('admin/self-registration/approve', 'Admin\SelfRegistration::approve');
+    $routes->post('admin/self-registration/attribute-config/load', 'Admin\SelfRegistrationAttributeConfig::load');
+    $routes->post('admin/self-registration/attribute-config/save', 'Admin\SelfRegistrationAttributeConfig::save');
+    $routes->post('admin/self-registration/timeline', 'Admin\SelfRegistration::timeline');
+    $routes->options('admin/self-registration/timeline', 'Admin\SelfRegistration::timeline');
     
+    // Student Course Management endpoints
+    $routes->post('admin/student-courses/list', 'Admin\StudentCourses::list');
+    $routes->post('admin/student-courses/fee-preview', 'Admin\StudentCourses::feePreview');
+    $routes->post('admin/student-courses/add', 'Admin\StudentCourses::add');
+    $routes->post('admin/student-courses/update-status', 'Admin\StudentCourses::updateStatus');
+    $routes->post('admin/student-courses/summary', 'Admin\StudentCourses::summary');
+    $routes->post('admin/student-courses/bulk-add', 'Admin\StudentCourses::bulkAdd');
+
+    // Student Class Management endpoints
+    $routes->post('admin/student-class/list', 'Admin\StudentClass::list');
+    $routes->post('admin/student-class/add', 'Admin\StudentClass::add');
+    $routes->post('admin/student-class/remove', 'Admin\StudentClass::remove');
+    $routes->post('admin/student-class/available-classes', 'Admin\StudentClass::availableClasses');
+    $routes->post('admin/student-class/get-class-courses', 'Admin\StudentClass::getClassCourses');
+    $routes->post('admin/student-class/get-student-courses', 'Admin\StudentClass::getStudentCourses');
+
     // Dashboard endpoints
     $routes->post('api/dashboard', 'Admin\Dashboard::getDashboard');
     $routes->get('api/dashboard', 'Admin\Dashboard::getDashboard');
@@ -173,6 +206,13 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('crm/guardians/save', 'Admin\Guardians::save');
     $routes->post('crm/guardians/assign', 'Admin\Guardians::assign');
     $routes->post('crm/guardians/remove', 'Admin\Guardians::remove');
+    
+    // CRM - Follow-ups/Todos
+    $routes->post('crm/followups/list', 'Admin\FollowUps::list');
+    $routes->post('crm/followups/list-by-owner', 'Admin\FollowUps::listByOwner');
+    $routes->post('crm/followups/create', 'Admin\FollowUps::create');
+    $routes->post('crm/followups/update', 'Admin\FollowUps::updateFollowUp');
+    $routes->post('crm/followups/update-status', 'Admin\FollowUps::updateStatus');
     
     // Teacher endpoints
     $routes->get('teacher', 'Teacher::index');
@@ -189,6 +229,7 @@ $routes->post('teacher/teacherassignStudent', 'Teacher::teacherassignStudent');
 $routes->post('teacher/teacherassignStudentPrint', 'Teacher::teacherassignStudentPrint');
 $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('teacher/studentAssessment', 'Teacher::studentAssessment');
+    $routes->post('teacher/recentSubmissions', 'Teacher::recentSubmissions');
     $routes->post('teacher/assessmentList', 'Teacher::assessmentList');
     $routes->post('teacher/assignmentList', 'Teacher::assignmentList');
     $routes->post('teacher/studentCorrectionList', 'Teacher::studentCorrectionList');
@@ -391,6 +432,7 @@ $routes->post('content/detail', 'Content::detail');
     $routes->post('report/assignmentReports', 'Report::assignmentReports');
     $routes->post('report/gradeReport', 'Report::gradeReport');
     $routes->post('report/studentPerformanceContent', 'Report::studentPerformanceContent');
+    $routes->post('report/reportCard', 'Report::reportCard_post');
     
     // CRM - Report cards
     $routes->post('crm/report/exams', 'Admin\ReportCards::listExams');
@@ -451,6 +493,22 @@ $routes->post('content/detail', 'Content::detail');
     $routes->post('modelconfig/test', 'ModelConfig::testConfig');
     $routes->post('modelconfig/stats', 'ModelConfig::getStats');
     $routes->post('modelconfig/reset', 'ModelConfig::resetConfig');
+
+    // =====================================================
+    // Student Payment Methods (accessible by authenticated users)
+    // =====================================================
+
+    // Payment Initialization (needed for hosted payment forms)
+    $routes->post('api/payments/initialize', 'Api\PaymentController::initialize');
+
+    // Student Payment Methods Management
+    $routes->post('api/payments/methods', 'Api\PaymentController::saveMethod');
+    $routes->get('api/schools/(:num)/students/(:num)/payment-methods', 'Api\PaymentController::getStudentMethods/$1/$2');
+    $routes->put('api/schools/(:num)/students/(:num)/payment-methods/(:num)/set-default', 'Api\PaymentController::setDefault/$1/$2/$3');
+    $routes->delete('api/schools/(:num)/students/(:num)/payment-methods/(:num)', 'Api\PaymentController::deleteMethod/$1/$2/$3');
+
+    // Student Transactions
+    $routes->get('api/schools/(:num)/students/(:num)/transactions', 'Api\PaymentController::getStudentTransactions/$1/$2');
 });
 
 // Admin routes (admin authentication required)
@@ -557,6 +615,41 @@ $routes->group('', ['filter' => 'admin'], function($routes) {
     $routes->post('mailbox/adminList', 'Mailbox::adminList');
     $routes->post('mailbox/adminSend', 'Mailbox::adminSend');
     $routes->post('mailbox/adminReply', 'Mailbox::adminReply');
+
+    // =====================================================
+    // Provider Configuration (Admin Only)
+    // =====================================================
+
+    // Provider Types
+    $routes->get('api/provider-types', 'Api\ProviderConfigController::getTypes');
+
+    // Providers
+    $routes->get('api/providers', 'Api\ProviderConfigController::getProviders');
+
+    // School Provider Configuration
+    $routes->get('api/schools/(:num)/providers', 'Api\ProviderConfigController::getSchoolProviders/$1');
+    $routes->get('api/schools/(:num)/providers/(:num)', 'Api\ProviderConfigController::getConfig/$1/$2');
+    $routes->post('api/schools/(:num)/providers', 'Api\ProviderConfigController::saveConfig/$1');
+    $routes->put('api/schools/(:num)/providers/(:num)', 'Api\ProviderConfigController::updateConfig/$1/$2');
+    $routes->post('api/schools/(:num)/providers/(:num)/test', 'Api\ProviderConfigController::testConnection/$1/$2');
+    $routes->delete('api/schools/(:num)/providers/(:num)', 'Api\ProviderConfigController::deleteConfig/$1/$2');
+
+    // Feature Enablement
+    $routes->get('api/schools/(:num)/features/(:segment)/enabled', 'Api\ProviderConfigController::isFeatureEnabled/$1/$2');
+
+    // Provider Usage Stats & Logs
+    $routes->get('api/schools/(:num)/providers/usage', 'Api\ProviderConfigController::getUsageStats/$1');
+    $routes->get('api/schools/(:num)/providers/logs', 'Api\ProviderConfigController::getUsageLogs/$1');
+
+    // =====================================================
+    // Admin Payment Operations (Admin Only)
+    // =====================================================
+
+    // Payment Charges & Admin Operations
+    $routes->post('api/payments/charge', 'Api\PaymentController::charge');
+    $routes->post('api/payments/transactions/(:num)/refund', 'Api\PaymentController::refund/$1');
+    $routes->get('api/payments/transactions/(:num)', 'Api\PaymentController::getTransaction/$1');
+    $routes->get('api/schools/(:num)/payments/summary', 'Api\PaymentController::getSchoolSummary/$1');
 });
 
 // The Auto Routing (Legacy) is very dangerous. It is easy to create vulnerable apps

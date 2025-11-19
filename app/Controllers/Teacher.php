@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use CodeIgniter\RESTful\ResourceController;
 use CodeIgniter\HTTP\ResponseInterface;
+use InvalidArgumentException;
 
 class Teacher extends ResourceController
 {
@@ -110,6 +111,51 @@ class Teacher extends ResourceController
                 'IsSuccess' => false,
                 'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get the most recent student submissions across assignments/assessments
+     * Results are ordered by submitted date (descending) to prioritize grading flow.
+     */
+    public function recentSubmissions(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            if (empty($params['school_id'])) {
+                throw new InvalidArgumentException('school_id is required');
+            }
+
+            log_message('debug', '📥 Teacher::recentSubmissions called with params: ' . json_encode($params));
+
+            $submissions = $this->teacherModel->recentSubmissions($params);
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $submissions,
+                'ErrorObject' => ''
+            ]);
+        } catch (InvalidArgumentException $e) {
+            log_message('error', '⚠️ Teacher::recentSubmissions validation error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 422);
+        } catch (\Throwable $e) {
+            log_message('error', '❌ Teacher::recentSubmissions error: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'Unable to fetch recent submissions'
             ], 500);
         }
     }
@@ -360,4 +406,3 @@ class Teacher extends ResourceController
         }
     }
 }
-

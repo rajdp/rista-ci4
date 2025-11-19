@@ -116,14 +116,19 @@ class SelfRegistration extends BaseController
             return $this->successResponse([
                 'match_found' => false,
                 'student' => null,
-                'message' => 'No student record found for this email.'
+                'message' => 'No student or registration record found for this email.'
             ], 'Lookup complete');
         }
+
+        $recordType = $profile['record_type'] ?? 'student';
+        $message = $recordType === 'lead'
+            ? 'We found an existing enrollment request linked to this email. You can continue or schedule a meeting.'
+            : 'We found an existing student profile linked to this email.';
 
         return $this->successResponse([
             'match_found' => true,
             'student' => $profile,
-            'message' => 'We found an existing student profile linked to this email.'
+            'message' => $message
         ], 'Lookup complete');
     }
 
@@ -512,5 +517,67 @@ class SelfRegistration extends BaseController
         }
 
         return $code;
+    }
+
+    /**
+     * Get all countries
+     * GET /self-registration/countries
+     */
+    public function countries(): ResponseInterface
+    {
+        $db = \Config\Database::connect();
+        
+        // Try the countries table first (with country_id, country_name, country_code)
+        if ($db->tableExists('countries')) {
+            $countries = $db->table('countries')
+                ->select('country_id, country_name, country_code')
+                ->where('status', 1)
+                ->orderBy('country_name', 'ASC')
+                ->get()
+                ->getResultArray();
+        } else {
+            // Fallback to country table (with id, name)
+            $countries = $db->table('country')
+                ->select('id as country_id, name as country_name, "" as country_code')
+                ->orderBy('name', 'ASC')
+                ->get()
+                ->getResultArray();
+        }
+
+        return $this->successResponse($countries, 'Countries loaded');
+    }
+
+    /**
+     * Get states for a country
+     * GET /self-registration/states/{countryId}
+     */
+    public function states($countryId = null): ResponseInterface
+    {
+        if (!$countryId) {
+            return $this->errorResponse('Country ID is required', 400);
+        }
+
+        $db = \Config\Database::connect();
+        
+        // Try the states table first (with state_id, state_name, country_id)
+        if ($db->tableExists('states')) {
+            $states = $db->table('states')
+                ->select('state_id, state_name, country_id')
+                ->where('country_id', $countryId)
+                ->where('status', 1)
+                ->orderBy('state_name', 'ASC')
+                ->get()
+                ->getResultArray();
+        } else {
+            // Fallback to state table (with id, name, country_id)
+            $states = $db->table('state')
+                ->select('id as state_id, name as state_name, country_id')
+                ->where('country_id', $countryId)
+                ->orderBy('name', 'ASC')
+                ->get()
+                ->getResultArray();
+        }
+
+        return $this->successResponse($states, 'States loaded');
     }
 }

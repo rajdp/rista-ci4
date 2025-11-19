@@ -7,6 +7,7 @@ use App\Models\SelfRegistrationModel;
 use App\Services\SelfRegistrationPromotionService;
 use App\Traits\RestTrait;
 use CodeIgniter\HTTP\ResponseInterface;
+use Config\Database;
 use Config\Services;
 use RuntimeException;
 
@@ -35,6 +36,7 @@ class SelfRegistration extends BaseController
         6 => 'Corporate Admin',
         7 => 'Registrar'
     ];
+    protected array $userNameCache = [];
 
     protected array $fieldLabels = [
         'student_first_name' => 'Student first name',
@@ -565,10 +567,15 @@ class SelfRegistration extends BaseController
         try {
             $payload = (array) ($this->request->getJSON() ?? []);
             $registrationId = (int) ($payload['registration_id'] ?? 0);
+            $studentId = (int) ($payload['student_user_id'] ?? 0);
             $message = trim((string) ($payload['message'] ?? ''));
 
-            if ($registrationId <= 0 || $message === '') {
-                return $this->errorResponse('registration_id and message are required');
+            if ($registrationId <= 0 && $studentId <= 0) {
+                return $this->errorResponse('registration_id or student_user_id is required');
+            }
+
+            if ($message === '') {
+                return $this->errorResponse('message is required');
             }
 
             $token = $this->validateToken();
@@ -581,14 +588,20 @@ class SelfRegistration extends BaseController
                 return $this->unauthorizedResponse('Unable to resolve user from token');
             }
 
-            $record = $this->selfRegistrationModel->getRegistrationById($registrationId);
-            if (empty($record)) {
-                return $this->errorResponse('Registration not found', 404);
-            }
+            $defaultSchoolId = (int) ($this->getSchoolId($token) ?? 0);
+            $record = null;
 
-            $defaultSchoolId = $this->getSchoolId($token);
-            if ($defaultSchoolId && (int) $record['school_id'] !== (int) $defaultSchoolId) {
-                return $this->unauthorizedResponse('You do not have access to this registration');
+            if ($registrationId > 0) {
+                $record = $this->selfRegistrationModel->getRegistrationById($registrationId);
+                if (empty($record)) {
+                    return $this->errorResponse('Registration not found', 404);
+                }
+
+                if ($defaultSchoolId && (int) $record['school_id'] !== $defaultSchoolId) {
+                    return $this->unauthorizedResponse('You do not have access to this registration');
+                }
+            } elseif ($studentId > 0 && !$this->canAccessStudent($studentId, $defaultSchoolId)) {
+                return $this->unauthorizedResponse('You do not have access to this student');
             }
 
             $noteType = $payload['note_type'] ?? 'internal';
@@ -596,13 +609,24 @@ class SelfRegistration extends BaseController
 
             $noteId = $this->selfRegistrationModel->createRegistrationNote([
                 'registration_id' => $registrationId,
+                'student_user_id' => $studentId ?: ($record['converted_student_user_id'] ?? null),
                 'note_type' => $noteType,
                 'message' => $message,
                 'created_by' => $actorId,
-                'metadata' => isset($payload['metadata']) ? json_encode($payload['metadata']) : null
+                'created_by_name' => $this->resolveUserName($actorId),
+                'metadata' => $payload['metadata'] ?? null,
+                'interaction_type' => $payload['interaction_type'] ?? 'workflow',
+                'channel' => $payload['channel'] ?? 'internal',
+                'origin' => $payload['origin'] ?? 'manual',
+                'entity_type' => $payload['entity_type'] ?? 'registration',
+                'entity_id' => $payload['entity_id'] ?? ($registrationId ? (string) $registrationId : null),
             ]);
 
-            $notes = $this->selfRegistrationModel->getRegistrationNotes($registrationId);
+            $notes = $registrationId > 0
+                ? $this->selfRegistrationModel->getRegistrationNotes($registrationId)
+                : $this->selfRegistrationModel->getTimelineNotes([
+                    'student_user_id' => $studentId,
+                ]);
 
             return $this->successResponse([
                 'note_id' => $noteId,
@@ -734,9 +758,11 @@ class SelfRegistration extends BaseController
                 'message' => $message,
                 'status' => $status,
                 'error_message' => $errorMessage,
-                'metadata' => json_encode($metadata),
+                'metadata' => $metadata,
                 'sent_by' => $actorId,
-                'sent_at' => date('Y-m-d H:i:s')
+                'created_by_name' => $this->resolveUserName($actorId),
+                'sent_at' => date('Y-m-d H:i:s'),
+                'origin' => 'automatic'
             ]);
 
             $messages = $this->selfRegistrationModel->getRegistrationMessages($registrationId);
@@ -967,6 +993,13 @@ class SelfRegistration extends BaseController
                     'send_welcome_email' => (bool) $sendWelcome
                 ]
             );
+
+            if (!empty($result['student_user_id'])) {
+                $this->selfRegistrationModel->attachRegistrationNotesToStudent(
+                    $registrationId,
+                    (int) $result['student_user_id']
+                );
+            }
 
             return $this->successResponse($result, 'Registration converted successfully');
         } catch (RuntimeException $e) {
@@ -1332,6 +1365,8 @@ class SelfRegistration extends BaseController
             'note_type' => 'history',
             'message' => $message,
             'created_by' => $actorId,
+            'created_by_name' => $this->resolveUserName($actorId),
+            'origin' => 'automatic',
             'metadata' => $metadata
         ]);
     }
@@ -1622,5 +1657,117 @@ class SelfRegistration extends BaseController
     {
         // TODO: Generate secure token and return portal URL
         return '/portal/autopay/setup?reg=' . $registrationId;
+    }
+
+    /**
+     * Unified timeline endpoint for registration/student notes.
+     */
+    public function timeline(): ResponseInterface
+    {
+        if ($this->request->getMethod() === 'options') {
+            return $this->handleOptions();
+        }
+
+        $token = $this->validateToken();
+        if (!$token) {
+            return $this->unauthorizedResponse('Access token required');
+        }
+
+        $payload = (array) ($this->request->getJSON() ?? []);
+        $registrationId = (int) ($payload['registration_id'] ?? 0);
+        $studentId = (int) ($payload['student_user_id'] ?? 0);
+        $contactId = (int) ($payload['contact_id'] ?? 0);
+        $entityType = strtolower(trim((string) ($payload['entity_type'] ?? '')));
+        $entityId = isset($payload['entity_id']) ? trim((string) $payload['entity_id']) : '';
+
+        if (
+            $registrationId <= 0 &&
+            $studentId <= 0 &&
+            $contactId <= 0 &&
+            ($entityType === '' || $entityId === '')
+        ) {
+            return $this->errorResponse('Provide registration_id, student_user_id, contact_id, or entity identifiers');
+        }
+
+        $schoolId = (int) ($this->getSchoolId($token) ?? 0);
+
+        if ($registrationId > 0 && !$this->canAccessRegistration($registrationId, $schoolId)) {
+            return $this->unauthorizedResponse('You do not have access to this registration');
+        }
+
+        if ($studentId > 0 && !$this->canAccessStudent($studentId, $schoolId)) {
+            return $this->unauthorizedResponse('You do not have access to this student');
+        }
+
+        $notes = $this->selfRegistrationModel->getTimelineNotes([
+            'registration_id' => $registrationId ?: null,
+            'student_user_id' => $studentId ?: null,
+            'contact_id' => $contactId ?: null,
+            'entity_type' => $entityType ?: null,
+            'entity_id' => $entityId ?: null
+        ]);
+
+        return $this->successResponse(['notes' => $notes]);
+    }
+
+    private function canAccessStudent(int $studentId, int $schoolId): bool
+    {
+        if ($studentId <= 0) {
+            return false;
+        }
+
+        if ($schoolId <= 0) {
+            return true;
+        }
+
+        $db = Database::connect();
+        $row = $db->table('user')
+            ->select('school_id')
+            ->where('user_id', $studentId)
+            ->get()
+            ->getRowArray();
+
+        if (!$row) {
+            return false;
+        }
+
+        $schoolField = (string) ($row['school_id'] ?? '');
+        if ($schoolField === '') {
+            return false;
+        }
+
+        $schools = array_filter(array_map('trim', explode(',', $schoolField)));
+        return in_array((string) $schoolId, $schools, true);
+    }
+
+    private function resolveUserName(int $userId): string
+    {
+        if ($userId <= 0) {
+            return 'System';
+        }
+
+        if (isset($this->userNameCache[$userId])) {
+            return $this->userNameCache[$userId];
+        }
+
+        $db = Database::connect();
+        $profile = $db->table('user_profile')
+            ->select("CONCAT_WS(' ', first_name, last_name) AS name")
+            ->where('user_id', $userId)
+            ->get()
+            ->getRowArray();
+
+        $name = trim((string) ($profile['name'] ?? ''));
+        if ($name === '') {
+            $user = $db->table('user')
+                ->select('email_id')
+                ->where('user_id', $userId)
+                ->get()
+                ->getRowArray();
+            $name = $user['email_id'] ?? ('User #' . $userId);
+        }
+
+        $this->userNameCache[$userId] = $name;
+        return $name;
     }
 }

@@ -343,4 +343,32 @@ class StudentModel extends Model
         
         return true;
     }
+
+    /**
+     * Check content time information for student
+     * Returns content details with date/time restrictions
+     */
+    public function checkContentTime($params)
+    {
+        $db = \Config\Database::connect();
+        
+        $classContentId = isset($params['class_content_id']) ? (int)$params['class_content_id'] : 0;
+        $contentId = isset($params['content_id']) ? (int)$params['content_id'] : 0;
+        $classId = isset($params['class_id']) ? (int)$params['class_id'] : 0;
+        
+        $builder = $db->table('class_content cc');
+        $builder->select('cc.start_date, cc.end_date, cc.start_time, cc.end_time, c.content_type, c.name');
+        $builder->join('content c', 'c.content_id = cc.content_id');
+        
+        if ($classContentId > 0) {
+            $builder->where('cc.id', $classContentId);
+        } else {
+            $builder->where('cc.content_id', $contentId);
+            $builder->where('cc.class_id', $classId);
+        }
+        
+        $result = $builder->get()->getRowArray();
+        
+        return $result ?: [];
+    }
 } 

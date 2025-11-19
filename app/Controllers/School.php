@@ -1525,9 +1525,23 @@ class School extends ResourceController
                 $idColumn = 'date_id';
             }
             
+            $statusColumnExists = false;
+            try {
+                $statusColumnsQuery = $db->query("SHOW COLUMNS FROM date_format LIKE 'status'");
+                $statusColumnExists = $statusColumnsQuery->getNumRows() > 0;
+            } catch (\Exception $e) {
+                $statusColumnExists = false;
+            }
+
             $builder = $db->table('date_format');
-            $builder->select($idColumn . ' as date_id, date_format, status');
-            $builder->where('status', 1);
+            $select = $idColumn . ' as date_id, date_format';
+            if ($statusColumnExists) {
+                $select .= ', status';
+                $builder->where('status', 1);
+            } else {
+                $select .= ", 1 as status";
+            }
+            $builder->select($select);
             $builder->orderBy('date_format', 'ASC');
             $dateFormats = $builder->get()->getResultArray();
 

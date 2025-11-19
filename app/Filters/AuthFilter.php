@@ -6,6 +6,7 @@ use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Libraries\Authorization;
+use App\Services\AuthContext;
 
 class AuthFilter implements FilterInterface
 {
@@ -149,11 +150,13 @@ class AuthFilter implements FilterInterface
         
         log_message('debug', 'AuthFilter: Token validated successfully for route: ' . $currentRoute);
 
-        // Store user info in request for use in controllers
-        $request->user = $tokenPayload;
-        $request->user_id = Authorization::getUserId($tokenPayload);
-        $request->school_id = Authorization::getSchoolId($tokenPayload);
-        $request->is_admin = Authorization::isAdmin($tokenPayload);
+        /** @var AuthContext $authContext */
+        $authContext = service('authcontext');
+        $authContext->reset();
+        $authContext->setUserPayload($tokenPayload);
+        $authContext->setUserId(Authorization::getUserId($tokenPayload));
+        $authContext->setSchoolId(Authorization::getSchoolId($tokenPayload));
+        $authContext->setIsAdmin(Authorization::isAdmin($tokenPayload));
     }
 
     /**

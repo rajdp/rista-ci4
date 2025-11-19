@@ -84,4 +84,13 @@ class Services extends BaseService
             new \App\Models\Appt\NotificationModel()
         );
     }
+
+    public static function authcontext(bool $getShared = true)
+    {
+        if ($getShared) {
+            return static::getSharedInstance('authcontext');
+        }
+
+        return new \App\Services\AuthContext();
+    }
 }

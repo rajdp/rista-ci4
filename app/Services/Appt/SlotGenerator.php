@@ -151,6 +151,10 @@ class SlotGenerator
         $grouped = [];
         foreach ($exceptions as $exception) {
             $date = $exception['date'];
+            // Initialize both open and closed arrays for this date if not already set
+            if (!isset($grouped[$date])) {
+                $grouped[$date] = ['open' => [], 'closed' => []];
+            }
             $bucket = $exception['type'] === 'open_override' ? 'open' : 'closed';
             $grouped[$date][$bucket][] = $exception;
         }

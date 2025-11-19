@@ -466,6 +466,8 @@ class ContentModel extends BaseModel
                   COALESCE(c.profile_thumb_url, '') as profile_thumb_url,
                   COALESCE(c.tags, '') as tags, c.is_test, c.test_type_id,
                   COALESCE(c.answerkey_path, '') as answerkey_path,
+                  COALESCE(c.teacher_version, '') as teacher_version,
+                  COALESCE(c.allow_answer_key, '0') as allow_answer_key,
                   COALESCE(c.content_duration, '0') as content_duration,
                   COALESCE(c.total_questions, 0) as total_questions,
                   COALESCE((SELECT GROUP_CONCAT(grade_name) FROM grade 
@@ -667,7 +669,64 @@ class ContentModel extends BaseModel
                   WHERE a.content_id = '{$params['content_id']}' AND a.status = 1
                   ORDER BY a.answer_id ASC";
         
-        return $db->query($query)->getResultArray();
+        log_message('debug', '🔍 [ANSWER LIST] Query: ' . $query);
+        log_message('debug', '🔍 [ANSWER LIST] Content ID: ' . ($params['content_id'] ?? 'NOT SET'));
+        log_message('debug', '🔍 [ANSWER LIST] Params: ' . json_encode($params));
+        
+        $results = $db->query($query)->getResultArray();
+        
+        log_message('debug', '🔍 [ANSWER LIST] Results count: ' . count($results));
+        log_message('debug', '🔍 [ANSWER LIST] Results (flat): ' . json_encode($results));
+        
+        // Also check what's in the database without status filter
+        $checkQuery = "SELECT answer_id, content_id, question_no, question, status, section_heading FROM answers WHERE content_id = '{$params['content_id']}' ORDER BY answer_id ASC";
+        $allResults = $db->query($checkQuery)->getResultArray();
+        log_message('debug', '🔍 [ANSWER LIST] All answers in DB (including status != 1): ' . json_encode($allResults));
+        
+        // Group answers by section heading into the structure expected by frontend
+        // Expected structure: [{heading: "...", section: [{has_sub_question: 0, sub_questions: [...]}]}]
+        $groupedAnswers = [];
+        foreach ($results as $answer) {
+            $heading = $answer['heading'] ?? '';
+            $hasSubQuestion = isset($answer['has_sub_question']) ? (int)$answer['has_sub_question'] : 0;
+            
+            // Use heading as key, or 'default' if empty
+            $headingKey = $heading !== '' ? $heading : 'default';
+            
+            // Initialize section group if it doesn't exist
+            if (!isset($groupedAnswers[$headingKey])) {
+                $groupedAnswers[$headingKey] = [
+                    'heading' => $heading,
+                    'section' => []
+                ];
+            }
+            
+            // Find or create a section with matching has_sub_question
+            $sectionFound = false;
+            foreach ($groupedAnswers[$headingKey]['section'] as &$section) {
+                if ($section['has_sub_question'] == $hasSubQuestion) {
+                    $section['sub_questions'][] = $answer;
+                    $sectionFound = true;
+                    break;
+                }
+            }
+            
+            // If no matching section found, create a new one
+            if (!$sectionFound) {
+                $groupedAnswers[$headingKey]['section'][] = [
+                    'has_sub_question' => $hasSubQuestion,
+                    'sub_questions' => [$answer]
+                ];
+            }
+        }
+        
+        // Convert associative array to indexed array
+        $finalResults = array_values($groupedAnswers);
+        
+        log_message('debug', '🔍 [ANSWER LIST] Grouped results count: ' . count($finalResults));
+        log_message('debug', '🔍 [ANSWER LIST] Grouped results: ' . json_encode($finalResults));
+        
+        return $finalResults;
     }
     
     /**

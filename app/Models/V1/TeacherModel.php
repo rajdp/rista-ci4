@@ -454,7 +454,34 @@ class TeacherModel extends Model
             
             $student_annotation = $studentContentAnnotation[0]['student_annotation'] ?? '';
             if (!empty($student_annotation) && $student_annotation !== '[]') {
-                $studentList['student_annotation'] = json_decode($this->decodeAnnotation($student_annotation)) ?? [];
+                // Check if it's a file path (starts with "uploads/")
+                if (strpos($student_annotation, 'uploads/') === 0) {
+                    // It's a file path - read the file
+                    $filePath = FCPATH . $student_annotation;
+                    log_message('debug', '🟢 TeacherModel: Reading student annotation from file: ' . $filePath);
+                    
+                    if (file_exists($filePath)) {
+                        $fileContent = file_get_contents($filePath);
+                        if ($fileContent !== false) {
+                            $studentList['student_annotation'] = json_decode($fileContent, true);
+                            if (!is_array($studentList['student_annotation'])) {
+                                log_message('warning', '⚠️ TeacherModel: Failed to decode student annotation JSON from file');
+                                $studentList['student_annotation'] = [];
+                            } else {
+                                log_message('debug', '🟢 TeacherModel: Successfully loaded ' . count($studentList['student_annotation']) . ' student annotations from file');
+                            }
+                        } else {
+                            log_message('error', '❌ TeacherModel: Failed to read student annotation file: ' . $filePath);
+                            $studentList['student_annotation'] = [];
+                        }
+                    } else {
+                        log_message('warning', '⚠️ TeacherModel: Student annotation file not found: ' . $filePath);
+                        $studentList['student_annotation'] = [];
+                    }
+                } else {
+                    // It's base64-encoded data - decode it
+                    $studentList['student_annotation'] = json_decode($this->decodeAnnotation($student_annotation)) ?? [];
+                }
             } else {
                 $studentList['student_annotation'] = [];
             }
@@ -674,6 +701,117 @@ class TeacherModel extends Model
         } catch (\Exception $e) {
             log_message('error', '❌ Student Assessment Query Error: ' . $e->getMessage());
             log_message('error', 'Query: ' . $query);
+            return [];
+        }
+    }
+
+    /**
+     * Fetch the most recent submissions to help graders focus on new work
+     */
+    public function recentSubmissions(array $params): array
+    {
+        $schoolId = isset($params['school_id']) ? (int) $params['school_id'] : 0;
+        if ($schoolId <= 0) {
+            log_message('error', '❌ recentSubmissions called without valid school_id');
+            return [];
+        }
+
+        $limit = isset($params['limit']) ? (int) $params['limit'] : 50;
+        $limit = max(1, min($limit, 200));
+
+        $contentFilter = 'AND s.content_type IN (2,3)';
+        if (isset($params['content_type']) && in_array((int)$params['content_type'], [2,3], true)) {
+            $contentFilter = 'AND s.content_type = ' . (int)$params['content_type'];
+        }
+
+        $statusCondition = 'AND s.student_content_status IN (4,6)';
+        if (isset($params['status'])) {
+            switch ((int)$params['status']) {
+                case 0:
+                    $statusCondition = 'AND s.student_content_status IN (1,2,3,4,5,6)';
+                    break;
+                case 2:
+                    $statusCondition = 'AND s.student_content_status = 5';
+                    break;
+                case 3:
+                    $statusCondition = 'AND s.student_content_status = 3';
+                    break;
+                case 4:
+                    $statusCondition = 'AND s.student_content_status IN (1,2)';
+                    break;
+                default:
+                    $statusCondition = 'AND s.student_content_status IN (4,6)';
+            }
+        }
+
+        $teacherJoin = '';
+        $teacherCondition = '';
+        if (isset($params['teacher_id']) && (int)$params['teacher_id'] > 0) {
+            $teacherJoin = 'LEFT JOIN class_schedule cs ON cs.class_id = s.class_id';
+            $teacherCondition = 'AND cs.teacher_id = ' . (int)$params['teacher_id'];
+        }
+
+        $classCondition = '';
+        if (isset($params['class_id']) && (int)$params['class_id'] > 0) {
+            $classCondition = 'AND s.class_id = ' . (int)$params['class_id'];
+        }
+
+        $batchCondition = '';
+        if (isset($params['batch_id']) && (int)$params['batch_id'] > 0) {
+            $batchCondition = 'AND FIND_IN_SET(' . (int)$params['batch_id'] . ', c.batch_id)';
+        }
+
+        $searchCondition = '';
+        if (!empty($params['search'])) {
+            $searchTerm = $this->db->escapeLikeString($params['search']);
+            $searchCondition = "AND (CONCAT_WS(' ', up.first_name, up.last_name) LIKE '%{$searchTerm}%' OR s.content_name LIKE '%{$searchTerm}%')";
+        }
+
+        $query = "SELECT 
+                    s.student_content_id,
+                    s.student_id,
+                    COALESCE(up.profile_url,'') AS student_profile,
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS student_name,
+                    s.content_id,
+                    s.content_name,
+                    s.class_id,
+                    s.class_name,
+                    s.content_type,
+                    s.content_format,
+                    s.student_content_status,
+                    s.total_score,
+                    s.obtained_score,
+                    DATE_FORMAT(s.content_start_date, '%Y-%m-%d') AS content_start_date,
+                    DATE_FORMAT(s.content_end_date, '%Y-%m-%d') AS content_end_date,
+                    DATE_FORMAT(s.answer_completed_date, '%Y-%m-%d %H:%i:%s') AS answer_completed_date,
+                    DATE_FORMAT(s.correction_completed_date, '%Y-%m-%d %H:%i:%s') AS correction_completed_date,
+                    DATE_FORMAT(s.score_release_date, '%Y-%m-%d %H:%i:%s') AS score_release_date,
+                    s.sys_time
+                FROM student_work s
+                LEFT JOIN class c ON c.class_id = s.class_id
+                LEFT JOIN user_profile up ON up.user_id = s.student_id
+                $teacherJoin
+                WHERE c.school_id = {$schoolId}
+                $contentFilter
+                $statusCondition
+                $classCondition
+                $batchCondition
+                $teacherCondition
+                $searchCondition
+                ORDER BY 
+                    CASE WHEN s.answer_completed_date IS NULL OR s.answer_completed_date = '0000-00-00 00:00:00' THEN 1 ELSE 0 END,
+                    s.answer_completed_date DESC,
+                    s.sys_time DESC
+                LIMIT {$limit}";
+
+        log_message('debug', '🔍 recentSubmissions Query: ' . $query);
+
+        try {
+            $result = $this->db->query($query)->getResultArray();
+            log_message('debug', '✅ recentSubmissions returned ' . count($result) . ' rows');
+            return $result;
+        } catch (\Throwable $e) {
+            log_message('error', '❌ recentSubmissions query failed: ' . $e->getMessage());
             return [];
         }
     }

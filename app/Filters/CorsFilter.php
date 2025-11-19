@@ -20,7 +20,9 @@ class CorsFilter implements FilterInterface
         $origin = $request->getHeaderLine('Origin');
 
         if (!empty($origin)) {
-            if ($this->isExactOriginAllowed($origin, $allowedOrigins) || $this->isDomainSuffixAllowed($origin, $allowedDomainSuffixes)) {
+            if ($this->isExactOriginAllowed($origin, $allowedOrigins) || 
+                $this->isDomainSuffixAllowed($origin, $allowedDomainSuffixes) ||
+                $this->isLocalhostSubdomain($origin)) {
                 $response->setHeader('Access-Control-Allow-Origin', $origin);
             } elseif (!empty($allowedOrigins)) {
                 $response->setHeader('Access-Control-Allow-Origin', $allowedOrigins[0]);
@@ -100,5 +102,25 @@ class CorsFilter implements FilterInterface
 
         $length = strlen($needle);
         return substr($haystack, -$length) === $needle;
+    }
+
+    /**
+     * Check if origin is a localhost subdomain (e.g., schoolnew.localhost:8211)
+     * This allows subdomain-based localhost development
+     */
+    private function isLocalhostSubdomain(string $origin): bool
+    {
+        $parsed = parse_url($origin);
+        if (!isset($parsed['host'])) {
+            return false;
+        }
+
+        $host = strtolower($parsed['host']);
+        
+        // Check for localhost subdomains (e.g., schoolnew.localhost)
+        return strpos($host, 'localhost') !== false || 
+               strpos($host, '127.0.0.1') !== false ||
+               $host === 'localhost' ||
+               preg_match('/^[a-zA-Z0-9-]+\.localhost(:[0-9]+)?$/', $host);
     }
 }

@@ -39,16 +39,17 @@ class Course extends BaseController
             $db = \Config\Database::connect();
             $builder = $db->table('tbl_course c');
             $builder->select('c.course_id, c.course_name, c.seo_title, c.category_id, c.subject_id, c.grade_id, c.description,
-                             c.short_description, COALESCE(c.path, "") as path, c.validity_start_date, c.validity_end_date, c.status, 
-                             c.lessons, c.overview_content, c.course_content, c.prerequisites, c.other_details, 
+                             c.short_description, COALESCE(c.path, "") as path, c.validity_start_date, c.validity_end_date, c.status,
+                             c.lessons, c.overview_content, c.course_content, c.prerequisites, c.other_details,
                              COALESCE(c.documentation_requirements, "") as documentation_requirements, c.author, c.fees,
+                             c.fee_amount, c.fee_term,
                              c.certified_course, c.multiple_schedule, c.schedule, c.redirect_url, COALESCE(c.button_name, "") as button_name,
                              c.created_by, c.created_date, c.is_popular, c.is_exclusive, c.event, c.display_order, c.contact_info,
                              c.entity_id,
                              (
-                                 SELECT COUNT(*) 
-                                 FROM class cls 
-                                 WHERE cls.course_id = c.course_id 
+                                 SELECT COUNT(*)
+                                 FROM class cls
+                                 WHERE cls.course_id = c.course_id
                                    AND cls.school_id = c.entity_id
                              ) as class_count,
                              (SELECT GROUP_CONCAT(category_name) FROM tbl_course_category WHERE FIND_IN_SET(category_id, c.category_id)) as category_name,
@@ -66,8 +67,8 @@ class Course extends BaseController
                 $builder->where('c.status', 'A');
             }
             
-            // Add ordering
-            $builder->orderBy('c.course_id', 'DESC');
+            // Add ordering - alphabetically by course name
+            $builder->orderBy('c.course_name', 'ASC');
             
             // Add pagination
             if (isset($params['page_no']) && $params['page_no'] != '' && isset($params['records_per_page'])) {

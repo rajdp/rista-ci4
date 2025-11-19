@@ -27,7 +27,7 @@ abstract class ApptController extends BaseController
         return $token;
     }
 
-    protected function resolveSchoolId(?object $token, array $payload = []): ?int
+    protected function resolveSchoolId($token, array $payload = []): ?int
     {
         if ($token) {
             $schoolIdFromToken = $this->getSchoolId($token);

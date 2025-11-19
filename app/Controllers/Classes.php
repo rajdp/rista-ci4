@@ -66,7 +66,7 @@ class Classes extends BaseController
             $builder = $db->table('class c');
             $builder->select('c.class_id, c.class_name, c.subject, c.grade, c.start_date, c.end_date,
                              c.status, c.class_status, c.class_type, c.tags, c.class_code, c.batch_id,
-                             c.meeting_link, c.meeting_id, c.passcode, c.announcement_type,
+                             c.meeting_link, c.meeting_id, c.passcode, c.announcement_type, c.course_id,
                              (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name,
                              (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name,
                              (SELECT COUNT(*) FROM student_class sc 
@@ -750,6 +750,21 @@ class Classes extends BaseController
             $builder->where('c.school_id', $params['school_id']);
             $builder->where('c.status', '1');
             
+            // If role is student (5), only show classes where the student is enrolled
+            if ($params['role_id'] == '5' || $params['role_id'] == 5) {
+                $builder->join('student_class sc', 'c.class_id = sc.class_id', 'inner');
+                $builder->where('sc.student_id', $params['user_id']);
+                $builder->where('sc.status', '1');
+                // Check if student joined before or on the selected date and validity
+                if (isset($params['date'])) {
+                    $builder->where('sc.joining_date <=', $params['date']);
+                    $builder->groupStart();
+                    $builder->where('sc.validity >=', $params['date']);
+                    $builder->orWhere('sc.validity', '0000-00-00');
+                    $builder->groupEnd();
+                }
+            }
+            
             // Filter by date range if provided
             if (isset($params['date'])) {
                 $builder->where('c.start_date <=', $params['date']);
@@ -775,6 +790,7 @@ class Classes extends BaseController
                 }
 
                 // Get students for this class
+                // If role is student (5), only show the logged-in student's details
                 $studentBuilder = $db->table('student_class sc');
                 $studentBuilder->select('sc.student_id, sc.status as student_class_status,
                                         up.first_name, up.last_name,
@@ -786,6 +802,10 @@ class Classes extends BaseController
                 $studentBuilder->join('grade g', 'upd.grade_id = g.grade_id', 'left');
                 $studentBuilder->where('sc.class_id', $class['class_id']);
                 $studentBuilder->where('sc.status', '1');
+                // If role is student, only show their own details
+                if ($params['role_id'] == '5' || $params['role_id'] == 5) {
+                    $studentBuilder->where('sc.student_id', $params['user_id']);
+                }
                 $students = $studentBuilder->get()->getResultArray();
 
                 // Get attendance for each student
@@ -1154,6 +1174,36 @@ class Classes extends BaseController
 
             // Process each student's attendance
             foreach ($params['attendence'] as $attendance) {
+                // Validate attendance date is within student's validity period
+                $studentClassBuilder = $db->table('student_class');
+                $studentClassBuilder->select('joining_date, validity');
+                $studentClassBuilder->where('class_id', $params['class_id']);
+                $studentClassBuilder->where('student_id', $attendance['student_id']);
+                $studentClassBuilder->groupStart();
+                    $studentClassBuilder->where('status', '1');
+                    $studentClassBuilder->orGroupStart();
+                        $studentClassBuilder->where('status', '0');
+                        $studentClassBuilder->where('validity >', date('Y-m-d'));
+                    $studentClassBuilder->groupEnd();
+                $studentClassBuilder->groupEnd();
+                $studentClass = $studentClassBuilder->get()->getRowArray();
+                
+                if ($studentClass) {
+                    // Check if date is before joining_date
+                    if (!empty($studentClass['joining_date']) && $studentClass['joining_date'] != '0000-00-00') {
+                        if (strtotime($date) < strtotime($studentClass['joining_date'])) {
+                            continue; // Skip - student hasn't joined yet
+                        }
+                    }
+                    
+                    // Check if date is after validity date
+                    if (!empty($studentClass['validity']) && $studentClass['validity'] != '0000-00-00') {
+                        if (strtotime($date) > strtotime($studentClass['validity'])) {
+                            continue; // Skip - student has already dropped
+                        }
+                    }
+                }
+                
                 // Check if attendance record already exists
                 $builder = $db->table('class_attendance');
                 $builder->select('id as attendance_id');
@@ -1354,6 +1404,12 @@ class Classes extends BaseController
 
             log_message('debug', '📥 Classes::curriculumList params: ' . json_encode($params));
             
+            // Check if user is a student (role_id = 5)
+            $isStudent = isset($params['role_id']) && ($params['role_id'] == '5' || $params['role_id'] == 5);
+            $studentId = $isStudent && isset($params['user_id']) ? $params['user_id'] : null;
+            
+            log_message('debug', '👤 Classes::curriculumList - isStudent: ' . ($isStudent ? 'YES' : 'NO') . ', studentId: ' . ($studentId ?? 'N/A'));
+            
             // Get class contents/curriculum
             $builder = $db->table('class_content cc');
             $builder->select('cc.*, cc.id as class_content_id, c.name as content_name, c.content_type, c.content_format, c.file_path,
@@ -1370,8 +1426,41 @@ class Classes extends BaseController
             $builder->join('content c', 'cc.content_id = c.content_id', 'left');
             $builder->join('student_content sc', 'sc.class_content_id = cc.id', 'left');
             $builder->join('user_profile up', 'sc.student_id = up.user_id', 'left');
+            
+            // For students, join with student_class to verify class membership
+            if ($isStudent && $studentId) {
+                $builder->join('student_class scs', 'scs.class_id = cc.class_id AND scs.student_id = ' . (int)$studentId, 'left');
+            }
+            
             $builder->where('cc.class_id', $params['class_id']);
             $builder->where('cc.status', 1);
+            
+            // Apply student-specific filtering if user is a student
+            if ($isStudent && $studentId) {
+                // Students should only see:
+                // 1. Class-wide content that is in-progress or future (end_date >= CURDATE())
+                // 2. Student-specific content only if student_content record exists for them
+                $builder->groupStart();
+                    $builder->groupStart();
+                        // Class-wide content: in-progress and future only
+                        $builder->where('cc.all_student', 1);
+                        $builder->where('cc.end_date >=', date('Y-m-d'));
+                        $builder->where('scs.student_id', $studentId); // Verify class membership
+                    $builder->groupEnd();
+                    $builder->orGroupStart();
+                        // Student-specific content: only if student_content record exists
+                        $builder->where('cc.all_student', 0);
+                        $builder->where('sc.student_id', $studentId);
+                        // Since we're filtering by sc.student_id, if there's a match, sc.id will not be NULL
+                        // This check ensures we only get rows where student_content actually exists
+                        $builder->where('sc.id IS NOT NULL', null, false);
+                    $builder->groupEnd();
+                $builder->groupEnd();
+                
+                log_message('debug', '🔒 [CLASSES] Applied student filtering for student_id: ' . $studentId);
+            }
+            // Teachers and other roles see all content (no additional filtering)
+            
             $builder->orderBy('cc.start_date', 'ASC');
             $builder->groupBy('cc.id');
 
@@ -1383,6 +1472,45 @@ class Classes extends BaseController
             foreach ($list as &$item) {
                 $item['individual_students'] = $item['individual_students'] ?? '';
                 $item['individual_count'] = isset($item['individual_count']) ? (int) $item['individual_count'] : 0;
+                
+                // Debug logging for individual assignments
+                if ($item['all_student'] == 0 || $item['all_student'] == '0') {
+                    log_message('debug', '🔍 [CLASSES] Individual assignment found: class_content_id=' . ($item['id'] ?? $item['class_content_id']) . 
+                                ', content_name=' . ($item['content_name'] ?? 'N/A') .
+                                ', all_student=' . $item['all_student'] .
+                                ', individual_students=' . $item['individual_students'] .
+                                ', individual_count=' . $item['individual_count']);
+                    
+                    // Check if student_content records exist for this class_content_id
+                    $db = \Config\Database::connect();
+                    $studentContentCheck = $db->table('student_content')
+                        ->where('class_content_id', $item['id'] ?? $item['class_content_id'])
+                        ->get()
+                        ->getResultArray();
+                    
+                    log_message('debug', '🔍 [CLASSES] student_content records found: ' . count($studentContentCheck) . 
+                                ' for class_content_id=' . ($item['id'] ?? $item['class_content_id']));
+                    
+                    if (count($studentContentCheck) > 0) {
+                        $studentIds = array_column($studentContentCheck, 'student_id');
+                        log_message('debug', '🔍 [CLASSES] student_ids in student_content: ' . json_encode($studentIds));
+                        
+                        // Check if user_profile records exist for these student_ids
+                        $userProfileCheck = $db->table('user_profile')
+                            ->whereIn('user_id', $studentIds)
+                            ->get()
+                            ->getResultArray();
+                        
+                        log_message('debug', '🔍 [CLASSES] user_profile records found: ' . count($userProfileCheck));
+                        
+                        if (count($userProfileCheck) > 0) {
+                            $studentNames = array_map(function($up) {
+                                return trim(($up['first_name'] ?? '') . ' ' . ($up['last_name'] ?? ''));
+                            }, $userProfileCheck);
+                            log_message('debug', '🔍 [CLASSES] Student names from user_profile: ' . json_encode($studentNames));
+                        }
+                    }
+                }
             }
 
             log_message('debug', '📦 Classes::curriculumList fetched ' . count($list) . ' row(s)');

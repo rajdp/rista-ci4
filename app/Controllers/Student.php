@@ -165,7 +165,7 @@ class Student extends ResourceController
             
             // Get all classes for the student
             $builder = $db->table('student_class sc');
-            $builder->select('sc.class_id, sc.student_id, sc.notify_status, sc.joining_date, sc.drafted_date,
+            $builder->select('sc.class_id, sc.student_id, sc.notify_status, sc.joining_date, sc.drafted_date, sc.validity, sc.status,
                              c.class_name, c.start_date, c.end_date, c.status as class_status, 
                              c.class_code, 
                              COALESCE(s.subject_name, "") as subject, 
@@ -176,7 +176,12 @@ class Student extends ResourceController
             $builder->join('grade gr', 'c.grade = gr.grade_id', 'left');
             $builder->join('subject s', 'c.subject = s.subject_id', 'left');
             $builder->where('sc.student_id', $params['student_id']);
-            $builder->where('sc.status', 1);
+            // Include all classes (active, scheduled to drop, and past dropped)
+            // The frontend will categorize them into Active/Past based on status and validity date
+            $builder->groupStart();
+                $builder->where('sc.status', 1); // Active classes
+                $builder->orWhere('sc.status', 0); // Inactive classes (includes both future and past validity dates)
+            $builder->groupEnd();
             $builder->orderBy('sc.created_date', 'DESC');
             
             $classes = $builder->get()->getResultArray();
@@ -406,6 +411,13 @@ class Student extends ResourceController
             // For SSE, suppress all errors and warnings to prevent contaminating the stream
             error_reporting(0);
             ini_set('display_errors', '0');
+            // Clear all output buffers immediately
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+            // Disable output buffering
+            ini_set('output_buffering', 'off');
+            ini_set('zlib.output_compression', '0');
         }
         
         $params = $this->request->getJSON(true) ?? [];
@@ -414,26 +426,67 @@ class Student extends ResourceController
             $params = $this->request->getPost() ?? [];
         }
         
+        // If SSE, also check in params
+        if (!$isSSE && isset($params['response_type']) && $params['response_type'] === 'SSE') {
+            $isSSE = true;
+            error_reporting(0);
+            ini_set('display_errors', '0');
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+            ini_set('output_buffering', 'off');
+            ini_set('zlib.output_compression', '0');
+        }
+        
         try {
             // Validation
             if (empty($params['student_id'])) {
                 if ($isSSE) {
-                    while (ob_get_level()) ob_end_clean();
+                    while (ob_get_level()) {
+                        ob_end_clean();
+                    }
                     
                     // Set CORS headers
                     $origin = $this->request->getHeaderLine('Origin');
-                    $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211'));
+                    $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211,http://schoolnew.localhost:8211'));
+                    
+                    // Check for exact match first
                     if (in_array($origin, $allowedOrigins)) {
                         header('Access-Control-Allow-Origin: ' . $origin);
                     } else {
-                        header('Access-Control-Allow-Origin: ' . $allowedOrigins[0]);
+                        // Check if it's a localhost subdomain (e.g., schoolnew.localhost)
+                        $originHost = parse_url($origin, PHP_URL_HOST);
+                        $isLocalhostSubdomain = $originHost && (
+                            strpos($originHost, 'localhost') !== false || 
+                            strpos($originHost, '127.0.0.1') !== false ||
+                            $originHost === 'localhost' ||
+                            preg_match('/^[a-zA-Z0-9-]+\.localhost$/', $originHost)
+                        );
+                        
+                        if ($isLocalhostSubdomain) {
+                            header('Access-Control-Allow-Origin: ' . $origin);
+                        } else {
+                            header('Access-Control-Allow-Origin: ' . ($allowedOrigins[0] ?? '*'));
+                        }
                     }
                     header('Access-Control-Allow-Credentials: true');
+                    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+                    header('Access-Control-Allow-Headers: Content-Type, Authorization, Accesstoken');
                     
+                    // Set SSE headers
+                    header('Connection: keep-alive');
                     header('Content-Type: text/event-stream');
-                    header('Cache-Control: no-cache');
+                    header('Cache-Control: no-cache, no-store, must-revalidate');
+                    header('Pragma: no-cache');
+                    header('Expires: 0');
                     header('X-Accel-Buffering: no');
-                    echo 'data: ' . json_encode(['error' => 'Student ID should not be empty']) . "\n\n";
+                    
+                    $errorData = json_encode(['error' => 'Student ID should not be empty']);
+                    echo "data: {$errorData}\n\n";
+                    
+                    if (ob_get_level()) {
+                        ob_end_flush();
+                    }
                     flush();
                     exit;
                 }
@@ -448,7 +501,7 @@ class Student extends ResourceController
 
             // Get classes for this student
             $builder = $db->table('student_class sc');
-            $builder->select('sc.*, c.class_id, c.class_name, c.subject, c.grade, c.start_date, c.end_date,
+            $builder->select('sc.*, sc.joining_date, sc.validity, c.class_id, c.class_name, c.subject, c.grade, c.start_date, c.end_date,
                              c.status as class_status, c.class_type, c.tags, c.class_code,
                              s.subject_name, g.grade_name,
                              (CASE WHEN c.start_date > CURDATE() THEN "1"
@@ -459,7 +512,12 @@ class Student extends ResourceController
             $builder->join('subject s', 'c.subject = s.subject_id', 'left');
             $builder->join('grade g', 'c.grade = g.grade_id', 'left');
             $builder->where('sc.student_id', $params['student_id']);
-            $builder->where('sc.status', '1');
+            // Include all classes (active, scheduled to drop, and past dropped)
+            // The frontend will categorize them into Active/Past based on status and validity date
+            $builder->groupStart();
+                $builder->where('sc.status', '1'); // Active classes
+                $builder->orWhere('sc.status', '0'); // Inactive classes (includes both future and past validity dates)
+            $builder->groupEnd();
             $builder->where('c.status', '1');
 
             // Apply type filter if provided
@@ -493,6 +551,10 @@ class Student extends ResourceController
                     $class['classDate_status'] = "5";
                 }
                 
+                // Map classDate_status to status for frontend compatibility
+                // status: "1" = Not Started, "2" = In Progress, "3" = Completed
+                $class['status'] = $class['classDate_status'] ?? "2";
+                
                 // Get class notes/announcements
                 $notesBuilder = $db->table('class_notes');
                 $notesBuilder->where('class_id', $class['class_id']);
@@ -515,27 +577,54 @@ class Student extends ResourceController
 
             // Return response in appropriate format
             if ($isSSE) {
-                // For SSE, clear buffers and set headers
-                while (ob_get_level()) ob_end_clean();
+                // For SSE, clear buffers again (in case anything was output)
+                while (ob_get_level()) {
+                    ob_end_clean();
+                }
                 
-                // Set CORS headers (must be set after ob_end_clean)
+                // Set CORS headers first (must be set after ob_end_clean)
                 $origin = $this->request->getHeaderLine('Origin');
-                $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211'));
+                $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211,http://schoolnew.localhost:8211'));
+                
+                // Check for exact match first
                 if (in_array($origin, $allowedOrigins)) {
                     header('Access-Control-Allow-Origin: ' . $origin);
                 } else {
-                    header('Access-Control-Allow-Origin: ' . $allowedOrigins[0]);
+                    // Check if it's a localhost subdomain (e.g., schoolnew.localhost)
+                    $originHost = parse_url($origin, PHP_URL_HOST);
+                    $isLocalhostSubdomain = $originHost && (
+                        strpos($originHost, 'localhost') !== false || 
+                        strpos($originHost, '127.0.0.1') !== false ||
+                        $originHost === 'localhost' ||
+                        preg_match('/^[a-zA-Z0-9-]+\.localhost$/', $originHost)
+                    );
+                    
+                    if ($isLocalhostSubdomain) {
+                        header('Access-Control-Allow-Origin: ' . $origin);
+                    } else {
+                        header('Access-Control-Allow-Origin: ' . ($allowedOrigins[0] ?? '*'));
+                    }
                 }
                 header('Access-Control-Allow-Credentials: true');
+                header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+                header('Access-Control-Allow-Headers: Content-Type, Authorization, Accesstoken');
                 
-                // Set SSE headers
-                header('Content-Type: text/event-stream');
-                header('Cache-Control: no-cache');
+                // Set SSE headers (Connection must be set before Content-Type for some servers)
                 header('Connection: keep-alive');
+                header('Content-Type: text/event-stream');
+                header('Cache-Control: no-cache, no-store, must-revalidate');
+                header('Pragma: no-cache');
+                header('Expires: 0');
                 header('X-Accel-Buffering: no');
                 
-                // Send the data
-                echo 'data: ' . json_encode(['classList' => $classes]) . "\n\n";
+                // Send the data with proper SSE format
+                $data = json_encode(['classList' => $classes]);
+                echo "data: {$data}\n\n";
+                
+                // Force flush all output
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
                 flush();
                 
                 // Close the database connection
@@ -555,26 +644,208 @@ class Student extends ResourceController
             
             // Return error in appropriate format
             if ($isSSE) {
-                while (ob_get_level()) ob_end_clean();
+                while (ob_get_level()) {
+                    ob_end_clean();
+                }
                 
                 // Set CORS headers
                 $origin = $this->request->getHeaderLine('Origin');
-                $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211'));
+                $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211,http://schoolnew.localhost:8211'));
+                
+                // Check for exact match first
                 if (in_array($origin, $allowedOrigins)) {
                     header('Access-Control-Allow-Origin: ' . $origin);
                 } else {
-                    header('Access-Control-Allow-Origin: ' . $allowedOrigins[0]);
+                    // Check if it's a localhost subdomain (e.g., schoolnew.localhost)
+                    $originHost = parse_url($origin, PHP_URL_HOST);
+                    $isLocalhostSubdomain = $originHost && (
+                        strpos($originHost, 'localhost') !== false || 
+                        strpos($originHost, '127.0.0.1') !== false ||
+                        $originHost === 'localhost' ||
+                        preg_match('/^[a-zA-Z0-9-]+\.localhost$/', $originHost)
+                    );
+                    
+                    if ($isLocalhostSubdomain) {
+                        header('Access-Control-Allow-Origin: ' . $origin);
+                    } else {
+                        header('Access-Control-Allow-Origin: ' . ($allowedOrigins[0] ?? '*'));
+                    }
                 }
                 header('Access-Control-Allow-Credentials: true');
+                header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+                header('Access-Control-Allow-Headers: Content-Type, Authorization, Accesstoken');
                 
+                // Set SSE headers
+                header('Connection: keep-alive');
                 header('Content-Type: text/event-stream');
-                header('Cache-Control: no-cache');
+                header('Cache-Control: no-cache, no-store, must-revalidate');
+                header('Pragma: no-cache');
+                header('Expires: 0');
                 header('X-Accel-Buffering: no');
-                echo 'data: ' . json_encode(['error' => $e->getMessage()]) . "\n\n";
+                
+                $errorData = json_encode(['error' => $e->getMessage()]);
+                echo "data: {$errorData}\n\n";
+                
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
                 flush();
                 exit;
             }
             
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => [],
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get student class list (legacy endpoint for compatibility)
+     * This method provides the same functionality as the old CI3 studentClassList endpoint
+     */
+    public function studentClassList(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validation
+            if (empty($params['platform'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty'
+                ]);
+            }
+            
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+            
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role Id should not be empty'
+                ]);
+            }
+            
+            if (empty($params['student_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student Id should not be empty'
+                ]);
+            }
+            
+            if (empty($params['school_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'School Id should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Handle grade dates if grade_id is provided
+            $gradeStartDate = '';
+            $gradeEndDate = '';
+            if (isset($params['grade_id']) && $params['grade_id'] != '') {
+                $gradeBuilder = $db->table('student_grade sg');
+                $gradeBuilder->select('sg.grade_id, sg.active_date');
+                $gradeBuilder->where('sg.student_id', $params['student_id']);
+                $gradeBuilder->orderBy('sg.grade_id', 'ASC');
+                $getStudentGrade = $gradeBuilder->get()->getResultArray();
+                
+                foreach ($getStudentGrade as $key => $value) {
+                    if ($value['grade_id'] == $params['grade_id']) {
+                        $gradeStartDate = $value['active_date'];
+                    }
+                    if ($value['grade_id'] > $params['grade_id']) {
+                        $gradeEndDate = $value['active_date'];
+                        break;
+                    }
+                }
+            }
+            $params['grade_start_date'] = $gradeStartDate;
+            $params['grade_end_date'] = $gradeEndDate;
+
+            // Get classes for this student
+            $builder = $db->table('student_class sc');
+            $builder->select('sc.*, sc.from_class, sc.transfer_class, sc.transferred_date, sc.joining_date, sc.validity, sc.status,
+                             c.class_id, c.class_name, c.subject, c.grade, c.start_date, c.end_date,
+                             c.status as class_status, c.class_type, c.tags, c.class_code, c.teacher_id,
+                             s.subject_name, g.grade_name,
+                             (CASE WHEN c.start_date > CURDATE() THEN "1"
+                                   WHEN c.start_date <= CURDATE() AND c.end_date >= CURDATE() THEN "2"
+                                   WHEN c.end_date < CURDATE() AND c.end_date != "0000-00-00" THEN "3"
+                                   ELSE "2" END) AS classDate_status');
+            $builder->join('class c', 'sc.class_id = c.class_id', 'left');
+            $builder->join('subject s', 'c.subject = s.subject_id', 'left');
+            $builder->join('grade g', 'c.grade = g.grade_id', 'left');
+            $builder->where('sc.student_id', $params['student_id']);
+            // Include all classes (active, scheduled to drop, and past dropped)
+            // The frontend will categorize them into Active/Past based on status and validity date
+            $builder->groupStart();
+                $builder->where('sc.status', '1'); // Active classes
+                $builder->orWhere('sc.status', '0'); // Inactive classes (includes both future and past validity dates)
+            $builder->groupEnd();
+            $builder->where('c.status', '1');
+            $builder->orderBy('c.class_id', 'DESC');
+            
+            $classes = $builder->get()->getResultArray();
+
+            // Process the results
+            foreach ($classes as $key => $value) {
+                // Handle transferred classes
+                if (isset($value['from_class']) && $value['from_class'] == 0) {
+                    $classes[$key]['transferred_date'] = '';
+                } elseif (!isset($value['from_class'])) {
+                    $classes[$key]['from_class'] = 0;
+                    $classes[$key]['transferred_date'] = '';
+                }
+                
+                // Process teacher names
+                if (!empty($value['teacher_id'])) {
+                    $teacherId = explode(',', $value['teacher_id']);
+                    $teacherId = array_unique($teacherId);
+                    $teacherName = [];
+                    
+                    foreach ($teacherId as $id) {
+                        $teacherBuilder = $db->table('user_profile up');
+                        $teacherBuilder->select("CONCAT(up.first_name, ' ', up.last_name) as teacher_name");
+                        $teacherBuilder->where('up.user_id', $id);
+                        $getteacherName = $teacherBuilder->get()->getRowArray();
+                        
+                        if ($getteacherName && !empty($getteacherName['teacher_name'])) {
+                            $teacherName[] = $getteacherName['teacher_name'];
+                        }
+                    }
+                    
+                    $classes[$key]['teacher_name'] = implode(',', $teacherName);
+                } else {
+                    $classes[$key]['teacher_name'] = '';
+                }
+            }
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $classes,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Student studentClassList error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => [],
@@ -595,8 +866,22 @@ class Student extends ResourceController
         
         if ($isSSE) {
             // For SSE, suppress all errors and warnings to prevent contaminating the stream
+            @ini_set('display_errors', '0');
             error_reporting(0);
-            ini_set('display_errors', '0');
+            
+            // Clear all output buffers FIRST
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+            
+            // Remove any headers that might have been set by CodeIgniter
+            if (function_exists('header_remove')) {
+                header_remove();
+            }
+            
+            // Disable output buffering completely
+            @ini_set('output_buffering', 'off');
+            @ini_set('zlib.output_compression', '0');
         }
         
         $params = $this->request->getJSON(true) ?? [];
@@ -609,21 +894,44 @@ class Student extends ResourceController
             // Validation
             if (empty($params['student_id'])) {
                 if ($isSSE) {
-                    while (ob_get_level()) ob_end_clean();
+                    // Ensure buffers are cleared
+                    while (ob_get_level()) {
+                        ob_end_clean();
+                    }
                     
                     // Set CORS headers
                     $origin = $this->request->getHeaderLine('Origin');
-                    $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211'));
+                    $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211,http://schoolnew.localhost:8211'));
+                    
+                    // Check for exact match first
                     if (in_array($origin, $allowedOrigins)) {
                         header('Access-Control-Allow-Origin: ' . $origin);
                     } else {
-                        header('Access-Control-Allow-Origin: ' . $allowedOrigins[0]);
+                        // Check if it's a localhost subdomain (e.g., schoolnew.localhost)
+                        $originHost = parse_url($origin, PHP_URL_HOST);
+                        $isLocalhostSubdomain = $originHost && (
+                            strpos($originHost, 'localhost') !== false || 
+                            strpos($originHost, '127.0.0.1') !== false ||
+                            $originHost === 'localhost' ||
+                            preg_match('/^[a-zA-Z0-9-]+\.localhost$/', $originHost)
+                        );
+                        
+                        if ($isLocalhostSubdomain) {
+                            header('Access-Control-Allow-Origin: ' . $origin);
+                        } else {
+                            header('Access-Control-Allow-Origin: ' . ($allowedOrigins[0] ?? '*'));
+                        }
                     }
                     header('Access-Control-Allow-Credentials: true');
+                    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+                    header('Access-Control-Allow-Headers: Content-Type, Authorization, Accesstoken');
                     
+                    // Set SSE headers
                     header('Content-Type: text/event-stream');
                     header('Cache-Control: no-cache');
+                    header('Connection: keep-alive');
                     header('X-Accel-Buffering: no');
+                    
                     echo 'data: ' . json_encode(['error' => 'Student ID should not be empty']) . "\n\n";
                     flush();
                     exit;
@@ -638,29 +946,74 @@ class Student extends ResourceController
             $db = \Config\Database::connect();
 
             // Get student's curriculum/content
-            $builder = $db->table('student_content sc');
-            $builder->select('sc.*, sc.class_content_id, sc.content_id, sc.class_id,
-                             c.name as content_name, c.content_type, c.content_format, c.file_path,
-                             cc.start_date, cc.end_date, cc.notes, cc.downloadable,
-                             cl.class_name, cl.subject, cl.grade,
-                             s.subject_name, g.grade_name,
-                             DATEDIFF(cc.end_date, CURDATE()) as overdue,
-                             (CASE 
-                                WHEN cc.start_date > CURDATE() THEN "1"
-                                WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN "2"
-                                WHEN cc.end_date < CURDATE() THEN "3"
-                                ELSE "2"
-                             END) AS content_date_status');
-            $builder->join('content c', 'sc.content_id = c.content_id', 'left');
-            $builder->join('class_content cc', 'sc.class_content_id = cc.id', 'left');
-            $builder->join('class cl', 'sc.class_id = cl.class_id', 'left');
-            $builder->join('subject s', 'cl.subject = s.subject_id', 'left');
-            $builder->join('grade g', 'cl.grade = g.grade_id', 'left');
-            $builder->where('sc.student_id', $params['student_id']);
-            $builder->where('sc.draft_status', '1');
-            $builder->where('cc.status', '1');
-            $builder->orderBy('cc.end_date', 'ASC');
-            $curriculum = $builder->get()->getResultArray();
+            // This query handles both cases:
+            // 1. Content assigned to all students (all_student = 1): Show to all students in the class
+            // 2. Content assigned to specific students (all_student = 0): Only show if student_content record exists
+            $sql = "
+                SELECT DISTINCT
+                    COALESCE(sc.id, 0) as id,
+                    COALESCE(sc.id, 0) as student_content_id,
+                    COALESCE(sc.class_content_id, cc.id) as class_content_id,
+                    cc.content_id,
+                    COALESCE(sc.class_id, cc.class_id) as class_id,
+                    c.name as content_name,
+                    c.content_type,
+                    c.content_format,
+                    c.file_path,
+                    cc.start_date,
+                    cc.end_date,
+                    cc.notes,
+                    cc.downloadable,
+                    cl.class_name,
+                    cl.subject,
+                    cl.grade,
+                    s.subject_name,
+                    g.grade_name,
+                    DATEDIFF(cc.end_date, CURDATE()) as overdue,
+                    (CASE 
+                        WHEN cc.start_date > CURDATE() THEN '1'
+                        WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN '2'
+                        WHEN cc.end_date < CURDATE() THEN '3'
+                        ELSE '2'
+                    END) AS content_date_status,
+                    COALESCE(sc.draft_status, '1') as draft_status,
+                    COALESCE(sc.draft_status, '1') as student_content_status,
+                    COALESCE(sc.status, 1) as status,
+                    sc.created_by,
+                    sc.created_date,
+                    sc.modified_by,
+                    sc.modified_date
+                FROM class_content cc
+                INNER JOIN content c ON cc.content_id = c.content_id
+                INNER JOIN class cl ON cc.class_id = cl.class_id
+                LEFT JOIN subject s ON cl.subject = s.subject_id
+                LEFT JOIN grade g ON cl.grade = g.grade_id
+                LEFT JOIN student_class scs ON cc.class_id = scs.class_id AND scs.student_id = ?
+                LEFT JOIN student_content sc ON sc.class_content_id = cc.id 
+                    AND sc.student_id = ?
+                    AND sc.draft_status = '1'
+                WHERE scs.student_id = ?
+                AND cc.status = 1
+                AND (
+                    -- Content assigned to all students in the class
+                    -- New students should only see in-progress and future content (not past/completed)
+                    -- In-progress: start_date <= CURDATE() AND end_date >= CURDATE()
+                    -- Future: start_date > CURDATE()
+                    -- Combined: end_date >= CURDATE() (covers both in-progress and future)
+                    (cc.all_student = 1 AND cc.end_date >= CURDATE())
+                    OR
+                    -- Content assigned to specific students - only show if student_content record exists
+                    -- (No date restriction for student-specific content - they see all their assigned content)
+                    (cc.all_student = 0 AND sc.id IS NOT NULL)
+                )
+                ORDER BY cc.end_date ASC
+            ";
+            
+            $curriculum = $db->query($sql, [
+                $params['student_id'],
+                $params['student_id'],
+                $params['student_id']
+            ])->getResultArray();
 
             // Process file paths
             foreach ($curriculum as &$item) {
@@ -673,8 +1026,10 @@ class Student extends ResourceController
                     $item['answerkey_path'] = '';
                 }
                 
-                // Add student content status
-                $item['student_content_status'] = $item['draft_status'] ?? '1';
+                // Ensure student_content_status is always set (already set in SQL, but double-check)
+                if (!isset($item['student_content_status']) || $item['student_content_status'] === null) {
+                    $item['student_content_status'] = $item['draft_status'] ?? '1';
+                }
             }
 
             // Get latest curriculum (upcoming or current)
@@ -695,27 +1050,54 @@ class Student extends ResourceController
 
             // Return response in appropriate format
             if ($isSSE) {
-                // For SSE, clear buffers and set headers
-                while (ob_get_level()) ob_end_clean();
+                // For SSE, ensure buffers are cleared (already done at start, but double-check)
+                while (ob_get_level()) {
+                    ob_end_clean();
+                }
                 
-                // Set CORS headers (must be set after ob_end_clean)
+                // Set CORS headers
                 $origin = $this->request->getHeaderLine('Origin');
-                $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211'));
+                $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211,http://schoolnew.localhost:8211'));
+                
+                // Check for exact match first
                 if (in_array($origin, $allowedOrigins)) {
                     header('Access-Control-Allow-Origin: ' . $origin);
                 } else {
-                    header('Access-Control-Allow-Origin: ' . $allowedOrigins[0]);
+                    // Check if it's a localhost subdomain (e.g., schoolnew.localhost)
+                    $originHost = parse_url($origin, PHP_URL_HOST);
+                    $isLocalhostSubdomain = $originHost && (
+                        strpos($originHost, 'localhost') !== false || 
+                        strpos($originHost, '127.0.0.1') !== false ||
+                        $originHost === 'localhost' ||
+                        preg_match('/^[a-zA-Z0-9-]+\.localhost$/', $originHost)
+                    );
+                    
+                    if ($isLocalhostSubdomain) {
+                        header('Access-Control-Allow-Origin: ' . $origin);
+                    } else {
+                        header('Access-Control-Allow-Origin: ' . ($allowedOrigins[0] ?? '*'));
+                    }
                 }
                 header('Access-Control-Allow-Credentials: true');
+                header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+                header('Access-Control-Allow-Headers: Content-Type, Authorization, Accesstoken');
                 
-                // Set SSE headers
-                header('Content-Type: text/event-stream');
-                header('Cache-Control: no-cache');
+                // Set SSE headers (Connection must be set before Content-Type for some servers)
                 header('Connection: keep-alive');
+                header('Content-Type: text/event-stream');
+                header('Cache-Control: no-cache, no-store, must-revalidate');
+                header('Pragma: no-cache');
+                header('Expires: 0');
                 header('X-Accel-Buffering: no');
                 
-                // Send the data
-                echo 'data: ' . json_encode($response) . "\n\n";
+                // Send the data with proper SSE format
+                $data = json_encode($response);
+                echo "data: {$data}\n\n";
+                
+                // Force flush all output
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
                 flush();
                 
                 // Close the database connection
@@ -735,22 +1117,52 @@ class Student extends ResourceController
             
             // Return error in appropriate format
             if ($isSSE) {
-                while (ob_get_level()) ob_end_clean();
+                // Ensure buffers are cleared
+                while (ob_get_level()) {
+                    ob_end_clean();
+                }
                 
                 // Set CORS headers
                 $origin = $this->request->getHeaderLine('Origin');
-                $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211'));
+                $allowedOrigins = explode(',', env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211,http://schoolnew.localhost:8211'));
+                
+                // Check for exact match first
                 if (in_array($origin, $allowedOrigins)) {
                     header('Access-Control-Allow-Origin: ' . $origin);
                 } else {
-                    header('Access-Control-Allow-Origin: ' . $allowedOrigins[0]);
+                    // Check if it's a localhost subdomain (e.g., schoolnew.localhost)
+                    $originHost = parse_url($origin, PHP_URL_HOST);
+                    $isLocalhostSubdomain = $originHost && (
+                        strpos($originHost, 'localhost') !== false || 
+                        strpos($originHost, '127.0.0.1') !== false ||
+                        $originHost === 'localhost' ||
+                        preg_match('/^[a-zA-Z0-9-]+\.localhost$/', $originHost)
+                    );
+                    
+                    if ($isLocalhostSubdomain) {
+                        header('Access-Control-Allow-Origin: ' . $origin);
+                    } else {
+                        header('Access-Control-Allow-Origin: ' . ($allowedOrigins[0] ?? '*'));
+                    }
                 }
                 header('Access-Control-Allow-Credentials: true');
+                header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+                header('Access-Control-Allow-Headers: Content-Type, Authorization, Accesstoken');
                 
+                // Set SSE headers
+                header('Connection: keep-alive');
                 header('Content-Type: text/event-stream');
-                header('Cache-Control: no-cache');
+                header('Cache-Control: no-cache, no-store, must-revalidate');
+                header('Pragma: no-cache');
+                header('Expires: 0');
                 header('X-Accel-Buffering: no');
-                echo 'data: ' . json_encode(['error' => $e->getMessage()]) . "\n\n";
+                
+                $errorData = json_encode(['error' => $e->getMessage()]);
+                echo "data: {$errorData}\n\n";
+                
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
                 flush();
                 exit;
             }
@@ -786,52 +1198,130 @@ class Student extends ResourceController
 
             $db = \Config\Database::connect();
 
+            // Get filter type (1 = All, 2 = Upcoming, 3 = In progress, 4 = Completed)
+            $filterType = isset($params['type']) ? $params['type'] : '1';
+            $isAllFilter = ($filterType == '1' || $filterType == 1);
+            
+            // Build date condition for class-wide content
+            // For "All" filter: show all class-wide content (no date restriction)
+            // For other filters: only show in-progress and future (end_date >= CURDATE())
+            $classWideDateCondition = $isAllFilter ? '1=1' : 'cc.end_date >= CURDATE()';
+            
             // Get student's assessments (content_type = 2 for assessments)
-            $builder = $db->table('student_content sc');
-            $builder->select('sc.*, sc.class_content_id, sc.content_id, sc.class_id,
-                             c.name as content_name, c.content_type, c.content_format, c.file_path,
-                             cc.start_date, cc.end_date, cc.notes, cc.downloadable,
-                             cl.class_name, cl.subject, cl.grade,
-                             s.subject_name, g.grade_name,
-                             DATEDIFF(cc.end_date, CURDATE()) as overdue,
-                             (CASE 
-                                WHEN cc.start_date > CURDATE() THEN "1"
-                                WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN "2"
-                                WHEN cc.end_date < CURDATE() THEN "3"
-                                ELSE "2"
-                             END) AS content_date_status');
-            $builder->join('content c', 'sc.content_id = c.content_id', 'left');
-            $builder->join('class_content cc', 'sc.class_content_id = cc.id', 'left');
-            $builder->join('class cl', 'sc.class_id = cl.class_id', 'left');
-            $builder->join('subject s', 'cl.subject = s.subject_id', 'left');
-            $builder->join('grade g', 'cl.grade = g.grade_id', 'left');
-            $builder->where('sc.student_id', $params['student_id']);
-            $builder->where('c.content_type', '2'); // 2 = assessment
-            $builder->where('sc.draft_status', '1');
-            $builder->where('cc.status', '1');
-
-            // Apply type filter if provided
-            if (isset($params['type']) && $params['type'] != '') {
-                // Type 2: Upcoming
-                if ($params['type'] == '2') {
-                    $builder->where('cc.start_date >', date('Y-m-d'));
+            // This query handles both class-wide and student-specific assessments
+            $sql = "
+                SELECT DISTINCT
+                    COALESCE(sc.id, 0) as student_content_id,
+                    COALESCE(sc.id, 0) as id,
+                    COALESCE(sc.class_content_id, cc.id) as class_content_id,
+                    cc.content_id,
+                    COALESCE(sc.class_id, cc.class_id) as class_id,
+                    ? as student_id,
+                    COALESCE(sc.status, 1) as status,
+                    COALESCE(sc.draft_status, '1') as draft_status,
+                    COALESCE(sc.start_date, cc.start_date) as start_date,
+                    COALESCE(sc.end_date, cc.end_date) as end_date,
+                    COALESCE(sc.earned_points, 0) as earned_points,
+                    COALESCE(sc.points, 0) as points,
+                    COALESCE(sc.upload_answer, '') as upload_answer,
+                    COALESCE(sc.student_feedback, '') as student_feedback,
+                    sc.answer_completed_date,
+                    sc.platform,
+                    sc.redo_test,
+                    c.name as content_name,
+                    c.content_type,
+                    c.content_format,
+                    c.file_path,
+                    cc.start_date as content_start_date,
+                    cc.end_date as content_end_date,
+                    cc.notes,
+                    cc.downloadable,
+                    cl.class_name,
+                    cl.subject,
+                    cl.grade,
+                    s.subject_name,
+                    g.grade_name,
+                    DATEDIFF(cc.end_date, CURDATE()) as overdue,
+                    (CASE 
+                        WHEN cc.start_date > CURDATE() THEN '1'
+                        WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN '2'
+                        WHEN cc.end_date < CURDATE() THEN '3'
+                        ELSE '2'
+                    END) AS content_date_status
+                FROM class_content cc
+                INNER JOIN content c ON cc.content_id = c.content_id
+                INNER JOIN class cl ON cc.class_id = cl.class_id
+                LEFT JOIN subject s ON cl.subject = s.subject_id
+                LEFT JOIN grade g ON cl.grade = g.grade_id
+                LEFT JOIN student_class scs ON cc.class_id = scs.class_id AND scs.student_id = ?
+                LEFT JOIN student_content sc ON sc.class_content_id = cc.id 
+                    AND sc.student_id = ?
+                    AND sc.draft_status = '1'
+                WHERE scs.student_id = ?
+                AND cc.status = 1
+                AND c.content_type = 2
+                AND (
+                    -- Content assigned to all students in the class
+                    -- For All filter: show all class-wide content (past, in-progress, future)
+                    -- For other filters: only show in-progress and future
+                    (cc.all_student = 1 AND ({$classWideDateCondition}))
+                    OR
+                    -- Content assigned to specific students - only show if student_content record exists
+                    -- (No date restriction - students see all their assigned content)
+                    (cc.all_student = 0 AND sc.id IS NOT NULL)
+                )
+            ";
+            
+            $query = $db->query($sql, [
+                $params['student_id'],
+                $params['student_id'],
+                $params['student_id'],
+                $params['student_id']
+            ]);
+            
+            $assessments = $query->getResultArray();
+            
+            // Apply type filter if provided (for client-side filtering of already-fetched data)
+            if (isset($params['type']) && $params['type'] != '' && $params['type'] != '1') {
+                $filteredAssessments = [];
+                foreach ($assessments as $item) {
+                    $dateStatus = $item['content_date_status'];
+                    // Type 2: Upcoming
+                    if ($params['type'] == '2' && $dateStatus == '1') {
+                        $filteredAssessments[] = $item;
+                    }
+                    // Type 3: In progress
+                    elseif ($params['type'] == '3' && $dateStatus == '2') {
+                        $filteredAssessments[] = $item;
+                    }
+                    // Type 4: Completed
+                    elseif ($params['type'] == '4' && $dateStatus == '3') {
+                        $filteredAssessments[] = $item;
+                    }
                 }
-                // Type 3: In progress
-                elseif ($params['type'] == '3') {
-                    $builder->where('cc.start_date <=', date('Y-m-d'));
-                    $builder->where('cc.end_date >=', date('Y-m-d'));
-                }
-                // Type 4: Completed
-                elseif ($params['type'] == '4') {
-                    $builder->where('cc.end_date <', date('Y-m-d'));
-                }
+                $assessments = $filteredAssessments;
             }
-
-            $builder->orderBy('cc.end_date', 'ASC');
-            $assessments = $builder->get()->getResultArray();
+            
+            // Sort by end_date
+            usort($assessments, function($a, $b) {
+                return strtotime($a['content_end_date']) - strtotime($b['content_end_date']);
+            });
 
             // Process file paths
             foreach ($assessments as &$item) {
+                // Ensure student_content_id is always set (PHP 8+ requires explicit checks)
+                // Use COALESCE to handle null values from database
+                if (!array_key_exists('student_content_id', $item) || $item['student_content_id'] === null || $item['student_content_id'] === '') {
+                    $item['student_content_id'] = 0;
+                } else {
+                    $item['student_content_id'] = (int)$item['student_content_id'];
+                }
+                
+                // Ensure id field exists for backward compatibility
+                if (!array_key_exists('id', $item)) {
+                    $item['id'] = $item['student_content_id'];
+                }
+                
                 if (!empty($item['file_path'])) {
                     $filePath = json_decode($item['file_path'], true);
                     $item['file_path'] = $filePath;
@@ -881,52 +1371,131 @@ class Student extends ResourceController
 
             $db = \Config\Database::connect();
 
+            // Get filter type (1 = All, 2 = Upcoming, 3 = In progress, 4 = Completed)
+            $filterType = isset($params['type']) ? $params['type'] : '1';
+            $isAllFilter = ($filterType == '1' || $filterType == 1);
+            
+            // Build date condition for class-wide content
+            // For "All" filter: show all class-wide content (no date restriction)
+            // For other filters: only show in-progress and future (end_date >= CURDATE())
+            $classWideDateCondition = $isAllFilter ? '1=1' : 'cc.end_date >= CURDATE()';
+
             // Get student's assignments (content_type = 3 for assignments)
-            $builder = $db->table('student_content sc');
-            $builder->select('sc.*, sc.class_content_id, sc.content_id, sc.class_id,
-                             c.name as content_name, c.content_type, c.content_format, c.file_path,
-                             cc.start_date, cc.end_date, cc.notes, cc.downloadable,
-                             cl.class_name, cl.subject, cl.grade,
-                             s.subject_name, g.grade_name,
-                             DATEDIFF(cc.end_date, CURDATE()) as overdue,
-                             (CASE 
-                                WHEN cc.start_date > CURDATE() THEN "1"
-                                WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN "2"
-                                WHEN cc.end_date < CURDATE() THEN "3"
-                                ELSE "2"
-                             END) AS content_date_status');
-            $builder->join('content c', 'sc.content_id = c.content_id', 'left');
-            $builder->join('class_content cc', 'sc.class_content_id = cc.id', 'left');
-            $builder->join('class cl', 'sc.class_id = cl.class_id', 'left');
-            $builder->join('subject s', 'cl.subject = s.subject_id', 'left');
-            $builder->join('grade g', 'cl.grade = g.grade_id', 'left');
-            $builder->where('sc.student_id', $params['student_id']);
-            $builder->where('c.content_type', '3'); // 3 = assignment
-            $builder->where('sc.draft_status', '1');
-            $builder->where('cc.status', '1');
-
-            // Apply type filter if provided
-            if (isset($params['type']) && $params['type'] != '') {
-                // Type 2: Upcoming
-                if ($params['type'] == '2') {
-                    $builder->where('cc.start_date >', date('Y-m-d'));
+            // This query handles both class-wide and student-specific assignments
+            $sql = "
+                SELECT DISTINCT
+                    COALESCE(sc.id, 0) as student_content_id,
+                    COALESCE(sc.id, 0) as id,
+                    COALESCE(sc.class_content_id, cc.id) as class_content_id,
+                    cc.content_id,
+                    COALESCE(sc.class_id, cc.class_id) as class_id,
+                    ? as student_id,
+                    COALESCE(sc.status, 1) as status,
+                    COALESCE(sc.draft_status, '1') as draft_status,
+                    COALESCE(sc.start_date, cc.start_date) as start_date,
+                    COALESCE(sc.end_date, cc.end_date) as end_date,
+                    COALESCE(sc.earned_points, 0) as earned_points,
+                    COALESCE(sc.points, 0) as points,
+                    COALESCE(sc.upload_answer, '') as upload_answer,
+                    COALESCE(sc.student_feedback, '') as student_feedback,
+                    sc.answer_completed_date,
+                    sc.platform,
+                    sc.redo_test,
+                    c.name as content_name,
+                    c.content_type,
+                    c.content_format,
+                    c.file_path,
+                    cc.start_date as content_start_date,
+                    cc.end_date as content_end_date,
+                    cc.notes,
+                    cc.downloadable,
+                    cl.class_name,
+                    cl.subject,
+                    cl.grade,
+                    s.subject_name,
+                    g.grade_name,
+                    DATEDIFF(cc.end_date, CURDATE()) as overdue,
+                    (CASE 
+                        WHEN cc.start_date > CURDATE() THEN '1'
+                        WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN '2'
+                        WHEN cc.end_date < CURDATE() THEN '3'
+                        ELSE '2'
+                    END) AS content_date_status
+                FROM class_content cc
+                INNER JOIN content c ON cc.content_id = c.content_id
+                INNER JOIN class cl ON cc.class_id = cl.class_id
+                LEFT JOIN subject s ON cl.subject = s.subject_id
+                LEFT JOIN grade g ON cl.grade = g.grade_id
+                LEFT JOIN student_class scs ON cc.class_id = scs.class_id AND scs.student_id = ?
+                LEFT JOIN student_content sc ON sc.class_content_id = cc.id 
+                    AND sc.student_id = ?
+                    AND sc.draft_status = '1'
+                WHERE scs.student_id = ?
+                AND cc.status = 1
+                AND c.content_type = 3
+                AND (
+                    -- Content assigned to all students in the class
+                    -- For All filter: show all class-wide content (past, in-progress, future)
+                    -- For other filters: only show in-progress and future
+                    (cc.all_student = 1 AND ({$classWideDateCondition}))
+                    OR
+                    -- Content assigned to specific students - only show if student_content record exists
+                    -- (No date restriction - students see all their assigned content)
+                    (cc.all_student = 0 AND sc.id IS NOT NULL)
+                )
+            ";
+            
+            $query = $db->query($sql, [
+                $params['student_id'],
+                $params['student_id'],
+                $params['student_id'],
+                $params['student_id']
+            ]);
+            
+            $assignments = $query->getResultArray();
+            
+            // Apply type filter if provided (for client-side filtering of already-fetched data)
+            // Skip filtering when type = 1 (All) since we already fetched all data
+            if (isset($params['type']) && $params['type'] != '' && $params['type'] != '1') {
+                $filteredAssignments = [];
+                foreach ($assignments as $item) {
+                    $dateStatus = $item['content_date_status'];
+                    // Type 2: Upcoming
+                    if ($params['type'] == '2' && $dateStatus == '1') {
+                        $filteredAssignments[] = $item;
+                    }
+                    // Type 3: In progress
+                    elseif ($params['type'] == '3' && $dateStatus == '2') {
+                        $filteredAssignments[] = $item;
+                    }
+                    // Type 4: Completed
+                    elseif ($params['type'] == '4' && $dateStatus == '3') {
+                        $filteredAssignments[] = $item;
+                    }
                 }
-                // Type 3: In progress
-                elseif ($params['type'] == '3') {
-                    $builder->where('cc.start_date <=', date('Y-m-d'));
-                    $builder->where('cc.end_date >=', date('Y-m-d'));
-                }
-                // Type 4: Completed
-                elseif ($params['type'] == '4') {
-                    $builder->where('cc.end_date <', date('Y-m-d'));
-                }
+                $assignments = $filteredAssignments;
             }
-
-            $builder->orderBy('cc.end_date', 'ASC');
-            $assignments = $builder->get()->getResultArray();
+            
+            // Sort by end_date
+            usort($assignments, function($a, $b) {
+                return strtotime($a['content_end_date']) - strtotime($b['content_end_date']);
+            });
 
             // Process file paths
             foreach ($assignments as &$item) {
+                // Ensure student_content_id is always set (PHP 8+ requires explicit checks)
+                // Use COALESCE to handle null values from database
+                if (!array_key_exists('student_content_id', $item) || $item['student_content_id'] === null || $item['student_content_id'] === '') {
+                    $item['student_content_id'] = 0;
+                } else {
+                    $item['student_content_id'] = (int)$item['student_content_id'];
+                }
+                
+                // Ensure id field exists for backward compatibility
+                if (!array_key_exists('id', $item)) {
+                    $item['id'] = $item['student_content_id'];
+                }
+                
                 if (!empty($item['file_path'])) {
                     $filePath = json_decode($item['file_path'], true);
                     $item['file_path'] = $filePath;
@@ -1093,6 +1662,604 @@ class Student extends ResourceController
                 'ResponseObject' => [],
                 'ErrorObject' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Get class recordings for a student
+     * CI4-compatible wrapper for ClassRecording endpoint
+     */
+    public function classRecording(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validation
+            if (empty($params['platform'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Platform should not be empty'
+                ]);
+            }
+
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Role Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['class_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Class Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['school_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'School Id should not be empty'
+                ]);
+            }
+
+            // For now, return empty array - the full implementation would require
+            // porting the CI3 logic with zoom_model and student_model
+            // This prevents 404 errors while the full implementation is being developed
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => [],
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Student classRecording error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => [],
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Check content time availability for student
+     * Validates if content is accessible based on start/end dates and times
+     */
+    public function checkContentTime(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            // Validate required fields
+            if (empty($params['platform'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform Should not be Empty'
+                ], 400);
+            }
+            
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id Should not be Empty'
+                ], 400);
+            }
+            
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role Id Should not be Empty'
+                ], 400);
+            }
+            
+            if (empty($params['content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Content Id Should not be Empty'
+                ], 400);
+            }
+            
+            if (empty($params['class_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class Id Should not be Empty'
+                ], 400);
+            }
+            
+            // Get content time information
+            $checkTime = $this->studentModel->checkContentTime($params);
+            
+            if (empty($checkTime)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Content not found'
+                ], 404);
+            }
+            
+            $message = '';
+            $status = '';
+            $time = 0;
+            
+            // Process based on content type
+            // content_type 3 = Assessment, 2 = Assignment
+            if ($checkTime['content_type'] == 3) {
+                // Assessment with date/time restrictions
+                if ($checkTime['start_date'] != '0000-00-00' && $checkTime['end_date'] != '0000-00-00') {
+                    if ($checkTime['start_date'] <= date('Y-m-d') && $checkTime['end_date'] >= date('Y-m-d')) {
+                        if ($checkTime['start_time'] != '00:00:00' && $checkTime['end_time'] != '00:00:00') {
+                            if ($checkTime['start_time'] <= date('H:i:s') && $checkTime['end_time'] >= date('H:i:s')) {
+                                $status = 1;
+                                $time = (strtotime($checkTime['end_time']) - strtotime($checkTime['start_time'])) / 60;
+                                $message = $checkTime['name'] . " started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                            } elseif ($checkTime['start_time'] > date('H:i:s')) {
+                                $message = $checkTime['name'] . " starts only by " . date('m-d-Y', strtotime($checkTime['start_date'])) . " " . date('h:i A', strtotime($checkTime['start_time']));
+                                $status = 0;
+                            } elseif ($checkTime['end_time'] < date('H:i:s')) {
+                                $message = $checkTime['name'] . " ended at " . date('m-d-Y', strtotime($checkTime['start_date'])) . " " . date('h:i A', strtotime($checkTime['end_time']));
+                                $status = 0;
+                            }
+                        } elseif ($checkTime['start_time'] != '00:00:00') {
+                            if ($checkTime['start_time'] <= date('H:i:s')) {
+                                $status = 1;
+                                $message = $checkTime['name'] . " started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                            } else {
+                                $message = $checkTime['name'] . " starts only by " . date('m-d-Y', strtotime($checkTime['start_date'])) . " " . date('h:i A', strtotime($checkTime['start_time']));
+                                $status = 0;
+                            }
+                        } elseif ($checkTime['start_time'] == '00:00:00' && $checkTime['end_time'] != '00:00:00') {
+                            if ($checkTime['end_time'] <= date('H:i:s')) {
+                                $message = $checkTime['name'] . " ended at " . date('m-d-Y', strtotime($checkTime['end_date'])) . " " . date('h:i A', strtotime($checkTime['end_time']));
+                                $status = 0;
+                            } else {
+                                $message = $checkTime['name'] . " Started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                                $status = 1;
+                            }
+                        } else {
+                            $message = $checkTime['name'] . " Started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                            $status = 1;
+                        }
+                    } else {
+                        $message = $checkTime['name'] . " ended at " . date('m-d-Y', strtotime($checkTime['end_date']));
+                        $status = 0;
+                    }
+                } elseif ($checkTime['start_date'] != '0000-00-00' && $checkTime['end_date'] == '0000-00-00') {
+                    if ($checkTime['start_date'] == date('Y-m-d')) {
+                        if ($checkTime['start_time'] != '00:00:00' && $checkTime['end_time'] != '00:00:00') {
+                            if ($checkTime['start_time'] <= date('H:i:s') && $checkTime['end_time'] >= date('H:i:s')) {
+                                $status = 1;
+                                $time = (strtotime($checkTime['end_time']) - strtotime($checkTime['start_time'])) / 60;
+                                $message = $checkTime['name'] . " started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                            } elseif ($checkTime['start_time'] > date('H:i:s')) {
+                                $message = $checkTime['name'] . " starts only by " . date('m-d-Y', strtotime($checkTime['start_date'])) . " " . date('h:i A', strtotime($checkTime['start_time']));
+                                $status = 0;
+                            }
+                        } elseif ($checkTime['start_time'] != '00:00:00' && $checkTime['end_time'] == '00:00:00') {
+                            if ($checkTime['start_time'] <= date('H:i:s')) {
+                                $status = 1;
+                                $message = $checkTime['name'] . " started at" . date('m-d-Y', strtotime($checkTime['start_date']));
+                            } elseif ($checkTime['start_time'] > date('H:i:s')) {
+                                $message = $checkTime['name'] . " starts only by " . date('m-d-Y', strtotime($checkTime['start_date'])) . " " . date('h:i A', strtotime($checkTime['start_time']));
+                                $status = 0;
+                            } else {
+                                $message = $checkTime['name'] . " Started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                                $status = 1;
+                            }
+                        } else {
+                            $message = $checkTime['name'] . " Started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                            $status = 1;
+                        }
+                    } elseif ($checkTime['start_date'] < date('Y-m-d')) {
+                        $message = $checkTime['name'] . " Started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                        $status = 1;
+                    } else {
+                        $message = $checkTime['name'] . " ended at " . date('h:i A', strtotime($checkTime['end_time']));
+                        $status = 0;
+                    }
+                } else {
+                    $message = $checkTime['name'] . " Started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                    $status = 1;
+                }
+            } elseif ($checkTime['content_type'] == 2) {
+                // Assignment
+                if ($checkTime['start_date'] != '0000-00-00') {
+                    if ($checkTime['start_date'] <= date('Y-m-d')) {
+                        $status = 1;
+                        $message = $checkTime['name'] . " started at " . date('m-d-Y', strtotime($checkTime['start_date']));
+                    } else {
+                        $message = $checkTime['name'] . " starts only by " . date('m-d-Y', strtotime($checkTime['start_date'])) . " " . date('h:i A', strtotime($checkTime['start_time']));
+                        $status = 1;
+                    }
+                }
+            }
+            
+            if ($status) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => $message,
+                    'Time' => $time
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => $message,
+                    'Time' => 0
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Student checkContentTime error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Save student annotation
+     * Saves annotation data to a JSON file and updates student_content table
+     */
+    public function saveAnnotation(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            log_message('debug', '🟢 saveAnnotation called with params: ' . json_encode([
+                'platform' => $params['platform'] ?? 'NOT SET',
+                'student_id' => $params['student_id'] ?? 'NOT SET',
+                'content_id' => $params['content_id'] ?? 'NOT SET',
+                'class_id' => $params['class_id'] ?? 'NOT SET',
+                'student_content_id' => $params['student_content_id'] ?? 'NOT SET',
+                'annotation_count' => is_array($params['annotation'] ?? null) ? count($params['annotation']) : 'NOT ARRAY'
+            ]));
+            
+            // Validation
+            if (!isset($params['platform']) || !in_array($params['platform'], ['web', 'ios'])) {
+                log_message('error', '❌ saveAnnotation: Platform validation failed');
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty'
+                ], 400);
+            }
+            
+            if (empty($params['annotation'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Annotation should not be empty'
+                ], 400);
+            }
+            
+            if (empty($params['student_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student Id should not be empty'
+                ], 400);
+            }
+            
+            if (empty($params['content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Content Id should not be empty'
+                ], 400);
+            }
+            
+            if (empty($params['student_content_id'])) {
+                log_message('error', '❌ saveAnnotation: student_content_id is missing');
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student Content Id should not be empty'
+                ], 400);
+            }
+            
+            if (empty($params['class_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class Id should not be empty'
+                ], 400);
+            }
+            
+            // Create annotation folder if it doesn't exist
+            // Use FCPATH (public folder) or ROOTPATH depending on your structure
+            // For MAMP, uploads should be accessible via web, so use FCPATH
+            $folder = FCPATH . 'uploads/studentAnnotation/';
+            if (!is_dir($folder)) {
+                mkdir($folder, 0755, true);
+            }
+            
+            // Generate filename
+            $fileName = "student-annotation" . $params['student_content_id'] . $params['class_id'] . $params['content_id'] . '.json';
+            $filePath = $folder . $fileName;
+            
+            // Save annotation to JSON file
+            $annotationJson = json_encode($params['annotation'], JSON_PRETTY_PRINT);
+            log_message('debug', '🟢 saveAnnotation: Saving to file: ' . $filePath);
+            
+            if (file_put_contents($filePath, $annotationJson) === false) {
+                log_message('error', '❌ saveAnnotation: Failed to write file: ' . $filePath);
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to save annotation file'
+                ], 500);
+            }
+            
+            log_message('debug', '🟢 saveAnnotation: File saved successfully, size: ' . filesize($filePath) . ' bytes');
+            
+            // Update student_content table
+            $db = \Config\Database::connect();
+            $path = "uploads/studentAnnotation/" . $fileName;
+            
+            $builder = $db->table('student_content');
+            $update = $builder->where('id', $params['student_content_id'])
+                             ->update(['annotation' => $path]);
+            
+            if ($update) {
+                log_message('debug', '🟢 saveAnnotation: Database updated successfully for student_content_id: ' . $params['student_content_id']);
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Annotation updated',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                log_message('error', '❌ saveAnnotation: Database update failed for student_content_id: ' . $params['student_content_id']);
+                // Check if record exists
+                $exists = $builder->where('id', $params['student_content_id'])->countAllResults();
+                log_message('debug', '🔍 saveAnnotation: Record exists check: ' . ($exists > 0 ? 'YES' : 'NO'));
+                
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Annotation Not Updated - Record may not exist or no changes detected'
+                ], 500);
+            }
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Student saveAnnotation error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update content start time for a student
+     * Creates student_content record if it doesn't exist (for class-wide content)
+     */
+    /**
+     * Get courses for the logged-in student
+     */
+    public function myCourses(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Get student ID from session/token (logged-in student)
+            $userId = $params['user_id'] ?? null;
+            
+            if (empty($userId)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User ID required'
+                ]);
+            }
+
+            $schoolId = $params['school_id'] ?? null;
+            if (empty($schoolId)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'School ID required'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            
+            // Get courses for the student
+            $builder = $db->table('student_courses sc');
+            $builder->select('sc.*, tbl_course.course_name, tbl_course.description as course_description,
+                             fee_plans.name as fee_plan_name');
+            $builder->join('tbl_course', 'tbl_course.course_id = sc.course_id', 'left');
+            $builder->join('student_fee_plans sfp', 'sfp.id = sc.student_fee_plan_id', 'left');
+            $builder->join('fee_plans', 'fee_plans.id = sfp.fee_plan_id', 'left');
+            $builder->where('sc.student_id', $userId);
+            $builder->where('sc.school_id', $schoolId);
+            
+            if (!empty($params['status'])) {
+                $builder->where('sc.status', $params['status']);
+            }
+            
+            $builder->orderBy('sc.enrollment_date', 'DESC');
+            
+            $courses = $builder->get()->getResultArray();
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => [
+                    'student_id' => (int)$userId,
+                    'courses' => $courses ?? [],
+                    'total' => count($courses ?? [])
+                ],
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Student::myCourses - ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'Unable to load courses: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function updateContentStartTime(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validation
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User ID should not be empty'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+            $studentId = (int)$params['user_id'];
+            
+            // Handle case where student_content_id is 0 or missing (class-wide content)
+            $studentContentId = isset($params['student_content_id']) ? (int)$params['student_content_id'] : 0;
+            
+            // If student_content_id is 0 or missing, try to find or create it
+            if ($studentContentId == 0 || empty($params['student_content_id'])) {
+                // Need additional info to create/find student_content
+                if (empty($params['content_id']) || empty($params['class_id']) || empty($params['class_content_id'])) {
+                    return $this->respond([
+                        'IsSuccess' => false,
+                        'ResponseObject' => null,
+                        'ErrorObject' => 'Content ID, Class ID, and Class Content ID are required when student_content_id is missing'
+                    ], 400);
+                }
+                
+                $contentId = (int)$params['content_id'];
+                $classId = (int)$params['class_id'];
+                $classContentId = (int)$params['class_content_id'];
+                
+                // Try to find existing student_content record
+                $existingStudentContent = $db->table('student_content')
+                    ->where('student_id', $studentId)
+                    ->where('content_id', $contentId)
+                    ->where('class_content_id', $classContentId)
+                    ->where('class_id', $classId)
+                    ->get()
+                    ->getRowArray();
+                
+                if ($existingStudentContent) {
+                    $studentContentId = (int)$existingStudentContent['id'];
+                } else {
+                    // Create new student_content record for class-wide content
+                    $classContent = $db->table('class_content')
+                        ->where('id', $classContentId)
+                        ->get()
+                        ->getRowArray();
+                    
+                    if (!$classContent) {
+                        return $this->respond([
+                            'IsSuccess' => false,
+                            'ResponseObject' => null,
+                            'ErrorObject' => 'Class content not found'
+                        ], 404);
+                    }
+                    
+                    // Get student's grade
+                    $studentGrade = $db->table('student_class sc')
+                        ->select('c.grade as grade_id')
+                        ->join('class c', 'sc.class_id = c.class_id', 'left')
+                        ->where('sc.student_id', $studentId)
+                        ->where('sc.class_id', $classId)
+                        ->get()
+                        ->getRowArray();
+                    
+                    $studentContentData = [
+                        'student_id' => $studentId,
+                        'content_id' => $contentId,
+                        'class_content_id' => $classContentId,
+                        'class_id' => $classId,
+                        'grade_id' => $studentGrade['grade_id'] ?? null,
+                        'start_date' => $classContent['start_date'] ?? null,
+                        'end_date' => ($classContent['end_date'] && $classContent['end_date'] != '0000-00-00') ? $classContent['end_date'] : null,
+                        'status' => 1, // Yet to start
+                        'draft_status' => '1',
+                        'created_by' => $studentId,
+                        'created_date' => date('Y-m-d H:i:s'),
+                        'modified_by' => $studentId,
+                        'modified_date' => date('Y-m-d H:i:s')
+                    ];
+                    
+                    $db->table('student_content')->insert($studentContentData);
+                    $studentContentId = $db->insertID();
+                    
+                    log_message('debug', '✅ [STUDENT] Created student_content record: ' . $studentContentId . ' for class-wide content');
+                }
+            }
+            
+            // Update content_started_at timestamp
+            $updateData = [
+                'content_started_at' => date('Y-m-d H:i:s'),
+                'modified_date' => date('Y-m-d H:i:s')
+            ];
+            
+            $updateResult = $db->table('student_content')
+                ->where('id', $studentContentId)
+                ->update($updateData);
+            
+            if ($updateResult) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => [
+                        'student_content_id' => $studentContentId,
+                        'content_started_at' => $updateData['content_started_at']
+                    ],
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update content start time'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Student updateContentStartTime error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
         }
     }
 }

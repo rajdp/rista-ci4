@@ -111,16 +111,35 @@ class Fees extends BaseController
                 'auto_payment_override' => isset($payload['auto_payment_override']) ? (int) $payload['auto_payment_override'] : null,
             ];
 
+            $assignmentId = null;
+            $message = '';
+
             if (!empty($payload['id'])) {
-                $this->studentFeePlanModel->update((int) $payload['id'], $assignment);
-                $result = $this->studentFeePlanModel->find((int) $payload['id']);
+                // Explicit ID provided - update that record
+                $assignmentId = (int) $payload['id'];
+                $this->studentFeePlanModel->update($assignmentId, $assignment);
                 $message = 'Assignment updated';
             } else {
-                $assignmentId = $this->studentFeePlanModel->insert($assignment, true);
-                $result = $this->studentFeePlanModel->find($assignmentId);
-                $message = 'Assignment created';
+                // Check if assignment already exists for this student/plan/start_date
+                $existing = $this->studentFeePlanModel
+                    ->where('student_id', (int) $payload['student_id'])
+                    ->where('fee_plan_id', (int) $payload['fee_plan_id'])
+                    ->where('start_date', $payload['start_date'])
+                    ->first();
+
+                if ($existing) {
+                    // Update existing assignment
+                    $assignmentId = (int) $existing['id'];
+                    $this->studentFeePlanModel->update($assignmentId, $assignment);
+                    $message = 'Assignment updated';
+                } else {
+                    // Create new assignment
+                    $assignmentId = $this->studentFeePlanModel->insert($assignment, true);
+                    $message = 'Assignment created';
+                }
             }
 
+            $result = $this->studentFeePlanModel->find($assignmentId);
             return $this->successResponse($result, $message);
         } catch (\Throwable $e) {
             return $this->errorResponse('Unable to assign fee plan: ' . $e->getMessage());
