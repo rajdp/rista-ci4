@@ -9,6 +9,7 @@ use App\Models\Admin\StudentFeePlanModel;
 use App\Models\Admin\FeePlanModel;
 use App\Models\V1\StudentModel;
 use App\Models\V1\ClassesModel;
+use App\Services\BillingScheduler;
 
 class CourseEnrollmentService
 {
@@ -19,6 +20,7 @@ class CourseEnrollmentService
     protected $feePlanModel;
     protected $studentModel;
     protected $classesModel;
+    protected $billingScheduler;
     protected $db;
 
     public function __construct()
@@ -30,6 +32,7 @@ class CourseEnrollmentService
         $this->feePlanModel = new FeePlanModel();
         $this->studentModel = new StudentModel();
         $this->classesModel = new ClassesModel();
+        $this->billingScheduler = new BillingScheduler();
         $this->db = \Config\Database::connect();
     }
 
@@ -98,6 +101,34 @@ class CourseEnrollmentService
                 );
             }
 
+            // 5. Seed billing schedule if fee exists
+            $billingScheduleId = null;
+            if ($feeAmount !== null && $feeAmount > 0) {
+                $enrollmentId = $enrollmentResult['student_course_id'];
+                $startDate = $options['enrollment_date'] ?? date('Y-m-d');
+                
+                $billingResult = $this->billingScheduler->seedSchedule(
+                    $enrollmentId,
+                    $studentId,
+                    $courseId,
+                    $schoolId,
+                    $startDate,
+                    [
+                        'deposit_policy' => $options['deposit_policy'] ?? 'none',
+                        'deposit_cents' => isset($options['deposit_cents']) ? (int)round($options['deposit_cents'] * 100) : 0,
+                        'anchor_day' => $options['anchor_day'] ?? null,
+                        'anchor_month' => $options['anchor_month'] ?? null,
+                    ]
+                );
+
+                if ($billingResult['success']) {
+                    $billingScheduleId = $billingResult['schedule_id'];
+                } else {
+                    // Log error but don't fail enrollment
+                    log_message('warning', 'Failed to seed billing schedule: ' . ($billingResult['message'] ?? 'Unknown error'));
+                }
+            }
+
             $this->db->transComplete();
 
             if ($this->db->transStatus() === false) {
@@ -109,6 +140,7 @@ class CourseEnrollmentService
                 'student_course_id' => $enrollmentResult['student_course_id'],
                 'fee_amount' => $feeAmount,
                 'student_fee_plan_id' => $studentFeePlanId,
+                'billing_schedule_id' => $billingScheduleId,
                 'class_enrollments' => $classEnrollments,
                 'message' => 'Student enrolled in course successfully'
             ];

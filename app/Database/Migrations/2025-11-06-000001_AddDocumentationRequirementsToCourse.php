@@ -31,3 +31,4 @@ class AddDocumentationRequirementsToCourse extends Migration
 
 
 
+

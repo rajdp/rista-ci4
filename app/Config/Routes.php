@@ -173,8 +173,9 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('admin/self-registration/promote', 'Admin\SelfRegistration::promote');
 $routes->post('admin/self-registration/document/review', 'Admin\SelfRegistration::reviewDocument');
 $routes->post('admin/self-registration/assignees', 'Admin\SelfRegistration::assignees');
-$routes->post('admin/self-registration/course-decisions', 'Admin\SelfRegistration::updateCourseDecisions');
-$routes->post('admin/self-registration/assign-class', 'Admin\SelfRegistration::assignClass');
+    $routes->post('admin/self-registration/course-decisions', 'Admin\SelfRegistration::updateCourseDecisions');
+    $routes->post('admin/self-registration/assign-class', 'Admin\SelfRegistration::assignClass');
+    $routes->get('admin/self-registration/check-enrollments', 'Admin\SelfRegistration::checkEnrollments');
     $routes->post('admin/self-registration/approve', 'Admin\SelfRegistration::approve');
     $routes->post('admin/self-registration/attribute-config/load', 'Admin\SelfRegistrationAttributeConfig::load');
     $routes->post('admin/self-registration/attribute-config/save', 'Admin\SelfRegistrationAttributeConfig::save');
@@ -196,6 +197,15 @@ $routes->post('admin/self-registration/assign-class', 'Admin\SelfRegistration::a
     $routes->post('admin/student-class/available-classes', 'Admin\StudentClass::availableClasses');
     $routes->post('admin/student-class/get-class-courses', 'Admin\StudentClass::getClassCourses');
     $routes->post('admin/student-class/get-student-courses', 'Admin\StudentClass::getStudentCourses');
+
+    // Course Fee Management endpoints
+    $routes->post('admin/course-fees/list', 'Admin\CourseFees::list');
+    $routes->post('admin/course-fees/get', 'Admin\CourseFees::get');
+    $routes->post('admin/course-fees/save', 'Admin\CourseFees::save');
+    $routes->post('admin/course-fees/delete', 'Admin\CourseFees::delete');
+    $routes->post('admin/course-fees/link-classes', 'Admin\CourseFees::linkClasses');
+    $routes->post('admin/course-fees/get-linked-classes', 'Admin\CourseFees::getLinkedClasses');
+    $routes->post('admin/course-fees/unlink-class', 'Admin\CourseFees::unlinkClass');
 
     // Dashboard endpoints
     $routes->post('api/dashboard', 'Admin\Dashboard::getDashboard');
@@ -433,6 +443,10 @@ $routes->post('content/detail', 'Content::detail');
     $routes->post('report/gradeReport', 'Report::gradeReport');
     $routes->post('report/studentPerformanceContent', 'Report::studentPerformanceContent');
     $routes->post('report/reportCard', 'Report::reportCard_post');
+    $routes->post('report/pendingPayments', 'Report::pendingPayments');
+    $routes->post('report/payments', 'Report::payments');
+    $routes->post('report/activeStudentsByCourse', 'Report::activeStudentsByCourse');
+    $routes->post('report/activeStudentsByClass', 'Report::activeStudentsByClass');
     
     // CRM - Report cards
     $routes->post('crm/report/exams', 'Admin\ReportCards::listExams');
@@ -509,6 +523,13 @@ $routes->post('content/detail', 'Content::detail');
 
     // Student Transactions
     $routes->get('api/schools/(:num)/students/(:num)/transactions', 'Api\PaymentController::getStudentTransactions/$1/$2');
+
+    // Billing endpoints
+    $routes->get('api/billing/summary', 'Api\BillingController::summary');
+    $routes->post('api/billing/enrollment/(:num)/seed', 'Api\BillingController::seedSchedule/$1');
+    $routes->post('api/billing/schedule/(:num)/invoice-now', 'Api\BillingController::invoiceNow/$1');
+    $routes->post('api/billing/run', 'Api\BillingController::triggerRun');
+    $routes->get('api/billing/schedules', 'Api\BillingController::listSchedules');
 });
 
 // Admin routes (admin authentication required)

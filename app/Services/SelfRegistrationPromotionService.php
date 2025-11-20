@@ -232,9 +232,10 @@ class SelfRegistrationPromotionService
             }
 
             // Prepare enrollment options
+            $startDate = $course['start_date'] ?? date('Y-m-d');
             $enrollmentOptions = [
                 'registration_id' => $course['registration_id'] ?? null,
-                'enrollment_date' => date('Y-m-d'),
+                'enrollment_date' => $startDate,
                 'added_by' => $actorId,
                 'notes' => $course['decision_notes'] ?? null,
             ];
@@ -244,10 +245,31 @@ class SelfRegistrationPromotionService
                 $enrollmentOptions['fee_amount'] = (float) $course['approved_fee_amount'];
             }
 
+            // Add new billing fields
+            if (isset($course['fee_term'])) {
+                $enrollmentOptions['fee_term'] = $course['fee_term'];
+            }
+            if (isset($course['next_billing_date'])) {
+                $enrollmentOptions['next_billing_date'] = $course['next_billing_date'];
+            }
+            if (isset($course['deposit'])) {
+                $enrollmentOptions['deposit'] = (float) $course['deposit'];
+            }
+            if (isset($course['onboarding_fee']) || isset($course['registration_fee'])) {
+                $enrollmentOptions['onboarding_fee'] = (float) ($course['onboarding_fee'] ?? $course['registration_fee'] ?? 0);
+            }
+            if (isset($course['prorated_fee'])) {
+                $enrollmentOptions['prorated_fee'] = (float) $course['prorated_fee'];
+            }
+
             // Get approved class IDs if specified
             $classIds = $this->resolveClassIdsForApprovedCourse($course);
             if (!empty($classIds)) {
                 $enrollmentOptions['class_ids'] = $classIds;
+                // Ensure student_class entries are created for each class
+                foreach ($classIds as $classId) {
+                    $this->ensureStudentClassEnrollment($studentUserId, (int) $classId, $actorId, $now);
+                }
             }
 
             try {
@@ -332,11 +354,47 @@ class SelfRegistrationPromotionService
 
         // Check for class from approved schedule
         if (!empty($course['approved_schedule_id'])) {
-            $schedule = $this->db->table('class_schedule')
-                ->select('class_id')
-                ->where('id', (int) $course['approved_schedule_id'])
-                ->get()
-                ->getRowArray();
+            // Try multiple table names for schedule/class mapping
+            $schedule = null;
+            
+            // Try class_schedule table first
+            if ($this->db->tableExists('class_schedule')) {
+                $result = $this->db->table('class_schedule')
+                    ->select('class_id')
+                    ->where('id', (int) $course['approved_schedule_id'])
+                    ->get();
+                
+                if ($result !== false) {
+                    $schedule = $result->getRowArray();
+                }
+            }
+            
+            // If not found, try course_schedules table
+            if (!$schedule && $this->db->tableExists('course_schedules')) {
+                $result = $this->db->table('course_schedules')
+                    ->select('class_id')
+                    ->where('id', (int) $course['approved_schedule_id'])
+                    ->get();
+                
+                if ($result !== false) {
+                    $schedule = $result->getRowArray();
+                }
+            }
+            
+            // If still not found, try class table directly (schedule_id might be class_id)
+            if (!$schedule && $this->db->tableExists('class')) {
+                $result = $this->db->table('class')
+                    ->select('class_id')
+                    ->where('class_id', (int) $course['approved_schedule_id'])
+                    ->get();
+                
+                if ($result !== false) {
+                    $classRow = $result->getRowArray();
+                    if ($classRow) {
+                        $schedule = ['class_id' => $classRow['class_id']];
+                    }
+                }
+            }
 
             if (!empty($schedule['class_id'])) {
                 $classIds[] = (int) $schedule['class_id'];

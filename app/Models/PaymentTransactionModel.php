@@ -62,7 +62,7 @@ class PaymentTransactionModel extends Model
     public function getStudentTransactions(int $studentId, array $filters = []): array
     {
         $builder = $this->select('payment_transactions.*, providers.name as provider_name')
-            ->join('providers', 'providers.id = payment_transactions.provider_id')
+            ->join('providers', 'providers.id = payment_transactions.provider_id', 'left')
             ->where('payment_transactions.student_id', $studentId);
 
         $this->applyFilters($builder, $filters);
@@ -77,7 +77,7 @@ class PaymentTransactionModel extends Model
     public function getSchoolTransactions(int $schoolId, array $filters = []): array
     {
         $builder = $this->select('payment_transactions.*, providers.name as provider_name')
-            ->join('providers', 'providers.id = payment_transactions.provider_id')
+            ->join('providers', 'providers.id = payment_transactions.provider_id', 'left')
             ->where('payment_transactions.school_id', $schoolId);
 
         $this->applyFilters($builder, $filters);

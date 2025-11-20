@@ -12,7 +12,23 @@ class ProviderCredentialEncryption
     public function __construct()
     {
         $config = new EncryptionConfig();
-        $this->encryption = \Config\Services::encrypter($config);
+        
+        // Check if encryption key is configured
+        $key = $config->key ?? env('encryption.key', '');
+        
+        if (empty($key)) {
+            // If no key is set, we can't use encryption
+            // This is acceptable for read-only operations
+            $this->encryption = null;
+            log_message('warning', 'Encryption key not configured. Encryption features will be disabled.');
+        } else {
+            try {
+                $this->encryption = \Config\Services::encrypter($config);
+            } catch (\Exception $e) {
+                log_message('error', 'Failed to initialize encryption: ' . $e->getMessage());
+                $this->encryption = null;
+            }
+        }
     }
 
     /**
@@ -20,9 +36,14 @@ class ProviderCredentialEncryption
      *
      * @param array $credentials Credentials array
      * @return string Base64-encoded encrypted string
+     * @throws \RuntimeException If encryption is not available
      */
     public function encryptCredentials(array $credentials): string
     {
+        if ($this->encryption === null) {
+            throw new \RuntimeException('Encryption is not configured. Please set encryption.key in your configuration.');
+        }
+        
         $json = json_encode($credentials);
         $encrypted = $this->encryption->encrypt($json);
         return base64_encode($encrypted);
@@ -33,10 +54,14 @@ class ProviderCredentialEncryption
      *
      * @param string $encrypted Base64-encoded encrypted string
      * @return array Decrypted credentials array
-     * @throws \RuntimeException If decryption fails
+     * @throws \RuntimeException If decryption fails or encryption is not available
      */
     public function decryptCredentials(string $encrypted): array
     {
+        if ($this->encryption === null) {
+            throw new \RuntimeException('Encryption is not configured. Please set encryption.key in your configuration.');
+        }
+        
         try {
             $decoded = base64_decode($encrypted);
             $decrypted = $this->encryption->decrypt($decoded);

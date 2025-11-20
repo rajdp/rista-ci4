@@ -15,3 +15,4 @@ class SchoolRegistrationAttributeConfigModel extends Model
     protected $updatedField = 'updated_at';
 }
 
+

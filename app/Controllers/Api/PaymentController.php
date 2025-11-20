@@ -98,8 +98,17 @@ class PaymentController extends ResourceController
             return $this->respond(['error' => 'School ID and Student ID required'], 400);
         }
 
-        $methods = $this->paymentService->getStudentPaymentMethods((int)$studentId, (int)$schoolId);
-        return $this->respond($methods);
+        try {
+            $methods = $this->paymentService->getStudentPaymentMethods((int)$studentId, (int)$schoolId);
+            return $this->respond($methods);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to get student payment methods: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            return $this->respond([
+                'error' => 'Failed to load payment methods',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -178,9 +187,25 @@ class PaymentController extends ResourceController
         $data['ip_address'] = $this->request->getIPAddress();
         $data['user_id'] = session()->get('userId') ?? null;
 
-        $result = isset($data['payment_method_id'])
-            ? $this->paymentService->chargePaymentMethod((int)$data['payment_method_id'], (float)$data['amount'], $data)
-            : $this->paymentService->chargeStudent((int)$data['student_id'], (float)$data['amount'], $data);
+        // Check if this is a manual payment (cash, check, zelle, other)
+        $paymentMethodType = $data['payment_method_type'] ?? null;
+        $manualPaymentMethod = $data['manual_payment_method'] ?? null;
+        
+        if ($paymentMethodType && $paymentMethodType !== 'stored' && $manualPaymentMethod) {
+            // Handle manual payment recording
+            $result = $this->paymentService->recordManualPayment(
+                (int)$data['student_id'],
+                (float)$data['amount'],
+                $manualPaymentMethod,
+                $data
+            );
+        } elseif (isset($data['payment_method_id'])) {
+            // Charge specific payment method
+            $result = $this->paymentService->chargePaymentMethod((int)$data['payment_method_id'], (float)$data['amount'], $data);
+        } else {
+            // Charge using default payment method
+            $result = $this->paymentService->chargeStudent((int)$data['student_id'], (float)$data['amount'], $data);
+        }
 
         if ($result['success']) {
             return $this->respond($result);
@@ -224,20 +249,29 @@ class PaymentController extends ResourceController
             return $this->respond(['error' => 'School ID and Student ID required'], 400);
         }
 
-        $filters = [
-            'status' => $this->request->getGet('status'),
-            'transaction_type' => $this->request->getGet('type'),
-            'from_date' => $this->request->getGet('from'),
-            'to_date' => $this->request->getGet('to'),
-            'limit' => (int)($this->request->getGet('limit') ?? 100),
-            'offset' => (int)($this->request->getGet('offset') ?? 0)
-        ];
+        try {
+            $filters = [
+                'status' => $this->request->getGet('status'),
+                'transaction_type' => $this->request->getGet('type'),
+                'from_date' => $this->request->getGet('from'),
+                'to_date' => $this->request->getGet('to'),
+                'limit' => (int)($this->request->getGet('limit') ?? 100),
+                'offset' => (int)($this->request->getGet('offset') ?? 0)
+            ];
 
-        $filters = array_filter($filters);
+            $filters = array_filter($filters);
 
-        $transactions = $this->transactionModel->getStudentTransactions((int)$studentId, $filters);
+            $transactions = $this->transactionModel->getStudentTransactions((int)$studentId, $filters);
 
-        return $this->respond($transactions);
+            return $this->respond($transactions);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to get student transactions: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            return $this->respond([
+                'error' => 'Failed to load transactions',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

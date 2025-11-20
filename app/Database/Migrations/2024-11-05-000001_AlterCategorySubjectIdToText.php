@@ -39,3 +39,4 @@ class AlterCategorySubjectIdToText extends Migration
 
 
 
+

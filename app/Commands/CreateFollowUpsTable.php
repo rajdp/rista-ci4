@@ -53,3 +53,4 @@ class CreateFollowUpsTable extends BaseCommand
     }
 }
 
+

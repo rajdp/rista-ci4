@@ -59,7 +59,7 @@ class StudentPaymentMethodModel extends Model
     public function getStudentPaymentMethods(int $studentId): array
     {
         return $this->select('student_payment_methods.*, providers.code as provider_code, providers.name as provider_name')
-            ->join('providers', 'providers.id = student_payment_methods.provider_id')
+            ->join('providers', 'providers.id = student_payment_methods.provider_id', 'left')
             ->where('student_payment_methods.student_id', $studentId)
             ->where('student_payment_methods.is_active', 1)
             ->orderBy('student_payment_methods.is_default', 'DESC')
@@ -73,7 +73,7 @@ class StudentPaymentMethodModel extends Model
     public function getDefaultPaymentMethod(int $studentId): ?array
     {
         return $this->select('student_payment_methods.*, providers.code as provider_code, providers.name as provider_name')
-            ->join('providers', 'providers.id = student_payment_methods.provider_id')
+            ->join('providers', 'providers.id = student_payment_methods.provider_id', 'left')
             ->where('student_payment_methods.student_id', $studentId)
             ->where('student_payment_methods.is_active', 1)
             ->where('student_payment_methods.is_default', 1)
@@ -102,7 +102,7 @@ class StudentPaymentMethodModel extends Model
         $expiryDate = date('Y-m-d', strtotime("+{$daysAhead} days"));
 
         return $this->select('student_payment_methods.*, providers.name as provider_name')
-            ->join('providers', 'providers.id = student_payment_methods.provider_id')
+            ->join('providers', 'providers.id = student_payment_methods.provider_id', 'left')
             ->where('student_payment_methods.is_active', 1)
             ->where('student_payment_methods.expires_at <=', $expiryDate)
             ->where('student_payment_methods.expires_at >=', date('Y-m-d'))
@@ -141,7 +141,7 @@ class StudentPaymentMethodModel extends Model
     public function getSchoolPaymentMethods(int $schoolId, array $filters = []): array
     {
         $builder = $this->select('student_payment_methods.*, providers.name as provider_name')
-            ->join('providers', 'providers.id = student_payment_methods.provider_id')
+            ->join('providers', 'providers.id = student_payment_methods.provider_id', 'left')
             ->where('student_payment_methods.school_id', $schoolId)
             ->where('student_payment_methods.is_active', 1);
 
@@ -175,8 +175,8 @@ class StudentPaymentMethodModel extends Model
     public function getWithDetails(int $paymentMethodId): ?array
     {
         return $this->select('student_payment_methods.*, providers.code as provider_code, providers.name as provider_name, provider_types.code as type_code')
-            ->join('providers', 'providers.id = student_payment_methods.provider_id')
-            ->join('provider_types', 'provider_types.id = providers.provider_type_id')
+            ->join('providers', 'providers.id = student_payment_methods.provider_id', 'left')
+            ->join('provider_types', 'provider_types.id = providers.provider_type_id', 'left')
             ->where('student_payment_methods.id', $paymentMethodId)
             ->first();
     }

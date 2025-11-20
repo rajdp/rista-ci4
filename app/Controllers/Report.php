@@ -4108,4 +4108,281 @@ class Report extends ResourceController
             ]);
         }
     }
+
+    /**
+     * Helper method to parse request payload
+     */
+    protected function parsePayload(): array
+    {
+        $body = $this->request->getJSON(true);
+        return is_array($body) ? $body : [];
+    }
+
+    /**
+     * Helper method to respond with standard format
+     */
+    protected function respondWith(bool $success, $object = null, string $error = '', int $code = ResponseInterface::HTTP_OK)
+    {
+        $payload = [
+            'IsSuccess' => $success,
+            'ResponseObject' => $object,
+            'ErrorObject' => $error
+        ];
+        return service('response')->setStatusCode($code)->setJSON($payload);
+    }
+
+    /**
+     * Convert camelCase filters to snake_case for database queries
+     */
+    protected function toSnakeFilters(array $filters): array
+    {
+        $mapped = [];
+        if (isset($filters['courseId'])) {
+            $mapped['course_id'] = $filters['courseId'];
+        }
+        if (isset($filters['classId'])) {
+            $mapped['class_id'] = $filters['classId'];
+        }
+        if (isset($filters['studentId'])) {
+            $mapped['student_id'] = $filters['studentId'];
+        }
+        if (isset($filters['paymentMethod'])) {
+            $mapped['payment_method'] = $filters['paymentMethod'];
+        }
+        if (isset($filters['fromDate'])) {
+            $mapped['from_date'] = $filters['fromDate'];
+        }
+        if (isset($filters['toDate'])) {
+            $mapped['to_date'] = $filters['toDate'];
+        }
+        if (isset($filters['dueBefore'])) {
+            $mapped['due_before'] = $filters['dueBefore'];
+        }
+        if (isset($filters['status'])) {
+            $mapped['status'] = $filters['status'];
+        }
+        return $mapped;
+    }
+
+    /**
+     * Get pending payments report
+     * POST /report/pendingPayments
+     */
+    public function pendingPayments()
+    {
+        try {
+            $payload = $this->parsePayload();
+            $schoolId = (int)($payload['school_id'] ?? 0);
+            if (!$schoolId) {
+                return $this->respondWith(false, null, 'school_id is required', ResponseInterface::HTTP_BAD_REQUEST);
+            }
+
+            $filters = $this->toSnakeFilters($payload['filters'] ?? []);
+            $dueBefore = $filters['due_before'] ?? date('Y-m-d');
+            $limit = max(1, min(500, (int)($payload['limit'] ?? 200)));
+            $offset = max(0, (int)($payload['offset'] ?? 0));
+
+            $db = \Config\Database::connect();
+            $builder = $db->table('invoices i');
+            $builder->select('i.*, u.user_id, u.email_id as email, u.mobile as phone, up.first_name, up.last_name, fee_plans.name as fee_plan_name, (i.amount_due - i.amount_paid) as outstanding_amount, COALESCE(g.grade_name, "") as grade_name');
+            $builder->join('user u', 'u.user_id = i.student_id', 'left');
+            $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
+            $builder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . $schoolId, 'left');
+            $builder->join('grade g', 'g.grade_id = upd.grade_id', 'left');
+            $builder->join('student_fee_plans sfp', 'sfp.id = i.student_fee_plan_id', 'left');
+            $builder->join('fee_plans', 'fee_plans.id = sfp.fee_plan_id', 'left');
+            $builder->where('u.school_id', $schoolId);
+            $builder->where('u.role_id', 5); // Students role
+            $builder->where('i.due_date <=', $dueBefore);
+            $builder->where('i.status', 'pending');
+            $builder->where('(i.amount_due - i.amount_paid) >', 0, false);
+
+            if (isset($filters['student_id'])) {
+                $builder->where('i.student_id', $filters['student_id']);
+            }
+
+            $total = $builder->countAllResults(false);
+            $query = $builder->limit($limit, $offset)->orderBy('i.due_date', 'ASC')->get();
+            $results = $query ? $query->getResultArray() : [];
+
+            // Ensure we always return an array
+            if (!is_array($results)) {
+                $results = [];
+            }
+
+            return $this->respondWith(true, $results);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Report::pendingPayments error: ' . $e->getMessage());
+            return $this->respondWith(false, null, $e->getMessage(), ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get payments report
+     * POST /report/payments
+     */
+    public function payments()
+    {
+        try {
+            $payload = $this->parsePayload();
+            $schoolId = (int)($payload['school_id'] ?? 0);
+            if (!$schoolId) {
+                return $this->respondWith(false, null, 'school_id is required', ResponseInterface::HTTP_BAD_REQUEST);
+            }
+
+            $filters = $this->toSnakeFilters($payload['filters'] ?? []);
+            $fromDate = $filters['from_date'] ?? date('Y-m-01');
+            $toDate = $filters['to_date'] ?? date('Y-m-t');
+            $limit = max(1, min(500, (int)($payload['limit'] ?? 250)));
+            $offset = max(0, (int)($payload['offset'] ?? 0));
+
+            $db = \Config\Database::connect();
+            $builder = $db->table('payments p');
+            $builder->select('p.*, u.user_id, u.email_id as email, u.mobile as phone, up.first_name, up.last_name, fee_plans.name as fee_plan_name, COALESCE(g.grade_name, "") as grade_name');
+            $builder->join('user u', 'u.user_id = p.student_id', 'left');
+            $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
+            $builder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . $schoolId, 'left');
+            $builder->join('grade g', 'g.grade_id = upd.grade_id', 'left');
+            $builder->join('student_fee_plans sfp', 'sfp.id = p.student_fee_plan_id', 'left');
+            $builder->join('fee_plans', 'fee_plans.id = sfp.fee_plan_id', 'left');
+            $builder->where('u.school_id', $schoolId);
+            $builder->where('u.role_id', 5); // Students role
+            $builder->where('p.payment_date >=', $fromDate);
+            $builder->where('p.payment_date <=', $toDate);
+
+            if (isset($filters['student_id'])) {
+                $builder->where('p.student_id', $filters['student_id']);
+            }
+            if (isset($filters['payment_method'])) {
+                $builder->where('p.payment_method', $filters['payment_method']);
+            }
+
+            $total = $builder->countAllResults(false);
+            $query = $builder->limit($limit, $offset)->orderBy('p.payment_date', 'DESC')->get();
+            $results = $query ? $query->getResultArray() : [];
+
+            // Ensure we always return an array
+            if (!is_array($results)) {
+                $results = [];
+            }
+
+            return $this->respondWith(true, $results);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Report::payments error: ' . $e->getMessage());
+            return $this->respondWith(false, null, $e->getMessage(), ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get active students by course report
+     * POST /report/activeStudentsByCourse
+     */
+    public function activeStudentsByCourse()
+    {
+        try {
+            $payload = $this->parsePayload();
+            $schoolId = (int)($payload['school_id'] ?? 0);
+            if (!$schoolId) {
+                return $this->respondWith(false, null, 'school_id is required', ResponseInterface::HTTP_BAD_REQUEST);
+            }
+
+            $filters = $this->toSnakeFilters($payload['filters'] ?? []);
+            $limit = max(1, min(500, (int)($payload['limit'] ?? 500)));
+            $offset = max(0, (int)($payload['offset'] ?? 0));
+
+            $db = \Config\Database::connect();
+            $builder = $db->table('student_courses sc');
+            $builder->select('sc.*, u.user_id, u.email_id as email, u.mobile as phone, up.first_name, up.last_name, tbl_course.course_name, tbl_course.description as course_description, COALESCE(g.grade_name, "") as grade_name');
+            $builder->join('user u', 'u.user_id = sc.student_id', 'left');
+            $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
+            $builder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . $schoolId, 'left');
+            $builder->join('grade g', 'g.grade_id = upd.grade_id', 'left');
+            $builder->join('tbl_course', 'tbl_course.course_id = sc.course_id', 'left');
+            $builder->where('sc.school_id', $schoolId);
+            $builder->where('u.role_id', 5); // Students role
+            $builder->where('sc.status', 'active');
+
+            if (isset($filters['course_id'])) {
+                $builder->where('sc.course_id', $filters['course_id']);
+            }
+            if (isset($filters['student_id'])) {
+                $builder->where('sc.student_id', $filters['student_id']);
+            }
+
+            $total = $builder->countAllResults(false);
+            $query = $builder->limit($limit, $offset)->orderBy('tbl_course.course_name', 'ASC')->orderBy('up.last_name', 'ASC')->get();
+            $results = $query ? $query->getResultArray() : [];
+
+            // Ensure we always return an array
+            if (!is_array($results)) {
+                $results = [];
+            }
+
+            return $this->respondWith(true, $results);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Report::activeStudentsByCourse error: ' . $e->getMessage());
+            return $this->respondWith(false, null, $e->getMessage(), ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get active students by class report
+     * POST /report/activeStudentsByClass
+     */
+    public function activeStudentsByClass()
+    {
+        try {
+            $payload = $this->parsePayload();
+            $schoolId = (int)($payload['school_id'] ?? 0);
+            if (!$schoolId) {
+                return $this->respondWith(false, null, 'school_id is required', ResponseInterface::HTTP_BAD_REQUEST);
+            }
+
+            $filters = $this->toSnakeFilters($payload['filters'] ?? []);
+            $limit = max(1, min(500, (int)($payload['limit'] ?? 500)));
+            $offset = max(0, (int)($payload['offset'] ?? 0));
+
+            $db = \Config\Database::connect();
+            $builder = $db->table('student_courses sc');
+            $builder->select('sc.*, u.user_id, u.email_id as email, u.mobile as phone, up.first_name, up.last_name, cl.class_name, tbl_course.course_name, COALESCE(g.grade_name, "") as grade_name');
+            $builder->join('user u', 'u.user_id = sc.student_id', 'left');
+            $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
+            $builder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . $schoolId, 'left');
+            $builder->join('grade g', 'g.grade_id = upd.grade_id', 'left');
+            $builder->join('tbl_course', 'tbl_course.course_id = sc.course_id', 'left');
+            $builder->join('course_class_mapping ccm', 'ccm.course_id = sc.course_id', 'left');
+            $builder->join('class cl', 'cl.class_id = ccm.class_id', 'left');
+            $builder->where('sc.school_id', $schoolId);
+            $builder->where('u.role_id', 5); // Students role
+            $builder->where('sc.status', 'active');
+
+            if (isset($filters['class_id'])) {
+                $builder->where('cl.class_id', $filters['class_id']);
+            }
+            if (isset($filters['course_id'])) {
+                $builder->where('sc.course_id', $filters['course_id']);
+            }
+            if (isset($filters['student_id'])) {
+                $builder->where('sc.student_id', $filters['student_id']);
+            }
+
+            $total = $builder->countAllResults(false);
+            $query = $builder->limit($limit, $offset)->orderBy('cl.class_name', 'ASC')->orderBy('up.last_name', 'ASC')->get();
+            $results = $query ? $query->getResultArray() : [];
+
+            // Ensure we always return an array
+            if (!is_array($results)) {
+                $results = [];
+            }
+
+            return $this->respondWith(true, $results);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Report::activeStudentsByClass error: ' . $e->getMessage());
+            return $this->respondWith(false, null, $e->getMessage(), ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

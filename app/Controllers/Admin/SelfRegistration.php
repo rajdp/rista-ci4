@@ -1241,7 +1241,7 @@ class SelfRegistration extends BaseController
                 $fee = null;
             }
 
-            $normalized[] = [
+            $normalizedDecision = [
                 'registration_course_id' => $rowId,
                 'course_id' => $course['course_id'] ?? null,
                 'course_name' => $course['course_name'] ?? $course['catalog_course_name'] ?? null,
@@ -1253,6 +1253,26 @@ class SelfRegistration extends BaseController
                 'approved_fee_amount' => $fee,
                 'decision_notes' => isset($decision['decision_notes']) ? trim((string) $decision['decision_notes']) : ($course['decision_notes'] ?? null),
             ];
+
+            // Add new fields if status is approved
+            if ($status === 'approved') {
+                $normalizedDecision['start_date'] = $decision['start_date'] ?? date('Y-m-d');
+                $normalizedDecision['fee_term'] = $decision['fee_term'] ?? '1';
+                $normalizedDecision['next_billing_date'] = $decision['next_billing_date'] ?? null;
+                $normalizedDecision['deposit'] = isset($decision['deposit']) && $decision['deposit'] !== '' ? (float) $decision['deposit'] : null;
+                $normalizedDecision['onboarding_fee'] = isset($decision['onboarding_fee']) && $decision['onboarding_fee'] !== '' ? (float) $decision['onboarding_fee'] : null;
+                $normalizedDecision['registration_fee'] = $normalizedDecision['onboarding_fee']; // Alias for compatibility
+                $normalizedDecision['prorated_fee'] = isset($decision['prorated_fee']) && $decision['prorated_fee'] !== '' ? (float) $decision['prorated_fee'] : null;
+                
+                // Get class_id from decision, schedule, or course
+                $classId = $decision['class_id'] ?? null;
+                if (!$classId && $schedule) {
+                    $classId = $schedule['class_id'] ?? null;
+                }
+                $normalizedDecision['class_id'] = $classId ? (int) $classId : null;
+            }
+
+            $normalized[] = $normalizedDecision;
         }
 
         return $normalized;
@@ -1561,6 +1581,104 @@ class SelfRegistration extends BaseController
         } catch (\Throwable $e) {
             log_message('error', 'SelfRegistration::approve - ' . $e->getMessage());
             return $this->errorResponse('Unable to approve registration');
+        }
+    }
+
+    /**
+     * Check existing active enrollments for student in course
+     * GET /admin/self-registrations/check-enrollments?student_id=X&course_id=Y
+     */
+    public function checkEnrollments(): ResponseInterface
+    {
+        try {
+            $studentId = (int) ($this->request->getGet('student_id') ?? 0);
+            $courseId = (int) ($this->request->getGet('course_id') ?? 0);
+            $classId = (int) ($this->request->getGet('class_id') ?? 0);
+
+            if ($studentId <= 0) {
+                return $this->errorResponse('student_id is required');
+            }
+
+            $token = $this->validateToken();
+            if (!$token) {
+                return $this->unauthorizedResponse('Access token required');
+            }
+
+            $defaultSchoolId = $this->getSchoolId($token);
+            $db = Database::connect();
+
+            $enrollments = [];
+
+            // Check student_courses for active enrollments in the same course
+            if ($courseId > 0) {
+                $courseEnrollments = $db->table('student_courses')
+                    ->select('student_courses.*, tbl_course.course_name, class.class_id, class.class_name')
+                    ->join('tbl_course', 'tbl_course.course_id = student_courses.course_id', 'left')
+                    ->join('class', 'class.course_id = student_courses.course_id', 'left')
+                    ->where('student_courses.student_id', $studentId)
+                    ->where('student_courses.course_id', $courseId)
+                    ->where('student_courses.status', 'active')
+                    ->get()
+                    ->getResultArray();
+
+                foreach ($courseEnrollments as $enrollment) {
+                    // Get active classes for this enrollment
+                    $activeClasses = $db->table('student_class')
+                        ->select('student_class.*, class.class_name, class.class_code')
+                        ->join('class', 'class.class_id = student_class.class_id', 'left')
+                        ->where('student_class.student_id', $studentId)
+                        ->where('class.course_id', $courseId)
+                        ->where('student_class.status', '1')
+                        ->get()
+                        ->getResultArray();
+
+                    $enrollments[] = [
+                        'course_id' => (int) $enrollment['course_id'],
+                        'course_name' => $enrollment['course_name'] ?? null,
+                        'enrollment_date' => $enrollment['enrollment_date'] ?? null,
+                        'active_classes' => array_map(function ($class) {
+                            return [
+                                'class_id' => (int) $class['class_id'],
+                                'class_name' => $class['class_name'] ?? null,
+                                'class_code' => $class['class_code'] ?? null,
+                            ];
+                        }, $activeClasses)
+                    ];
+                }
+            }
+
+            // Check if student is already active in a specific class
+            $classConflict = null;
+            if ($classId > 0) {
+                $existingClassEnrollment = $db->table('student_class')
+                    ->select('student_class.*, class.class_name, class.class_code, class.course_id, tbl_course.course_name')
+                    ->join('class', 'class.class_id = student_class.class_id', 'left')
+                    ->join('tbl_course', 'tbl_course.course_id = class.course_id', 'left')
+                    ->where('student_class.student_id', $studentId)
+                    ->where('student_class.class_id', $classId)
+                    ->where('student_class.status', '1')
+                    ->get()
+                    ->getRowArray();
+
+                if ($existingClassEnrollment) {
+                    $classConflict = [
+                        'class_id' => (int) $existingClassEnrollment['class_id'],
+                        'class_name' => $existingClassEnrollment['class_name'] ?? null,
+                        'class_code' => $existingClassEnrollment['class_code'] ?? null,
+                        'course_id' => (int) ($existingClassEnrollment['course_id'] ?? 0),
+                        'course_name' => $existingClassEnrollment['course_name'] ?? null,
+                    ];
+                }
+            }
+
+            return $this->successResponse([
+                'enrollments' => $enrollments,
+                'class_conflict' => $classConflict,
+                'has_conflicts' => !empty($enrollments) || !empty($classConflict)
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'SelfRegistration::checkEnrollments - ' . $e->getMessage());
+            return $this->errorResponse('Unable to check enrollments');
         }
     }
 

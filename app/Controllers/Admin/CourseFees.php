@@ -152,11 +152,11 @@ class CourseFees extends BaseController
     /**
      * Clear course fee (sets tbl_course.fees to empty/null)
      */
-    public function delete(): ResponseInterface
+    public function delete($id = null): ResponseInterface
     {
         try {
             $payload = (array) ($this->request->getJSON() ?? []);
-            $courseId = (int) ($payload['course_id'] ?? 0);
+            $courseId = (int) ($payload['course_id'] ?? $id ?? 0);
 
             if ($courseId <= 0) {
                 return $this->errorResponse('course_id is required');
@@ -176,7 +176,10 @@ class CourseFees extends BaseController
             $cleared = $this->courseFeePlanModel
                 ->where('course_id', $courseId)
                 ->where('entity_id', $schoolId)
-                ->set(['fee_amount' => null, 'fee_term' => null])
+                ->set([
+                    'fee_amount' => null,
+                    'fee_term' => null
+                ])
                 ->update();
 
             if (!$cleared) {

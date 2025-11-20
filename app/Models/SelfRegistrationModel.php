@@ -126,31 +126,87 @@ class SelfRegistrationModel extends Model
         $schedulesByCourse = [];
 
         if (!empty($courseIds)) {
-            $scheduleBuilder = $this->db->table('tbl_course_schedule sc');
-            $scheduleBuilder->select("
-                sc.schedule_id,
-                sc.course_id,
-                sc.schedule_title,
-                sc.course_start_date,
-                sc.course_end_date,
-                sc.registration_start_date,
-                sc.registration_end_date,
-                sc.course_type,
-                sc.payment_type,
-                sc.payment_sub_type,
-                sc.location_id,
-                sc.cost,
-                sc.discount_amount,
-                sc.actual_cost,
-                sc.total_slots,
-                sc.slots_booked,
-                sc.status
+            // Try to fetch classes from 'class' table first (classes linked to course)
+            $classBuilder = $this->db->table('class c');
+            $classBuilder->select("
+                c.class_id as schedule_id,
+                c.course_id,
+                COALESCE(c.class_name, c.class_code, CONCAT('Class #', c.class_id)) as schedule_title,
+                c.start_date as course_start_date,
+                c.end_date as course_end_date,
+                c.registration_start_date,
+                c.registration_end_date,
+                CASE 
+                    WHEN c.class_type = 1 THEN 'O'
+                    WHEN c.class_type = 2 THEN 'I'
+                    ELSE NULL
+                END as course_type,
+                c.payment_type,
+                c.payment_sub_type,
+                NULL as location_id,
+                c.cost,
+                c.discount_amount,
+                c.actual_cost,
+                c.total_slots,
+                c.slots_booked,
+                CASE 
+                    WHEN c.status = 1 THEN 'A'
+                    ELSE 'I'
+                END as status
             ");
-            $scheduleBuilder->whereIn('sc.course_id', $courseIds);
-            $scheduleBuilder->where('sc.status', 'A');
-            $scheduleBuilder->orderBy('sc.course_start_date', 'ASC');
+            $classBuilder->whereIn('c.course_id', $courseIds);
+            $classBuilder->where('c.status', 1); // Active class
+            $classBuilder->orderBy('c.start_date', 'ASC');
 
-            $schedules = $scheduleBuilder->get()->getResultArray();
+            $schedules = $classBuilder->get()->getResultArray();
+
+            // If no classes found, fall back to tbl_course_schedule
+            if (empty($schedules)) {
+                $scheduleBuilder = $this->db->table('tbl_course_schedule sc');
+                $scheduleBuilder->select("
+                    sc.schedule_id,
+                    sc.course_id,
+                    sc.schedule_title,
+                    sc.course_start_date,
+                    sc.course_end_date,
+                    sc.registration_start_date,
+                    sc.registration_end_date,
+                    sc.course_type,
+                    sc.payment_type,
+                    sc.payment_sub_type,
+                    sc.location_id,
+                    sc.cost,
+                    sc.discount_amount,
+                    sc.actual_cost,
+                    sc.total_slots,
+                    sc.slots_booked,
+                    sc.status
+                ");
+                $scheduleBuilder->whereIn('sc.course_id', $courseIds);
+                $scheduleBuilder->where('sc.status', 'A');
+                $scheduleBuilder->orderBy('sc.course_start_date', 'ASC');
+
+                $schedules = $scheduleBuilder->get()->getResultArray();
+            }
+
+            // Get active student counts for each class from student_class table
+            $classIds = array_column($schedules, 'schedule_id');
+            $activeStudentsByClass = [];
+            
+            if (!empty($classIds)) {
+                $studentCountBuilder = $this->db->table('student_class sc');
+                $studentCountBuilder->select('sc.class_id, COUNT(DISTINCT sc.student_id) as active_students');
+                $studentCountBuilder->whereIn('sc.class_id', $classIds);
+                $studentCountBuilder->where('sc.status', 1); // Active enrollment
+                $studentCountBuilder->groupBy('sc.class_id');
+                
+                $studentCounts = $studentCountBuilder->get()->getResultArray();
+                
+                foreach ($studentCounts as $count) {
+                    $classId = (int) $count['class_id'];
+                    $activeStudentsByClass[$classId] = (int) $count['active_students'];
+                }
+            }
 
             foreach ($schedules as $schedule) {
                 $courseId = (int) ($schedule['course_id'] ?? 0);
@@ -158,9 +214,15 @@ class SelfRegistrationModel extends Model
                     continue;
                 }
 
+                $classId = (int) ($schedule['schedule_id'] ?? 0);
+                
+                // Use actual active student count from student_class table
+                $activeStudents = $activeStudentsByClass[$classId] ?? (int) ($schedule['slots_booked'] ?? 0);
+
                 $schedule['cost'] = isset($schedule['cost']) ? (float) $schedule['cost'] : null;
                 $schedule['discount_amount'] = isset($schedule['discount_amount']) ? (float) $schedule['discount_amount'] : null;
                 $schedule['actual_cost'] = isset($schedule['actual_cost']) ? (float) $schedule['actual_cost'] : null;
+                $schedule['slots_booked'] = $activeStudents; // Update with actual active student count
 
                 $schedulesByCourse[$courseId][] = $schedule;
             }
@@ -517,10 +579,20 @@ class SelfRegistrationModel extends Model
             return [];
         }
 
+        // Explicitly select all columns including schedule_id to ensure it's retrieved
         $courses = $this->db->table('student_self_registration_courses')
+            ->select('*')
             ->where('registration_id', $registrationId)
             ->get()
             ->getResultArray();
+        
+        // Debug: Log schedule_id values for troubleshooting
+        log_message('debug', sprintf(
+            'SelfRegistrationModel::getRegistrationWithRelations - registration_id=%d, courses_count=%d, schedule_ids=%s',
+            $registrationId,
+            count($courses),
+            json_encode(array_map(function($c) { return $c['schedule_id'] ?? null; }, $courses))
+        ));
 
         $documents = $this->db->table('student_self_registration_documents')
             ->where('registration_id', $registrationId)
@@ -777,6 +849,15 @@ class SelfRegistrationModel extends Model
                 'approved_schedule_end' => $decision['approved_schedule_end'] ?? null,
                 'approved_fee_amount' => $decision['approved_fee_amount'] ?? null,
                 'decision_notes' => $decision['decision_notes'] ?? null,
+                // New fee-related fields
+                'start_date' => isset($decision['start_date']) && $decision['start_date'] ? $decision['start_date'] : null,
+                'fee_term' => isset($decision['fee_term']) && $decision['fee_term'] !== '' ? (int) $decision['fee_term'] : null,
+                'next_billing_date' => isset($decision['next_billing_date']) && $decision['next_billing_date'] ? $decision['next_billing_date'] : null,
+                'deposit' => isset($decision['deposit']) && $decision['deposit'] !== '' ? (float) $decision['deposit'] : null,
+                'onboarding_fee' => isset($decision['onboarding_fee']) && $decision['onboarding_fee'] !== '' ? (float) $decision['onboarding_fee'] : null,
+                'registration_fee' => isset($decision['onboarding_fee']) && $decision['onboarding_fee'] !== '' ? (float) $decision['onboarding_fee'] : null, // Alias
+                'prorated_fee' => isset($decision['prorated_fee']) && $decision['prorated_fee'] !== '' ? (float) $decision['prorated_fee'] : null,
+                'class_id' => isset($decision['class_id']) && $decision['class_id'] ? (int) $decision['class_id'] : null,
             ];
 
             if (array_key_exists('approved_schedule_id', $decision)) {
@@ -1029,10 +1110,126 @@ class SelfRegistrationModel extends Model
             $courseId = isset($course['course_id']) ? (int) $course['course_id'] : 0;
             $catalogEntry = $catalogById[$courseId] ?? null;
 
-            $course['available_schedules'] = $catalogEntry['schedules'] ?? [];
+            // Get available schedules from catalog
+            $availableSchedules = $catalogEntry['schedules'] ?? [];
+            
+            // Preserve the student's selected schedule if it exists
+            // Priority: approved_schedule_id (admin override) > schedule_id (student selection)
+            $originalScheduleId = isset($course['schedule_id']) ? (int) $course['schedule_id'] : null;
+            $approvedScheduleId = isset($course['approved_schedule_id']) && !empty($course['approved_schedule_id'])
+                ? (int) $course['approved_schedule_id']
+                : null;
+            
+            $selectedScheduleId = $approvedScheduleId ?? $originalScheduleId;
+            
+            // Debug logging
+            if ($originalScheduleId) {
+                log_message('debug', sprintf(
+                    'SelfRegistrationModel::enrichCourseSelections - course_id=%d, original_schedule_id=%d, approved_schedule_id=%s, selected_schedule_id=%d',
+                    $courseId,
+                    $originalScheduleId,
+                    $approvedScheduleId ? (string)$approvedScheduleId : 'null',
+                    $selectedScheduleId ?? 0
+                ));
+            }
+            
+            if ($selectedScheduleId) {
+                // Check if selected schedule is already in available schedules
+                $scheduleExists = false;
+                $scheduleIndex = -1;
+                foreach ($availableSchedules as $index => $schedule) {
+                    $scheduleId = (int) ($schedule['schedule_id'] ?? 0);
+                    if ($scheduleId === $selectedScheduleId) {
+                        $scheduleExists = true;
+                        $scheduleIndex = $index;
+                        break;
+                    }
+                }
+                
+                // If selected schedule is not in available schedules, try to load it from database
+                if (!$scheduleExists) {
+                    // Try course_schedules table first
+                    $scheduleDetails = $this->db->table('course_schedules')
+                        ->where('id', $selectedScheduleId)
+                        ->where('course_id', $courseId)
+                        ->get()
+                        ->getRowArray();
+                    
+                    // If not found, try class table (as schedules might be stored as classes)
+                    if (empty($scheduleDetails)) {
+                        $scheduleDetails = $this->db->table('class')
+                            ->where('class_id', $selectedScheduleId)
+                            ->where('course_id', $courseId)
+                            ->get()
+                            ->getRowArray();
+                        
+                        if ($scheduleDetails) {
+                            // Map class fields to schedule format
+                            $scheduleDetails = [
+                                'schedule_id' => $selectedScheduleId,
+                                'schedule_title' => $scheduleDetails['class_name'] ?? $scheduleDetails['class_code'] ?? $course['schedule_title'] ?? null,
+                                'cost' => $scheduleDetails['fee'] ?? $course['fee_amount'] ?? null,
+                                'course_start_date' => $scheduleDetails['start_date'] ?? null,
+                                'course_end_date' => $scheduleDetails['end_date'] ?? null,
+                            ];
+                        }
+                    }
+                    
+                    if ($scheduleDetails) {
+                        // Build schedule object matching the format from getActiveCourses
+                        $selectedSchedule = [
+                            'schedule_id' => $selectedScheduleId,
+                            'schedule_title' => $scheduleDetails['schedule_title'] ?? $course['schedule_title'] ?? null,
+                            'cost' => isset($scheduleDetails['cost']) ? (float) $scheduleDetails['cost'] : ($course['fee_amount'] ?? null),
+                            'actual_cost' => isset($scheduleDetails['actual_cost']) ? (float) $scheduleDetails['actual_cost'] : null,
+                            'discount_amount' => isset($scheduleDetails['discount_amount']) ? (float) $scheduleDetails['discount_amount'] : null,
+                            'course_start_date' => $scheduleDetails['course_start_date'] ?? null,
+                            'course_end_date' => $scheduleDetails['course_end_date'] ?? null,
+                            'total_slots' => isset($scheduleDetails['total_slots']) ? (int) $scheduleDetails['total_slots'] : null,
+                            'slots_booked' => isset($scheduleDetails['slots_booked']) ? (int) $scheduleDetails['slots_booked'] : 0,
+                        ];
+                        // Add at the beginning to show it first as the selected option
+                        array_unshift($availableSchedules, $selectedSchedule);
+                        $scheduleExists = true;
+                    } elseif (!empty($course['schedule_title'])) {
+                        // Fallback: use data from registration if schedule not found in database
+                        $selectedSchedule = [
+                            'schedule_id' => $selectedScheduleId,
+                            'schedule_title' => $course['schedule_title'] ?? null,
+                            'cost' => $course['fee_amount'] ?? null,
+                        ];
+                        array_unshift($availableSchedules, $selectedSchedule);
+                        $scheduleExists = true;
+                    }
+                } elseif ($scheduleIndex >= 0) {
+                    // If schedule exists, move it to the front to make it more visible
+                    $selectedSchedule = $availableSchedules[$scheduleIndex];
+                    unset($availableSchedules[$scheduleIndex]);
+                    $availableSchedules = array_values($availableSchedules); // Re-index
+                    array_unshift($availableSchedules, $selectedSchedule);
+                }
+            }
+            
+            $course['available_schedules'] = $availableSchedules;
             $course['catalog_course_name'] = $catalogEntry['course_name'] ?? $course['course_name'] ?? null;
             $course['catalog_description'] = $catalogEntry['description'] ?? null;
             $course['catalog_fees'] = $catalogEntry['fees'] ?? null;
+            
+            // Preserve registration course ID for reference
+            if (isset($course['id'])) {
+                $course['registration_course_id'] = $course['id'];
+            }
+            
+            // Explicitly preserve schedule_id for frontend to use
+            // This is the schedule the student selected during registration
+            // Always preserve the original schedule_id from database, even if admin has set approved_schedule_id
+            // Frontend will use approved_schedule_id if set, otherwise fall back to schedule_id
+            if (isset($originalScheduleId)) {
+                $course['schedule_id'] = $originalScheduleId; // Always preserve student's original selection
+            }
+            
+            // If admin has approved a different schedule, that's in approved_schedule_id
+            // Frontend logic: approved_schedule_id ?? schedule_id
         }
         unset($course);
 

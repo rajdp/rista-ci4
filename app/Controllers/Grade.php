@@ -335,7 +335,8 @@ class Grade extends BaseController
 
             // Build query to get all students
             $builder = $db->table('user u');
-            $builder->select('upd.user_id, u.email_id AS student_id,
+            $builder->select('upd.user_id, upd.user_id AS student_id,
+                             u.email_id, u.email_id AS email,
                              COALESCE(up.first_name, "") AS first_name,
                              COALESCE(up.last_name, "") AS last_name,
                              COALESCE(CONCAT_WS(" ", up.first_name, up.last_name), "") AS name,

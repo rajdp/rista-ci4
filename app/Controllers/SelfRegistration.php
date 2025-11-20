@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\SelfRegistrationModel;
+use App\Models\SchoolRegistrationAttributeConfigModel;
 use App\Models\V1\CommonModel;
 use App\Traits\RestTrait;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -14,11 +15,13 @@ class SelfRegistration extends BaseController
 
     protected SelfRegistrationModel $selfRegistrationModel;
     protected CommonModel $commonModel;
+    protected SchoolRegistrationAttributeConfigModel $attributeConfigModel;
 
     public function __construct()
     {
         $this->selfRegistrationModel = new SelfRegistrationModel();
         $this->commonModel = new CommonModel();
+        $this->attributeConfigModel = new SchoolRegistrationAttributeConfigModel();
     }
 
     /**
@@ -42,6 +45,10 @@ class SelfRegistration extends BaseController
         }
 
         $courses = $this->selfRegistrationModel->getActiveCourses((int) $school['school_id']);
+
+        // Load registration attributes from school_registration_attribute_configs
+        $registrationAttributes = $this->resolveRegistrationAttributesForSchool((int) $school['school_id']);
+        $attributePayload = $this->buildAttributePayload($registrationAttributes);
 
         $response = [
             'school' => [
@@ -75,9 +82,26 @@ class SelfRegistration extends BaseController
                     'terms_url' => $school['terms_url'] ?? '',
                     'privacy_url' => $school['privacy_url'] ?? ''
                 ],
-                'options' => $school['options'] ?? []
+                'options' => $school['options'] ?? [],
+                'registration_attributes' => $registrationAttributes,
+                'portal' => [
+                    'registration_attributes' => $registrationAttributes
+                ],
+                'portal_settings' => [
+                    'registration_attributes' => $registrationAttributes,
+                    'options' => [
+                        'registration_attributes' => $registrationAttributes,
+                        'attribute_sections' => $registrationAttributes,
+                        'sections' => $registrationAttributes
+                    ]
+                ]
             ],
-            'courses' => $courses
+            'courses' => $courses,
+            'registration_attributes' => $registrationAttributes,
+            'registration_attribute_sections' => $registrationAttributes,
+            'attribute_sections' => $registrationAttributes,
+            'attribute_config' => $attributePayload,
+            'registration_field_config' => $attributePayload
         ];
 
         return $this->successResponse($response, 'Portal configuration loaded');
@@ -240,13 +264,16 @@ class SelfRegistration extends BaseController
             'autopay_authorized' => !empty($payment['autopay']) ? 1 : 0,
             'payment_reference' => $payment['reference'] ?? null,
             'status' => 'pending',
-            'metadata' => json_encode([
-                'termsAccepted' => !empty($payload['agreements']['terms']),
-                'privacyAccepted' => !empty($payload['agreements']['privacy']),
-                'utm' => $payload['utm'] ?? null,
-                'browser' => $payload['context']['userAgent'] ?? null,
-                'submittedFrom' => $payload['context']['host'] ?? null
-            ]),
+            'metadata' => json_encode(array_merge(
+                $payload['metadata'] ?? [],
+                [
+                    'termsAccepted' => !empty($payload['agreements']['terms']),
+                    'privacyAccepted' => !empty($payload['agreements']['privacy']),
+                    'utm' => $payload['utm'] ?? null,
+                    'browser' => $payload['context']['userAgent'] ?? null,
+                    'submittedFrom' => $payload['context']['host'] ?? null
+                ]
+            )),
             'submitted_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
             'last_status_at' => date('Y-m-d H:i:s')
@@ -363,9 +390,31 @@ class SelfRegistration extends BaseController
                 continue;
             }
 
+            // Ensure schedule_id is properly converted to integer or null
+            $scheduleId = null;
+            if (isset($course['schedule_id'])) {
+                $scheduleIdValue = $course['schedule_id'];
+                if ($scheduleIdValue !== null && $scheduleIdValue !== '' && $scheduleIdValue !== '0') {
+                    $scheduleId = (int) $scheduleIdValue;
+                    // If conversion results in 0, it's invalid
+                    if ($scheduleId === 0) {
+                        $scheduleId = null;
+                    }
+                }
+            }
+
+            // Debug logging
+            log_message('debug', sprintf(
+                'SelfRegistration::mapCourseSelections - course_id=%s, schedule_id=%s (raw=%s), course_name=%s',
+                $course['course_id'] ?? 'null',
+                $scheduleId !== null ? (string)$scheduleId : 'null',
+                json_encode($course['schedule_id'] ?? null),
+                $course['course_name'] ?? 'null'
+            ));
+
             $rows[] = [
                 'course_id' => $course['course_id'] ?? null,
-                'schedule_id' => $course['schedule_id'] ?? null,
+                'schedule_id' => $scheduleId,
                 'course_name' => $course['course_name'] ?? null,
                 'schedule_title' => $course['schedule_title'] ?? null,
                 'fee_amount' => isset($course['fee_amount']) ? $course['fee_amount'] : null
@@ -579,5 +628,33 @@ class SelfRegistration extends BaseController
         }
 
         return $this->successResponse($states, 'States loaded');
+    }
+
+    /**
+     * Parse the stored attribute definition for a school.
+     */
+    private function resolveRegistrationAttributesForSchool(int $schoolId): array
+    {
+        $record = $this->attributeConfigModel->where('school_id', $schoolId)->first();
+        if (empty($record) || empty($record['definition'])) {
+            return [];
+        }
+
+        $decoded = json_decode($record['definition'], true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+            return [];
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Build attribute payload structure for frontend compatibility.
+     */
+    private function buildAttributePayload(array $sections): array
+    {
+        return [
+            'sections' => $sections
+        ];
     }
 }

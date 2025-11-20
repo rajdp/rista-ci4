@@ -110,3 +110,4 @@ AND cc.status = 1
 - When content is assigned to specific students (`all_student = 0`), `student_content` records are created for each assigned student
 - The date filter `end_date >= CURDATE()` ensures new students only see relevant content, not historical assignments
 
+

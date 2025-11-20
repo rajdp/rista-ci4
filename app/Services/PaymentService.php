@@ -20,7 +20,7 @@ class PaymentService
     protected StudentPaymentMethodModel $paymentMethodModel;
     protected PaymentTransactionModel $transactionModel;
     protected ProviderUsageLogModel $usageLogModel;
-    protected ProviderCredentialEncryption $encryption;
+    protected ?ProviderCredentialEncryption $encryption = null;
 
     public function __construct()
     {
@@ -28,7 +28,18 @@ class PaymentService
         $this->paymentMethodModel = new StudentPaymentMethodModel();
         $this->transactionModel = new PaymentTransactionModel();
         $this->usageLogModel = new ProviderUsageLogModel();
-        $this->encryption = new ProviderCredentialEncryption();
+        // Encryption is initialized lazily when needed
+    }
+
+    /**
+     * Get encryption instance (lazy initialization)
+     */
+    protected function getEncryption(): ProviderCredentialEncryption
+    {
+        if ($this->encryption === null) {
+            $this->encryption = new ProviderCredentialEncryption();
+        }
+        return $this->encryption;
     }
 
     /**
@@ -50,7 +61,7 @@ class PaymentService
      */
     protected function instantiateProvider(array $config): PaymentInterface
     {
-        $credentials = $this->encryption->decryptCredentials($config['credentials']);
+        $credentials = $this->getEncryption()->decryptCredentials($config['credentials']);
         $settings = isset($config['settings']) ? json_decode($config['settings'], true) : [];
 
         switch ($config['provider_code']) {
@@ -74,7 +85,7 @@ class PaymentService
             throw new \RuntimeException('No payment provider configured');
         }
 
-        $credentials = $this->encryption->decryptCredentials($config['credentials']);
+        $credentials = $this->getEncryption()->decryptCredentials($config['credentials']);
         $settings = isset($config['settings']) ? json_decode($config['settings'], true) : [];
 
         $result = [
@@ -168,7 +179,7 @@ class PaymentService
                 : $this->extractDisplayInfoFromToken($config['provider_code'], $data['payment_token']);
 
             // Encrypt token for storage
-            $encryptedToken = $this->encryption->encryptCredentials([
+            $encryptedToken = $this->getEncryption()->encryptCredentials([
                 'payment_method_id' => $tokenData['payment_method_id'],
                 'customer_id' => $tokenData['customer_id'] ?? null,
                 'raw_response' => $tokenData['raw_data'] ?? []
@@ -189,7 +200,7 @@ class PaymentService
                 'payment_token' => $encryptedToken,
                 'token_type' => $displayInfo['type'] ?? 'card',
                 'display_info' => json_encode($displayInfo),
-                'gateway_customer_id' => $this->encryption->encryptCredentials([
+                'gateway_customer_id' => $this->getEncryption()->encryptCredentials([
                     'customer_id' => $tokenData['customer_id'] ?? $tokenData['payment_method_id']
                 ]),
                 'gateway_payment_method_id' => $encryptedToken,
@@ -326,7 +337,7 @@ class PaymentService
             $provider = $this->instantiateProvider($config);
 
             // Decrypt token
-            $token = $this->encryption->decryptCredentials($paymentMethod['payment_token']);
+            $token = $this->getEncryption()->decryptCredentials($paymentMethod['payment_token']);
 
             // Prepare charge options
             $chargeOptions = array_merge($options, [
@@ -414,6 +425,117 @@ class PaymentService
             return [
                 'success' => false,
                 'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Record manual payment (cash, check, zelle, other)
+     */
+    public function recordManualPayment(int $studentId, float $amount, string $paymentMethod, array $options = []): array
+    {
+        // Get school_id from student or options
+        $schoolId = $options['school_id'] ?? null;
+        if (!$schoolId) {
+            // Try to get from student_user table
+            $db = \Config\Database::connect();
+            $student = $db->table('student_user')
+                ->where('student_id', $studentId)
+                ->get()
+                ->getRowArray();
+            $schoolId = $student['school_id'] ?? null;
+        }
+
+        if (!$schoolId) {
+            return ['success' => false, 'error' => 'School ID not found'];
+        }
+
+        // Get or create a "manual" provider for recording manual payments
+        // This is a special provider that doesn't require gateway integration
+        $providerModel = new \App\Models\ProviderModel();
+        $providerTypeModel = new \App\Models\ProviderTypeModel();
+        
+        // Get payment provider type
+        $paymentType = $providerTypeModel->getByCode('payment');
+        if (!$paymentType) {
+            return ['success' => false, 'error' => 'Payment provider type not found'];
+        }
+
+        $manualProvider = $providerModel->where('code', 'manual')->first();
+        
+        if (!$manualProvider) {
+            // Create manual provider if it doesn't exist
+            $providerId = $providerModel->insert([
+                'provider_type_id' => $paymentType['id'],
+                'code' => 'manual',
+                'name' => 'Manual Payment',
+                'is_active' => 1
+            ], true);
+        } else {
+            $providerId = $manualProvider['id'];
+        }
+
+        // Build transaction data
+        $transactionData = [
+            'school_id' => $schoolId,
+            'student_id' => $studentId,
+            'payment_method_id' => null, // No stored payment method for manual payments
+            'provider_id' => $providerId,
+            'transaction_type' => 'charge',
+            'amount' => $amount,
+            'currency' => $options['currency'] ?? 'USD',
+            'gateway_transaction_id' => 'manual_' . time() . '_' . uniqid(),
+            'gateway_response' => json_encode([
+                'payment_method' => $paymentMethod,
+                'check_number' => $options['check_number'] ?? null,
+                'payment_method_details' => $options['payment_method_details'] ?? null,
+                'payment_notes' => $options['payment_notes'] ?? null
+            ]),
+            'status' => 'succeeded', // Manual payments are always considered successful
+            'description' => $options['description'] ?? "Manual payment via {$paymentMethod}",
+            'metadata' => json_encode(array_merge($options['metadata'] ?? [], [
+                'payment_method' => $paymentMethod,
+                'check_number' => $options['check_number'] ?? null,
+                'payment_method_details' => $options['payment_method_details'] ?? null,
+                'payment_notes' => $options['payment_notes'] ?? null,
+                'manual_payment' => true
+            ])),
+            'invoice_id' => $options['invoice_id'] ?? null,
+            'enrollment_id' => $options['enrollment_id'] ?? null,
+            'course_id' => $options['course_id'] ?? null,
+            'internal_notes' => $options['payment_notes'] ?? null,
+            'processed_by' => $options['user_id'] ?? null,
+            'processed_by_ip' => $options['ip_address'] ?? null
+        ];
+
+        try {
+            $transactionId = $this->transactionModel->insert($transactionData);
+
+            // Log usage
+            $this->logUsage(
+                $schoolId,
+                $providerId,
+                'manual_payment_recorded',
+                'success',
+                [
+                    'transaction_id' => $transactionId,
+                    'amount' => $amount,
+                    'payment_method' => $paymentMethod
+                ]
+            );
+
+            return [
+                'success' => true,
+                'transaction_id' => $transactionData['gateway_transaction_id'],
+                'internal_transaction_id' => $transactionId,
+                'status' => 'succeeded',
+                'amount' => $amount
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'Manual payment recording failed: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Failed to record manual payment: ' . $e->getMessage()
             ];
         }
     }
@@ -534,7 +656,7 @@ class PaymentService
             $config = $this->providerConfigModel->getConfig($method['school_id'], $method['provider_id']);
             if ($config) {
                 $provider = $this->instantiateProvider($config);
-                $token = $this->encryption->decryptCredentials($method['payment_token']);
+                $token = $this->getEncryption()->decryptCredentials($method['payment_token']);
                 $provider->deletePaymentMethod($token['payment_method_id']);
             }
         } catch (\Exception $e) {
