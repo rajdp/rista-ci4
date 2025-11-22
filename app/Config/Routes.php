@@ -186,17 +186,27 @@ $routes->post('admin/self-registration/assignees', 'Admin\SelfRegistration::assi
     $routes->post('admin/student-courses/list', 'Admin\StudentCourses::list');
     $routes->post('admin/student-courses/fee-preview', 'Admin\StudentCourses::feePreview');
     $routes->post('admin/student-courses/add', 'Admin\StudentCourses::add');
+    $routes->post('admin/student-courses/update', 'Admin\StudentCourses::update');
     $routes->post('admin/student-courses/update-status', 'Admin\StudentCourses::updateStatus');
     $routes->post('admin/student-courses/summary', 'Admin\StudentCourses::summary');
     $routes->post('admin/student-courses/bulk-add', 'Admin\StudentCourses::bulkAdd');
+    
+    // Student Custom Items (promos, discounts, charges)
+    $routes->post('admin/student-custom-items/list', 'Admin\StudentCustomItems::list');
+    $routes->post('admin/student-custom-items/get-active', 'Admin\StudentCustomItems::getActive');
+    $routes->post('admin/student-custom-items/add', 'Admin\StudentCustomItems::add');
+    $routes->post('admin/student-custom-items/update', 'Admin\StudentCustomItems::update');
+    $routes->post('admin/student-custom-items/delete', 'Admin\StudentCustomItems::delete');
 
     // Student Class Management endpoints
     $routes->post('admin/student-class/list', 'Admin\StudentClass::list');
     $routes->post('admin/student-class/add', 'Admin\StudentClass::add');
+    $routes->post('admin/student-class/update', 'Admin\StudentClass::update');
     $routes->post('admin/student-class/remove', 'Admin\StudentClass::remove');
     $routes->post('admin/student-class/available-classes', 'Admin\StudentClass::availableClasses');
     $routes->post('admin/student-class/get-class-courses', 'Admin\StudentClass::getClassCourses');
     $routes->post('admin/student-class/get-student-courses', 'Admin\StudentClass::getStudentCourses');
+    $routes->post('admin/student-class/get-active-classes-for-course', 'Admin\StudentClass::getActiveClassesForCourse');
 
     // Course Fee Management endpoints
     $routes->post('admin/course-fees/list', 'Admin\CourseFees::list');
@@ -261,6 +271,9 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('crm/fees/payment', 'Admin\Fees::recordPayment');
     $routes->post('crm/fees/student-overview', 'Admin\Fees::studentOverview');
     $routes->post('crm/fees/invoice', 'Admin\Fees::generateInvoice');
+    $routes->post('crm/fees/invoice/get', 'Admin\Fees::getInvoice');
+    $routes->post('crm/fees/invoices', 'Admin\Fees::listInvoices');
+    $routes->get('crm/fees/invoice/download/(:num)', 'Admin\Fees::downloadInvoice');
     
     // School endpoints
     $routes->get('school', 'School::index');
@@ -533,6 +546,7 @@ $routes->post('content/detail', 'Content::detail');
 });
 
 // Admin routes (admin authentication required)
+// AdminFilter handles both authentication and admin authorization
 $routes->group('', ['filter' => 'admin'], function($routes) {
     // Admin Settings
     $routes->post('settings/list', 'Settings::list');
@@ -669,6 +683,7 @@ $routes->group('', ['filter' => 'admin'], function($routes) {
     // Payment Charges & Admin Operations
     $routes->post('api/payments/charge', 'Api\PaymentController::charge');
     $routes->post('api/payments/transactions/(:num)/refund', 'Api\PaymentController::refund/$1');
+    $routes->post('api/payments/transactions/(:num)/void', 'Api\PaymentController::void/$1');
     $routes->get('api/payments/transactions/(:num)', 'Api\PaymentController::getTransaction/$1');
     $routes->get('api/schools/(:num)/payments/summary', 'Api\PaymentController::getSchoolSummary/$1');
 });

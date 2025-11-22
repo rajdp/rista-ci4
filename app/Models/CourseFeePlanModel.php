@@ -23,6 +23,7 @@ class CourseFeePlanModel extends Model
         'course_name',
         'fee_amount',
         'fee_term',
+        'billing_cycle_days',
         'status'
     ];
 
@@ -40,7 +41,7 @@ class CourseFeePlanModel extends Model
     public function getFeeForCourse(int $courseId, int $schoolId)
     {
         try {
-            $builder = $this->select('course_id, course_name, fee_amount, fee_term')
+            $builder = $this->select('course_id, course_name, fee_amount, fee_term, billing_cycle_days')
                 ->where('course_id', $courseId)
                 ->where('entity_id', $schoolId)
                 ->where('status', 'A'); // Only approved courses
@@ -68,18 +69,10 @@ class CourseFeePlanModel extends Model
 
         // Convert to expected format
         // fee_term: 1 = one-time, 2 = recurring
-        // Check course_fee_plans table for billing_cycle_days if available
+        // Get billing_cycle_days from tbl_course
         $billingCycleDays = null;
-        $courseFeePlan = $this->db->table('course_fee_plans')
-            ->where('course_id', $courseId)
-            ->where('school_id', $schoolId)
-            ->where('is_active', 1)
-            ->orderBy('created_at', 'DESC')
-            ->get()
-            ->getRowArray();
-        
-        if ($courseFeePlan && isset($courseFeePlan['billing_cycle_days'])) {
-            $billingCycleDays = (int)$courseFeePlan['billing_cycle_days'];
+        if (isset($course['billing_cycle_days']) && $course['billing_cycle_days'] !== null) {
+            $billingCycleDays = (int)$course['billing_cycle_days'];
         } elseif (isset($course['fee_term']) && $course['fee_term'] == 2) {
             // Default to monthly if recurring but no billing_cycle_days set
             $billingCycleDays = 30;
@@ -113,7 +106,7 @@ class CourseFeePlanModel extends Model
     public function getCoursesWithFees(int $schoolId, array $filters = [])
     {
         $builder = $this->db->table($this->table)
-            ->select('course_id, course_name, fee_amount, fee_term, status')
+            ->select('course_id, course_name, fee_amount, fee_term, billing_cycle_days, status')
             ->where('entity_id', $schoolId)
             ->where('status', 'A'); // Only approved courses
 
@@ -135,28 +128,14 @@ class CourseFeePlanModel extends Model
 
         $courses = $builder->get()->getResultArray();
 
-        // Get billing_cycle_days from course_fee_plans for all courses
-        $courseIds = array_column($courses, 'course_id');
-        $feePlans = [];
-        if (!empty($courseIds)) {
-            $feePlans = $this->db->table('course_fee_plans')
-                ->whereIn('course_id', $courseIds)
-                ->where('school_id', $schoolId)
-                ->where('is_active', 1)
-                ->get()
-                ->getResultArray();
-        }
-        
-        $feePlansMap = [];
-        foreach ($feePlans as $plan) {
-            $feePlansMap[$plan['course_id']] = $plan['billing_cycle_days'];
-        }
-
         // Convert to expected format
-        return array_map(function($course) use ($feePlansMap) {
+        return array_map(function($course) {
             // fee_term: 1 = one-time, 2 = recurring
-            $billingCycleDays = $feePlansMap[$course['course_id']] ?? null;
-            if ($billingCycleDays === null && isset($course['fee_term']) && $course['fee_term'] == 2) {
+            // Get billing_cycle_days from tbl_course
+            $billingCycleDays = null;
+            if (isset($course['billing_cycle_days']) && $course['billing_cycle_days'] !== null) {
+                $billingCycleDays = (int)$course['billing_cycle_days'];
+            } elseif (isset($course['fee_term']) && $course['fee_term'] == 2) {
                 $billingCycleDays = 30; // Default to monthly for recurring
             }
 
@@ -226,40 +205,17 @@ class CourseFeePlanModel extends Model
         if (isset($feeData['default_amount'])) {
             $updateData['fee_amount'] = $feeAmount !== null ? (float)$feeAmount : null;
         }
+        
+        // Update billing_cycle_days in tbl_course
+        if (isset($feeData['billing_cycle_days'])) {
+            $updateData['billing_cycle_days'] = $billingCycleDays;
+        }
 
-        // Update tbl_course
+        // Update tbl_course with all fee-related fields
         $result = $this->where('course_id', $courseId)
             ->where('entity_id', $schoolId)
             ->set($updateData)
             ->update();
-
-        // Also update or create course_fee_plans entry to store billing_cycle_days
-        if ($result) {
-            $existingPlan = $this->db->table('course_fee_plans')
-                ->where('course_id', $courseId)
-                ->where('school_id', $schoolId)
-                ->get()
-                ->getRowArray();
-
-            $planData = [
-                'school_id' => $schoolId,
-                'course_id' => $courseId,
-                'fee_plan_id' => $feeData['fee_plan_id'] ?? null,
-                'default_amount' => $feeAmount,
-                'billing_cycle_days' => $billingCycleDays,
-                'is_active' => $feeData['is_active'] ?? 1,
-            ];
-
-            if ($existingPlan) {
-                $this->db->table('course_fee_plans')
-                    ->where('id', $existingPlan['id'])
-                    ->update($planData);
-            } else {
-                $planData['created_at'] = date('Y-m-d H:i:s');
-                $planData['updated_at'] = date('Y-m-d H:i:s');
-                $this->db->table('course_fee_plans')->insert($planData);
-            }
-        }
 
         return $result;
     }

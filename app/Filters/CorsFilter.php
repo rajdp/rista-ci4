@@ -32,7 +32,7 @@ class CorsFilter implements FilterInterface
         }
 
         $allowMethods = env('cors.allowedMethods', 'GET, POST, PUT, DELETE, OPTIONS');
-        $allowHeaders = env('cors.allowedHeaders', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Accesstoken, accesstoken');
+        $allowHeaders = env('cors.allowedHeaders', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Accesstoken, accesstoken, X-School-Id');
         $allowCredentials = filter_var(env('cors.allowCredentials', true), FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
 
         $response
@@ -117,10 +117,15 @@ class CorsFilter implements FilterInterface
 
         $host = strtolower($parsed['host']);
         
-        // Check for localhost subdomains (e.g., schoolnew.localhost)
-        return strpos($host, 'localhost') !== false || 
-               strpos($host, '127.0.0.1') !== false ||
-               $host === 'localhost' ||
-               preg_match('/^[a-zA-Z0-9-]+\.localhost(:[0-9]+)?$/', $host);
+        // Check for localhost subdomains (e.g., schoolnew.localhost, schoolnew.localhost:8888)
+        // Handle both with and without port
+        if (strpos($host, 'localhost') !== false || 
+            strpos($host, '127.0.0.1') !== false ||
+            $host === 'localhost') {
+            return true;
+        }
+        
+        // Match patterns like: subdomain.localhost or subdomain.localhost:port
+        return preg_match('/^[a-zA-Z0-9-]+\.localhost(:\d+)?$/', $host) === 1;
     }
 }

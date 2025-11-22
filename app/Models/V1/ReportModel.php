@@ -201,8 +201,19 @@ class ReportModel extends BaseModel
 
     public function getClassContent($params, $classId)
     {
+        $studentId = isset($params['student_id']) ? (int)$params['student_id'] : null;
+        
         $builder = $this->getBuilder('class_content cc');
-        $builder->select('cc.content_id, c.name as content_name, c.content_format');
+        $builder->select('cc.content_id, c.name as content_name, c.content_format, c.content_type, cc.start_date');
+        
+        // Join with student_content to get student-specific status if student_id is provided
+        if ($studentId) {
+            $builder->select('COALESCE(sc.status, 1) as status');
+            $builder->join('student_content sc', 'sc.class_content_id = cc.id AND sc.student_id = ' . (int)$studentId, 'left');
+        } else {
+            $builder->select('1 as status');
+        }
+        
         $builder->join('content c', 'cc.content_id = c.content_id', 'left');
         $builder->where('cc.class_id', $classId);
         $builder->where('cc.status', 1);

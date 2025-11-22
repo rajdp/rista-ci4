@@ -10,3 +10,5 @@ ADD COLUMN IF NOT EXISTS registration_fee DECIMAL(12,2) NULL AFTER onboarding_fe
 ADD COLUMN IF NOT EXISTS prorated_fee DECIMAL(12,2) NULL AFTER registration_fee,
 ADD COLUMN IF NOT EXISTS class_id BIGINT UNSIGNED NULL AFTER prorated_fee;
 
+
+

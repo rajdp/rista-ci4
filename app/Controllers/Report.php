@@ -89,7 +89,7 @@ class Report extends ResourceController
     public function classList_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -125,7 +125,7 @@ class Report extends ResourceController
     public function studentList_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -161,7 +161,7 @@ class Report extends ResourceController
     public function assignmentList_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -197,7 +197,7 @@ class Report extends ResourceController
     public function assessmentList_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -233,7 +233,7 @@ class Report extends ResourceController
     public function assignmentReportNew_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
 //        $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -397,7 +397,7 @@ class Report extends ResourceController
     public function assignmentReports_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -577,7 +577,7 @@ class Report extends ResourceController
     public function assessmentReportsNew_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         //$this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -758,7 +758,7 @@ class Report extends ResourceController
     public function assignmentClassReports_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
 //        $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -942,7 +942,7 @@ class Report extends ResourceController
     public function assessmentClassReports_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
        // $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1126,7 +1126,7 @@ class Report extends ResourceController
     public function assessmentReports_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1303,7 +1303,7 @@ class Report extends ResourceController
     public function studentGradeSummary_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1396,7 +1396,7 @@ class Report extends ResourceController
     public function studentsContentReport_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1486,7 +1486,7 @@ class Report extends ResourceController
     public function reportCard1_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1602,7 +1602,7 @@ class Report extends ResourceController
     public function reportCard_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'),true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1620,17 +1620,19 @@ class Report extends ResourceController
             $this->jsonarr["IsSuccess"] = false;
             $this->jsonarr["ErrorObject"] = "Student Id should not be empty";
         } elseif (count($this->jsonarr) == 0) {
-            $studentGrades = $this->report_model->getStudentGrades1($params);
+            $studentGrades = $this->report_model->getStudentGrades($params);
             foreach ($studentGrades as $key => $grade) {
-                $data[$key] = array("grade_id" => $grade['grade'],
+                $data[$key] = array("grade_id" => $grade['grade_id'],
                     "grade_name" => $grade['grade_name'],
                     "subjects" => array());
+                // Set grade_id in params for getGradeSubjects
+                $params['grade_id'] = $grade['grade_id'];
                 $subjects = $this->report_model->getGradeSubjects($params);
                 foreach ($subjects as $key1 => $subject) {
-                    $data[$key]['subjects'][$key1] = array("subject_id" => $subject['subject'],
+                    $data[$key]['subjects'][$key1] = array("subject_id" => $subject['subject_id'],
                         "subject_name" => $subject['subject_name'],
                         "classes" => array());
-                    $classes = $this->report_model->getSubjectClasses1($params, $subject['subject']);
+                    $classes = $this->report_model->getSubjectClasses($params, $subject['subject_id']);
                     foreach ($classes as $key3 => $class) {
                         $data[$key]['subjects'][$key1]['classes'][$key3]['class_id'] = $class['class_id'];
                         $data[$key]['subjects'][$key1]['classes'][$key3]['class_name'] = $class['class_name'];
@@ -1720,7 +1722,7 @@ class Report extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1800,7 +1802,7 @@ class Report extends ResourceController
     public function classPerformanceList_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1834,7 +1836,7 @@ class Report extends ResourceController
     public function studentPerformanceReport_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -1881,7 +1883,7 @@ class Report extends ResourceController
     public function studentReportWiseClass_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -2102,7 +2104,7 @@ class Report extends ResourceController
     public function studentReportClasslast_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -2340,7 +2342,7 @@ class Report extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
      //   $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -2729,7 +2731,7 @@ class Report extends ResourceController
     {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
        // $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -3190,7 +3192,7 @@ class Report extends ResourceController
     public function studentPerformanceContentNew_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         //$this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -3256,7 +3258,7 @@ class Report extends ResourceController
     public function studentPerformanceList_post() {
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -3290,7 +3292,7 @@ class Report extends ResourceController
     public function reportSendsParent_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
         $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -3366,7 +3368,7 @@ class Report extends ResourceController
     public function sendAdminReport_post(){
         $this->benchmark->mark('code_start');
         $params = json_decode(file_get_contents('php://input'), true);
-        $headers = $this->input->request_headers();
+        $headers = $this->request->getHeaders();
       //  $this->common_model->checkPermission($this->controller, $params, $headers);
         if ($params['platform'] != "web" && $params['platform'] != "ios") {
             $this->jsonarr["IsSuccess"] = false;
@@ -4082,7 +4084,9 @@ class Report extends ResourceController
     }
 
     /**
-     * Get grade report (stub - needs full implementation)
+     * Get grade report
+     * If class_code is empty, returns list of classes for filter dropdown
+     * If class_code is provided, returns grade report data for that class
      */
     public function gradeReport()
     {
@@ -4093,14 +4097,49 @@ class Report extends ResourceController
                 $params = $this->request->getPost() ?? [];
             }
 
-            // For now, return empty array - needs full implementation from CI3
-            return service('response')->setJSON([
-                'IsSuccess' => true,
-                'ResponseObject' => [],
-                'ErrorObject' => ''
-            ]);
+            $schoolId = (int)($params['school_id'] ?? 0);
+            if (!$schoolId) {
+                return service('response')->setJSON([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'school_id is required'
+                ]);
+            }
+
+            $classCode = trim($params['class_code'] ?? '');
+            
+            // If class_code is empty, return class list for filter dropdown
+            if (empty($classCode)) {
+                log_message('debug', '📊 Report::gradeReport - Returning class list for filter');
+                
+                // Use the ClassesModel classList method with type 8 for grade reports
+                $classesModel = new \App\Models\V1\ClassesModel();
+                $params['type'] = 8; // Grade report type
+                
+                $classList = $classesModel->classList($params);
+                
+                log_message('debug', '✅ Report::gradeReport returning ' . count($classList) . ' classes for filter');
+                
+                return service('response')->setJSON([
+                    'IsSuccess' => true,
+                    'ResponseObject' => $classList,
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                // class_code is provided - return grade report data for that class
+                // TODO: Implement full grade report data retrieval
+                log_message('debug', '📊 Report::gradeReport - Returning grade report data for class_code: ' . $classCode);
+                
+                // For now, return empty array until full implementation is done
+                return service('response')->setJSON([
+                    'IsSuccess' => true,
+                    'ResponseObject' => [],
+                    'ErrorObject' => ''
+                ]);
+            }
 
         } catch (\Exception $e) {
+            log_message('error', '❌ Report::gradeReport error: ' . $e->getMessage());
             return service('response')->setJSON([
                 'IsSuccess' => false,
                 'ResponseObject' => null,
@@ -4183,27 +4222,102 @@ class Report extends ResourceController
             $offset = max(0, (int)($payload['offset'] ?? 0));
 
             $db = \Config\Database::connect();
-            $builder = $db->table('invoices i');
-            $builder->select('i.*, u.user_id, u.email_id as email, u.mobile as phone, up.first_name, up.last_name, fee_plans.name as fee_plan_name, (i.amount_due - i.amount_paid) as outstanding_amount, COALESCE(g.grade_name, "") as grade_name');
-            $builder->join('user u', 'u.user_id = i.student_id', 'left');
-            $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
-            $builder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . $schoolId, 'left');
-            $builder->join('grade g', 'g.grade_id = upd.grade_id', 'left');
-            $builder->join('student_fee_plans sfp', 'sfp.id = i.student_fee_plan_id', 'left');
-            $builder->join('fee_plans', 'fee_plans.id = sfp.fee_plan_id', 'left');
-            $builder->where('u.school_id', $schoolId);
-            $builder->where('u.role_id', 5); // Students role
-            $builder->where('i.due_date <=', $dueBefore);
-            $builder->where('i.status', 'pending');
-            $builder->where('(i.amount_due - i.amount_paid) >', 0, false);
+            
+            // Query 1: Get invoices with outstanding balances (any status, not just 'pending')
+            $invoiceBuilder = $db->table('invoices i');
+            $invoiceBuilder->select('i.id, i.student_id, i.student_fee_plan_id, i.due_date, i.amount_due, i.amount_paid, 
+                (i.amount_due - i.amount_paid) as balance, i.status, i.invoice_number,
+                u.user_id, u.email_id as email, u.mobile as phone, 
+                up.first_name, up.last_name, 
+                fee_plans.name as fee_plan_name, 
+                COALESCE(g.grade_name, "") as grade_name,
+                upd.next_billing_date,
+                sc.course_id, c.course_name, cl.class_id, cl.class_name,
+                "invoice" as record_type');
+            $invoiceBuilder->join('user u', 'u.user_id = i.student_id', 'left');
+            $invoiceBuilder->join('user_profile up', 'up.user_id = u.user_id', 'left');
+            $invoiceBuilder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . $schoolId, 'left');
+            $invoiceBuilder->join('grade g', 'g.grade_id = upd.grade_id', 'left');
+            $invoiceBuilder->join('student_fee_plans sfp', 'sfp.id = i.student_fee_plan_id', 'left');
+            $invoiceBuilder->join('fee_plans', 'fee_plans.id = sfp.fee_plan_id', 'left');
+            $invoiceBuilder->join('student_courses sc', 'sc.student_id = i.student_id AND sc.student_fee_plan_id = i.student_fee_plan_id', 'left');
+            $invoiceBuilder->join('tbl_course c', 'c.course_id = sc.course_id', 'left');
+            $invoiceBuilder->join('student_class sc_rel', 'sc_rel.student_id = i.student_id AND sc_rel.status = 1', 'left');
+            $invoiceBuilder->join('class cl', 'cl.class_id = sc_rel.class_id', 'left');
+            $invoiceBuilder->where('u.school_id', $schoolId);
+            $invoiceBuilder->where('u.role_id', 5); // Students role
+            $invoiceBuilder->where('i.due_date <=', $dueBefore);
+            $invoiceBuilder->where('(i.amount_due - i.amount_paid) >', 0, false);
+            $invoiceBuilder->where('i.status !=', 'paid');
+            $invoiceBuilder->where('i.status !=', 'void');
 
             if (isset($filters['student_id'])) {
-                $builder->where('i.student_id', $filters['student_id']);
+                $invoiceBuilder->where('i.student_id', $filters['student_id']);
             }
 
-            $total = $builder->countAllResults(false);
-            $query = $builder->limit($limit, $offset)->orderBy('i.due_date', 'ASC')->get();
-            $results = $query ? $query->getResultArray() : [];
+            // Group by invoice id to prevent duplicates from multiple course joins
+            $invoiceBuilder->groupBy('i.id');
+            $invoiceResults = $invoiceBuilder->get()->getResultArray();
+
+            // Query 2: Get payment_transactions that are not posted past the Next Billing date
+            $transactionBuilder = $db->table('payment_transactions pt');
+            $transactionBuilder->select('pt.id, pt.student_id, NULL as student_fee_plan_id, 
+                DATE(pt.created_at) as due_date, pt.amount as amount_due, 0 as amount_paid,
+                pt.amount as balance, pt.status, pt.gateway_transaction_id as invoice_number,
+                u.user_id, u.email_id as email, u.mobile as phone,
+                up.first_name, up.last_name,
+                "" as fee_plan_name,
+                COALESCE(g.grade_name, "") as grade_name,
+                upd.next_billing_date,
+                pt.course_id, c.course_name, sc_rel.class_id, cl.class_name,
+                "transaction" as record_type');
+            $transactionBuilder->join('user u', 'u.user_id = pt.student_id', 'left');
+            $transactionBuilder->join('user_profile up', 'up.user_id = u.user_id', 'left');
+            $transactionBuilder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . $schoolId, 'left');
+            $transactionBuilder->join('grade g', 'g.grade_id = upd.grade_id', 'left');
+            $transactionBuilder->join('student_courses sc', 'sc.student_id = pt.student_id AND (sc.course_id = pt.course_id OR pt.course_id IS NULL)', 'left');
+            $transactionBuilder->join('tbl_course c', 'c.course_id = COALESCE(pt.course_id, sc.course_id)', 'left');
+            $transactionBuilder->join('student_class sc_rel', 'sc_rel.student_id = pt.student_id AND sc_rel.status = 1', 'left');
+            $transactionBuilder->join('class cl', 'cl.class_id = sc_rel.class_id', 'left');
+            $transactionBuilder->where('pt.school_id', $schoolId);
+            $transactionBuilder->where('u.role_id', 5); // Students role
+            $transactionBuilder->where('pt.status !=', 'succeeded');
+            $transactionBuilder->where('pt.transaction_type', 'charge');
+            $transactionBuilder->where('DATE(pt.created_at) <=', $dueBefore);
+            // Include transactions that are past the next_billing_date (if it exists) or all non-succeeded if no next_billing_date
+            $transactionBuilder->groupStart();
+            // Case 1: next_billing_date exists and transaction is past it
+            $transactionBuilder->groupStart();
+            $transactionBuilder->where('upd.next_billing_date IS NOT NULL');
+            $transactionBuilder->where('DATE(pt.created_at) > upd.next_billing_date');
+            $transactionBuilder->groupEnd();
+            // Case 2: next_billing_date doesn't exist - include all non-succeeded transactions
+            $transactionBuilder->orGroupStart();
+            $transactionBuilder->where('upd.next_billing_date IS NULL');
+            $transactionBuilder->groupEnd();
+            $transactionBuilder->groupEnd();
+
+            if (isset($filters['student_id'])) {
+                $transactionBuilder->where('pt.student_id', $filters['student_id']);
+            }
+
+            // Group by transaction id to prevent duplicates from multiple course joins
+            $transactionBuilder->groupBy('pt.id');
+            $transactionResults = $transactionBuilder->get()->getResultArray();
+
+            // Combine results
+            $results = array_merge($invoiceResults, $transactionResults);
+
+            // Sort by due_date ascending
+            usort($results, function($a, $b) {
+                $dateA = $a['due_date'] ?? '9999-12-31';
+                $dateB = $b['due_date'] ?? '9999-12-31';
+                return strcmp($dateA, $dateB);
+            });
+
+            // Apply pagination
+            $total = count($results);
+            $results = array_slice($results, $offset, $limit);
 
             // Ensure we always return an array
             if (!is_array($results)) {
@@ -4238,28 +4352,55 @@ class Report extends ResourceController
             $offset = max(0, (int)($payload['offset'] ?? 0));
 
             $db = \Config\Database::connect();
-            $builder = $db->table('payments p');
-            $builder->select('p.*, u.user_id, u.email_id as email, u.mobile as phone, up.first_name, up.last_name, fee_plans.name as fee_plan_name, COALESCE(g.grade_name, "") as grade_name');
-            $builder->join('user u', 'u.user_id = p.student_id', 'left');
+            
+            // Query payment_transactions table instead of payments table
+            $builder = $db->table('payment_transactions pt');
+            $builder->select('pt.id, pt.school_id, pt.student_id, pt.payment_method_id, pt.provider_id,
+                pt.transaction_type, pt.amount, pt.currency, pt.gateway_transaction_id, pt.gateway_response,
+                pt.gateway_fee, pt.status, pt.failure_code, pt.failure_message, pt.retry_count,
+                pt.invoice_id, pt.enrollment_id, pt.fee_id, pt.course_id, pt.description,
+                pt.internal_notes, pt.metadata, pt.refunded_amount, pt.refund_reason,
+                pt.parent_transaction_id, pt.receipt_url, pt.receipt_sent, pt.receipt_sent_at,
+                pt.processed_by, pt.processed_by_ip, pt.created_at, pt.updated_at,
+                DATE(pt.created_at) as payment_date,
+                u.user_id, u.email_id as email, u.mobile as phone, 
+                up.first_name, up.last_name, 
+                COALESCE(fee_plans.name, "") as fee_plan_name, 
+                COALESCE(g.grade_name, "") as grade_name,
+                prov.name as provider_name,
+                c.course_name, cl.class_name');
+            $builder->join('user u', 'u.user_id = pt.student_id', 'left');
             $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
             $builder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . $schoolId, 'left');
             $builder->join('grade g', 'g.grade_id = upd.grade_id', 'left');
-            $builder->join('student_fee_plans sfp', 'sfp.id = p.student_fee_plan_id', 'left');
+            $builder->join('providers prov', 'prov.id = pt.provider_id', 'left');
+            $builder->join('student_courses sc', 'sc.student_id = pt.student_id AND (sc.course_id = pt.course_id OR pt.course_id IS NULL)', 'left');
+            $builder->join('tbl_course c', 'c.course_id = COALESCE(pt.course_id, sc.course_id)', 'left');
+            $builder->join('student_class sc_rel', 'sc_rel.student_id = pt.student_id AND sc_rel.status = 1', 'left');
+            $builder->join('class cl', 'cl.class_id = sc_rel.class_id', 'left');
+            $builder->join('student_fee_plans sfp', 'sfp.id = sc.student_fee_plan_id', 'left');
             $builder->join('fee_plans', 'fee_plans.id = sfp.fee_plan_id', 'left');
-            $builder->where('u.school_id', $schoolId);
+            $builder->where('pt.school_id', $schoolId);
             $builder->where('u.role_id', 5); // Students role
-            $builder->where('p.payment_date >=', $fromDate);
-            $builder->where('p.payment_date <=', $toDate);
+            $builder->where('DATE(pt.created_at) >=', $fromDate);
+            $builder->where('DATE(pt.created_at) <=', $toDate);
 
             if (isset($filters['student_id'])) {
-                $builder->where('p.student_id', $filters['student_id']);
+                $builder->where('pt.student_id', $filters['student_id']);
             }
             if (isset($filters['payment_method'])) {
-                $builder->where('p.payment_method', $filters['payment_method']);
+                // Note: payment_transactions uses payment_method_id, not payment_method
+                // If you need to filter by payment method, you may need to join payment_methods table
+                // For now, we'll skip this filter or you can implement it based on your payment_methods table structure
+            }
+            if (isset($filters['status'])) {
+                $builder->where('pt.status', $filters['status']);
             }
 
+            // Group by transaction id to prevent duplicates from multiple course joins
+            $builder->groupBy('pt.id');
             $total = $builder->countAllResults(false);
-            $query = $builder->limit($limit, $offset)->orderBy('p.payment_date', 'DESC')->get();
+            $query = $builder->limit($limit, $offset)->orderBy('pt.created_at', 'DESC')->get();
             $results = $query ? $query->getResultArray() : [];
 
             // Ensure we always return an array
@@ -4347,20 +4488,28 @@ class Report extends ResourceController
 
             $db = \Config\Database::connect();
             $builder = $db->table('student_courses sc');
-            $builder->select('sc.*, u.user_id, u.email_id as email, u.mobile as phone, up.first_name, up.last_name, cl.class_name, tbl_course.course_name, COALESCE(g.grade_name, "") as grade_name');
+            $builder->select('sc.*, u.user_id, u.email_id as email, u.mobile as phone, up.first_name, up.last_name, 
+                             COALESCE(cl.class_name, cl_alt.class_name, "") as class_name, 
+                             tbl_course.course_name, COALESCE(g.grade_name, "") as grade_name');
             $builder->join('user u', 'u.user_id = sc.student_id', 'left');
             $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
             $builder->join('user_profile_details upd', 'upd.user_id = u.user_id AND upd.school_id = ' . $schoolId, 'left');
             $builder->join('grade g', 'g.grade_id = upd.grade_id', 'left');
             $builder->join('tbl_course', 'tbl_course.course_id = sc.course_id', 'left');
-            $builder->join('course_class_mapping ccm', 'ccm.course_id = sc.course_id', 'left');
-            $builder->join('class cl', 'cl.class_id = ccm.class_id', 'left');
+            // Join student_class to get the actual class the student is enrolled in
+            $builder->join('student_class sc_rel', 'sc_rel.student_id = sc.student_id AND sc_rel.status = 1', 'left');
+            $builder->join('class cl', 'cl.class_id = sc_rel.class_id AND cl.school_id = ' . $schoolId, 'left');
+            // Alternative: join class directly through course if class.course_id exists
+            $builder->join('class cl_alt', 'cl_alt.course_id = sc.course_id AND cl_alt.school_id = ' . $schoolId . ' AND cl_alt.status = 1', 'left');
             $builder->where('sc.school_id', $schoolId);
             $builder->where('u.role_id', 5); // Students role
             $builder->where('sc.status', 'active');
 
             if (isset($filters['class_id'])) {
-                $builder->where('cl.class_id', $filters['class_id']);
+                $builder->groupStart()
+                    ->where('cl.class_id', $filters['class_id'])
+                    ->orWhere('cl_alt.class_id', $filters['class_id'])
+                    ->groupEnd();
             }
             if (isset($filters['course_id'])) {
                 $builder->where('sc.course_id', $filters['course_id']);
@@ -4369,8 +4518,13 @@ class Report extends ResourceController
                 $builder->where('sc.student_id', $filters['student_id']);
             }
 
+            // Use DISTINCT to avoid duplicate rows from multiple class joins
+            $builder->distinct();
             $total = $builder->countAllResults(false);
-            $query = $builder->limit($limit, $offset)->orderBy('cl.class_name', 'ASC')->orderBy('up.last_name', 'ASC')->get();
+            $query = $builder->limit($limit, $offset)
+                ->orderBy('COALESCE(cl.class_name, cl_alt.class_name, "")', 'ASC', false)
+                ->orderBy('up.last_name', 'ASC')
+                ->get();
             $results = $query ? $query->getResultArray() : [];
 
             // Ensure we always return an array

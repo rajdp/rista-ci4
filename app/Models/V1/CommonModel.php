@@ -110,6 +110,12 @@ class CommonModel extends BaseModel
             return $tokenArray[0] ?? false;
         }
 
+        // Check for user_id first (new token format)
+        if (is_object($token) && property_exists($token, 'user_id')) {
+            return $token->user_id;
+        }
+
+        // Fallback to id for backward compatibility
         if (is_object($token) && property_exists($token, 'id')) {
             return $token->id;
         }
@@ -164,22 +170,30 @@ class CommonModel extends BaseModel
         $userId = isset($params['user_id']) ? (int) $params['user_id'] : null;
 
         $accessToken = Services::request()->getHeaderLine('Accesstoken');
+        $accessToken = $accessToken ? trim($accessToken) : '';
+        log_message('debug', 'checkPermission: Token from getHeaderLine: ' . ($accessToken ? substr($accessToken, 0, 20) . '...' : 'EMPTY'));
 
         if (! $accessToken) {
             $accessToken = $this->extractAccessTokenFromInput($headers, $params);
+            $accessToken = $accessToken ? trim($accessToken) : '';
+            log_message('debug', 'checkPermission: Token from extractAccessTokenFromInput: ' . ($accessToken ? substr($accessToken, 0, 20) . '...' : 'EMPTY'));
         }
 
         if (! $accessToken) {
+            log_message('error', 'checkPermission: No access token found. Controller: ' . $controller . ', User ID: ' . $userId);
             $this->denyRequest(401, 'Unauthorized User');
         }
 
         if (! $userId) {
+            log_message('error', 'checkPermission: User ID is empty. Controller: ' . $controller);
             $this->denyRequest(401, 'User Id should not be empty');
         }
 
+        log_message('debug', 'checkPermission: Validating token for user_id: ' . $userId . ', controller: ' . $controller);
         $tokenStatus = $this->verifyAccessToken($userId, $accessToken);
         if (! ($tokenStatus['success'] ?? false)) {
             $message = $tokenStatus['message'] ?? 'Unauthorized User';
+            log_message('error', 'checkPermission: Token validation failed. Message: ' . $message . ', User ID: ' . $userId . ', Controller: ' . $controller);
             $this->denyRequest(401, $message);
         }
 
@@ -203,29 +217,62 @@ class CommonModel extends BaseModel
 
     private function extractAccessTokenFromInput($headers, array $params): ?string
     {
+        $request = Services::request();
         $headerCandidates = ['Accesstoken', 'AccessToken', 'Access-Token'];
 
+        // First try using getHeaderLine for each candidate (getHeaderLine is case-insensitive)
         foreach ($headerCandidates as $candidate) {
-            if (! isset($headers[$candidate])) {
-                continue;
-            }
-
-            $header = $headers[$candidate];
-
-            if (is_array($header)) {
-                $header = $header[0] ?? null;
-            }
-
-            if (is_object($header) && method_exists($header, 'getValue')) {
-                $value = $header->getValue();
-                if (! empty($value)) {
-                    return $value;
-                }
-            } elseif (is_string($header) && $header !== '') {
-                return $header;
+            $value = $request->getHeaderLine($candidate);
+            if (! empty($value)) {
+                return $value;
             }
         }
 
+        // Fallback: try accessing headers array/collection directly
+        if ($headers !== null) {
+            foreach ($headerCandidates as $candidate) {
+                // Try direct array access
+                if (isset($headers[$candidate])) {
+                    $header = $headers[$candidate];
+                    
+                    if (is_array($header)) {
+                        $header = $header[0] ?? null;
+                    }
+
+                    if (is_object($header) && method_exists($header, 'getValueLine')) {
+                        $value = $header->getValueLine();
+                        if (! empty($value)) {
+                            return $value;
+                        }
+                    } elseif (is_object($header) && method_exists($header, 'getValue')) {
+                        $value = $header->getValue();
+                        if (! empty($value)) {
+                            return is_array($value) ? ($value[0] ?? '') : (string) $value;
+                        }
+                    } elseif (is_string($header) && $header !== '') {
+                        return $header;
+                    }
+                }
+                
+                // Try using getHeader() method if headers is a HeaderCollection
+                if (is_object($headers) && method_exists($headers, 'getHeader')) {
+                    $header = $headers->getHeader($candidate);
+                    if ($header !== null) {
+                        if (is_array($header)) {
+                            $header = $header[0] ?? null;
+                        }
+                        if (is_object($header) && method_exists($header, 'getValueLine')) {
+                            $value = $header->getValueLine();
+                            if (! empty($value)) {
+                                return $value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Last resort: check params
         foreach (['Accesstoken', 'AccessToken', 'accessToken'] as $paramKey) {
             if (! empty($params[$paramKey])) {
                 return (string) $params[$paramKey];
@@ -308,39 +355,67 @@ class CommonModel extends BaseModel
         if (!class_exists('AUTHORIZATION')) {
             helper('authorization');
         }
-        $decoded = \AUTHORIZATION::validateToken($accessToken);
-        if (! $decoded) {
+        
+        try {
+            $decoded = \AUTHORIZATION::validateToken($accessToken);
+            if (! $decoded) {
+                log_message('debug', 'verifyAccessToken: Token validation returned false for user_id: ' . $userId);
+                return [
+                    'success' => false,
+                    'message' => "Unauthorised User",
+                ];
+            }
+
+            $decodedUserId = $this->decodeToken($decoded);
+            if ($decodedUserId === false) {
+                log_message('debug', 'verifyAccessToken: Failed to decode user ID from token for user_id: ' . $userId);
+                return [
+                    'success' => false,
+                    'message' => "Unauthorised User",
+                ];
+            }
+            
+            if ((int) $decodedUserId !== $userId) {
+                log_message('debug', 'verifyAccessToken: User ID mismatch. Token user_id: ' . $decodedUserId . ', Request user_id: ' . $userId);
+                return [
+                    'success' => false,
+                    'message' => "Unauthorised User",
+                ];
+            }
+
+            $builder = $this->getBuilder('user_token');
+            $builder->select('status');
+            $builder->where('user_id', $userId);
+            $builder->where('access_token', $accessToken);
+            $tokenRow = $builder->get()->getRowArray();
+
+            if (! $tokenRow) {
+                log_message('debug', 'verifyAccessToken: Token not found in database for user_id: ' . $userId);
+                return [
+                    'success' => false,
+                    'message' => "Unauthorised User",
+                ];
+            }
+
+            if ((int) $tokenRow['status'] !== 1) {
+                log_message('debug', 'verifyAccessToken: Token status is not active (status: ' . $tokenRow['status'] . ') for user_id: ' . $userId);
+                return [
+                    'success' => false,
+                    'message' => "Your session has expired. Kindly logout and relogin",
+                ];
+            }
+
+            return [
+                'success' => true,
+                'payload' => $decoded,
+            ];
+        } catch (\Throwable $e) {
+            log_message('error', 'verifyAccessToken: Exception - ' . $e->getMessage() . ' | File: ' . $e->getFile() . ' | Line: ' . $e->getLine());
             return [
                 'success' => false,
                 'message' => "Unauthorised User",
             ];
         }
-
-        $decodedUserId = $this->decodeToken($decoded);
-        if ($decodedUserId === false || (int) $decodedUserId !== $userId) {
-            return [
-                'success' => false,
-                'message' => "Unauthorised User",
-            ];
-        }
-
-        $builder = $this->getBuilder('user_token');
-        $builder->select('status');
-        $builder->where('user_id', $userId);
-        $builder->where('access_token', $accessToken);
-        $tokenRow = $builder->get()->getRowArray();
-
-        if ($tokenRow && (int) $tokenRow['status'] !== 1) {
-            return [
-                'success' => false,
-                'message' => "Your session has expired. Kindly logout and relogin",
-            ];
-        }
-
-        return [
-            'success' => true,
-            'payload' => $decoded,
-        ];
     }
 
     public function insert($data = null, bool $returnID = true)

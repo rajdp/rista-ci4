@@ -27,18 +27,66 @@ class AdminFilter implements FilterInterface
      */
     public function before(RequestInterface $request, $arguments = null)
     {
-        // Check if user is authenticated (AuthFilter should have run first)
-        /** @var AuthContext $authContext */
-        $authContext = service('authcontext');
-        $userPayload = $authContext->getUserPayload();
-
-        if (!$userPayload) {
+        // First check if user is authenticated by validating token
+        $token = $request->getHeaderLine('Accesstoken');
+        
+        if (empty($token)) {
             return $this->unauthorizedResponse('Authentication required');
         }
 
-        // Check if user has admin role
-        if (!Authorization::isAdmin($userPayload)) {
-            return $this->forbiddenResponse('Admin access required');
+        // Validate token
+        try {
+            $tokenPayload = Authorization::validateToken($token);
+            
+            if (!$tokenPayload) {
+                return $this->unauthorizedResponse('Invalid or expired token');
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'AdminFilter: Token validation exception: ' . $e->getMessage());
+            return $this->unauthorizedResponse('Invalid token format');
+        }
+
+        // Check token timestamp
+        try {
+            $validToken = Authorization::validateTimestamp($token);
+            if (!$validToken) {
+                return $this->unauthorizedResponse('Token has expired');
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'AdminFilter: Token timestamp validation exception: ' . $e->getMessage());
+            return $this->unauthorizedResponse('Token validation error');
+        }
+
+        // Check if token is still active in database
+        $db = \Config\Database::connect();
+        $tokenStatus = $db->table('user_token')
+            ->select('status')
+            ->where('access_token', $token)
+            ->get()
+            ->getRowArray();
+
+        if (!$tokenStatus || (int)$tokenStatus['status'] !== 1) {
+            return $this->unauthorizedResponse('Your session has expired. Please re-login');
+        }
+
+        // Set auth context
+        /** @var AuthContext $authContext */
+        $authContext = service('authcontext');
+        $authContext->reset();
+        $authContext->setUserPayload($tokenPayload);
+        $authContext->setUserId(Authorization::getUserId($tokenPayload));
+        $authContext->setSchoolId(Authorization::getSchoolId($tokenPayload));
+        $authContext->setIsAdmin(Authorization::isAdmin($tokenPayload));
+
+        // Check if user has admin, registrar, or billing role
+        // Support both 'role' and 'role_id' for backward compatibility
+        $roleValue = $tokenPayload->role_id ?? $tokenPayload->role ?? null;
+        $isAdmin = $roleValue === 'admin' || $roleValue === 1 || $roleValue === '1' || $roleValue === 2 || $roleValue === '2';
+        $isRegistrar = $roleValue === 'registrar' || $roleValue === 7 || $roleValue === '7';
+        $isBilling = $roleValue === 8 || $roleValue === '8';
+        
+        if (!$isAdmin && !$isRegistrar && !$isBilling) {
+            return $this->forbiddenResponse('Admin, Registrar, or Billing access required');
         }
 
         // Additional admin-specific checks can be added here

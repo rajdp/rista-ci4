@@ -4,8 +4,6 @@ namespace App\Commands;
 
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
-use App\Database\Migrations\CreateFollowUpsTable;
-
 class CreateFollowUpsTable extends BaseCommand
 {
     protected $group       = 'Database';
@@ -52,5 +50,4 @@ class CreateFollowUpsTable extends BaseCommand
         }
     }
 }
-
 

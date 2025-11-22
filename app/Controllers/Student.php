@@ -23,6 +23,11 @@ class Student extends ResourceController
         try {
             $data = $this->request->getJSON();
             
+            // Convert array to object if needed
+            if (is_array($data)) {
+                $data = (object)$data;
+            }
+            
             $students = $this->studentModel->getStudents($data ?? (object)[]);
             
             return $this->respond([
@@ -32,6 +37,8 @@ class Student extends ResourceController
             ]);
 
         } catch (\Exception $e) {
+            log_message('error', 'Student list error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,
@@ -55,6 +62,7 @@ class Student extends ResourceController
 
             // If $id is provided via URL parameter, use it; otherwise use selected_user_id from params
             $userId = $id ?? ($params['selected_user_id'] ?? null);
+            $schoolId = $params['school_id'] ?? null;
 
             // Validation
             if (empty($userId)) {
@@ -70,13 +78,30 @@ class Student extends ResourceController
             // Get student details
             $builder = $db->table('user u');
             $builder->select('u.user_id, u.email_id, u.role_id, u.status as user_status,
-                             up.first_name, up.last_name, up.gender, up.country, up.state, up.city,
-                             up.profile_url, up.profile_thumb_url, up.address, up.zipcode,
-                             upd.grade_id, upd.joining_date, upd.dropped_date, upd.phone, upd.parent_name,
-                             upd.parent_email, upd.parent_phone, upd.school_id, 
-                             COALESCE(upd.dob, "") as dob');
+                             up.first_name, up.last_name, up.gender, 
+                             COALESCE(ua.country, "") as country, 
+                             COALESCE(ua.state, "") as state, 
+                             COALESCE(ua.city, "") as city,
+                             up.profile_url, up.profile_thumb_url, 
+                             COALESCE(ua.address1, "") as address, 
+                             COALESCE(ua.postal_code, "") as zipcode,
+                             upd.grade_id, upd.doj as joining_date, upd.dropped_date, 
+                             COALESCE(DATE_FORMAT(upd.next_billing_date, "%Y-%m-%d"), "") as next_billing_date,
+                             COALESCE(u.mobile, "") as phone, 
+                             COALESCE(ua_parent.name, "") as parent_name,
+                             COALESCE(ua_parent.email_ids, "") as parent_email,
+                             "" as parent_phone,
+                             upd.school_id, 
+                             COALESCE(up.birthday, "") as dob');
             $builder->join('user_profile up', 'u.user_id = up.user_id', 'left');
-            $builder->join('user_profile_details upd', 'u.user_id = upd.user_id', 'left');
+            // Join user_profile_details with school_id filter if provided to get the correct next_billing_date
+            if (!empty($schoolId)) {
+                $builder->join('user_profile_details upd', 'u.user_id = upd.user_id AND upd.school_id = ' . (int)$schoolId, 'left');
+            } else {
+                $builder->join('user_profile_details upd', 'u.user_id = upd.user_id', 'left');
+            }
+            $builder->join('user_address ua', 'u.user_id = ua.user_id', 'left');
+            $builder->join('user_address ua_parent', 'u.user_id = ua_parent.user_id AND ua_parent.address_type = 2', 'left');
             $builder->where('u.user_id', $userId);
             
             $student = $builder->get()->getRowArray();
@@ -117,8 +142,10 @@ class Student extends ResourceController
             
             // Process teacher IDs
             foreach ($classList as $key => $value) {
-                if (isset($value['teacher_id'])) {
+                if (isset($value['teacher_id']) && !empty($value['teacher_id'])) {
                     $classList[$key]['teacher_id'] = explode(',', $value['teacher_id']);
+                } else {
+                    $classList[$key]['teacher_id'] = [];
                 }
             }
             
@@ -132,10 +159,292 @@ class Student extends ResourceController
             ]);
 
         } catch (\Exception $e) {
+            log_message('error', 'StudentFromClassList error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,
                 'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Update student details
+     */
+    public function update($id = null): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Use $id parameter if provided, otherwise use selected_user_id from params
+            $userId = $id ?? ($params['selected_user_id'] ?? null);
+            $schoolId = $params['school_id'] ?? null;
+
+            // Validation
+            if (empty($userId)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+
+            if (empty($schoolId)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'School Id should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            $db->transStart();
+
+            // Check if email already exists for another user
+            if (!empty($params['email_id'])) {
+                $emailCheck = $db->table('user')
+                    ->where('email_id', $params['email_id'])
+                    ->where('user_id !=', $userId)
+                    ->countAllResults();
+                
+                if ($emailCheck > 0) {
+                    $db->transRollback();
+                    return $this->respond([
+                        'IsSuccess' => false,
+                        'ResponseObject' => null,
+                        'ErrorObject' => 'Email ID already exists'
+                    ]);
+                }
+            }
+
+            // Update user table
+            $userData = [];
+            if (isset($params['mobile']) && is_array($params['mobile'])) {
+                $mobileArray = array_filter($params['mobile']);
+                if (!empty($mobileArray)) {
+                    $userData['mobile'] = implode(',', $mobileArray);
+                }
+            }
+            if (isset($params['email_id'])) {
+                $userData['email_id'] = $params['email_id'];
+            }
+            if (isset($params['status'])) {
+                $userData['status'] = $params['status'];
+            }
+            if (isset($params['user_id'])) {
+                $userData['modified_by'] = $params['user_id'];
+            }
+            $userData['modified_date'] = date('Y-m-d H:i:s');
+
+            if (!empty($userData)) {
+                $db->table('user')
+                    ->where('user_id', $userId)
+                    ->update($userData);
+            }
+
+            // Update user_profile table
+            $profileData = [];
+            if (isset($params['first_name'])) {
+                $profileData['first_name'] = $params['first_name'];
+            }
+            if (isset($params['last_name'])) {
+                $profileData['last_name'] = $params['last_name'];
+            }
+            if (isset($params['gender'])) {
+                $profileData['gender'] = $params['gender'];
+            }
+            if (isset($params['birthday'])) {
+                $profileData['birthday'] = $params['birthday'];
+            }
+            if (isset($params['profile_url'])) {
+                $profileData['profile_url'] = $params['profile_url'];
+            }
+            if (isset($params['profile_thumb_url'])) {
+                $profileData['profile_thumb_url'] = $params['profile_thumb_url'];
+            }
+            if (isset($params['user_id'])) {
+                $profileData['modified_by'] = $params['user_id'];
+            }
+            $profileData['modified_date'] = date('Y-m-d H:i:s');
+
+            if (!empty($profileData)) {
+                $db->table('user_profile')
+                    ->where('user_id', $userId)
+                    ->update($profileData);
+            }
+
+            // Update user_profile_details table
+            $profileDetailsData = [];
+            if (isset($params['registration_date'])) {
+                $profileDetailsData['doj'] = $params['registration_date'];
+            }
+            if (isset($params['status'])) {
+                $profileDetailsData['status'] = $params['status'];
+            }
+            if (isset($params['dropped_date'])) {
+                $profileDetailsData['dropped_date'] = $params['dropped_date'];
+            }
+            if (isset($params['school_idno'])) {
+                $profileDetailsData['school_idno'] = $params['school_idno'];
+            }
+            if (isset($params['grade_id'])) {
+                $profileDetailsData['grade_id'] = $params['grade_id'] ?: 0;
+            }
+            if (isset($params['batch_id'])) {
+                $profileDetailsData['batch_id'] = $params['batch_id'];
+            }
+            if (isset($params['next_billing_date'])) {
+                // Check if column exists before trying to update it
+                if ($db->fieldExists('next_billing_date', 'user_profile_details')) {
+                    // Handle empty string, null, or valid date
+                    $nextBillingDate = $params['next_billing_date'];
+                    if ($nextBillingDate === null || $nextBillingDate === 'null' || $nextBillingDate === '') {
+                        $profileDetailsData['next_billing_date'] = null;
+                    } else {
+                        // Trim only if it's a string
+                        $nextBillingDate = is_string($nextBillingDate) ? trim($nextBillingDate) : $nextBillingDate;
+                        if ($nextBillingDate === '') {
+                            $profileDetailsData['next_billing_date'] = null;
+                        } else {
+                            // Validate date format (YYYY-MM-DD)
+                            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $nextBillingDate)) {
+                                $profileDetailsData['next_billing_date'] = $nextBillingDate;
+                            } else {
+                                // Invalid format, set to null
+                                $profileDetailsData['next_billing_date'] = null;
+                            }
+                        }
+                    }
+                } else {
+                    // Column doesn't exist - log warning but don't fail the update
+                    log_message('warning', 'next_billing_date column does not exist in user_profile_details table. Please run migration.');
+                }
+            }
+
+            if (!empty($profileDetailsData)) {
+                // Get user_details_id for the school
+                $userDetails = $db->table('user_profile_details')
+                    ->where('user_id', $userId)
+                    ->where('school_id', $schoolId)
+                    ->get()
+                    ->getRowArray();
+
+                if ($userDetails) {
+                    $db->table('user_profile_details')
+                        ->where('user_details_id', $userDetails['user_details_id'])
+                        ->where('school_id', $schoolId)
+                        ->update($profileDetailsData);
+                } else {
+                    // Create if doesn't exist
+                    $profileDetailsData['user_id'] = $userId;
+                    $profileDetailsData['school_id'] = $schoolId;
+                    $profileDetailsData['created_date'] = date('Y-m-d H:i:s');
+                    if (isset($params['user_id'])) {
+                        $profileDetailsData['created_by'] = $params['user_id'];
+                    }
+                    $db->table('user_profile_details')->insert($profileDetailsData);
+                }
+            }
+
+            // Update addresses
+            if (isset($params['address']) && is_array($params['address'])) {
+                foreach ($params['address'] as $index => $address) {
+                    $addressType = ($index === 0) ? 2 : 3; // 2 = parent1, 3 = parent2
+                    $parentKey = ($index === 0) ? 'parent1' : 'parent2';
+                    
+                    $addressData = [];
+                    if (isset($address['address1'])) {
+                        $addressData['address1'] = $address['address1'];
+                    }
+                    if (isset($address['address2'])) {
+                        $addressData['address2'] = $address['address2'];
+                    }
+                    if (isset($address['city'])) {
+                        $addressData['city'] = $address['city'];
+                    }
+                    if (isset($address['state'])) {
+                        $addressData['state'] = $address['state'];
+                    }
+                    if (isset($address['country'])) {
+                        $addressData['country'] = $address['country'];
+                    }
+                    if (isset($address['postal_code'])) {
+                        $addressData['postal_code'] = $address['postal_code'];
+                    }
+                    
+                    // Parent name
+                    $parentFirstName = $params[$parentKey . '_firstname'] ?? '';
+                    $parentLastName = $params[$parentKey . '_lastname'] ?? '';
+                    if ($parentFirstName || $parentLastName) {
+                        $addressData['name'] = trim($parentFirstName . ',' . $parentLastName);
+                    }
+                    
+                    // Parent emails
+                    $emailKey = $parentKey . '_email_ids';
+                    if (isset($params[$emailKey]) && is_array($params[$emailKey])) {
+                        $emailArray = array_filter($params[$emailKey]);
+                        if (!empty($emailArray)) {
+                            $addressData['email_ids'] = implode(',', $emailArray);
+                        }
+                    }
+
+                    // Check if address exists
+                    $existingAddress = $db->table('user_address')
+                        ->where('user_id', $userId)
+                        ->where('address_type', $addressType)
+                        ->get()
+                        ->getRowArray();
+
+                    if ($existingAddress) {
+                        $db->table('user_address')
+                            ->where('user_id', $userId)
+                            ->where('address_type', $addressType)
+                            ->update($addressData);
+                    } else {
+                        $addressData['user_id'] = $userId;
+                        $addressData['address_type'] = $addressType;
+                        $addressData['created_date'] = date('Y-m-d H:i:s');
+                        $db->table('user_address')->insert($addressData);
+                    }
+                }
+            }
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                $error = $db->error();
+                log_message('error', 'Student update transaction failed: ' . json_encode($error));
+                log_message('error', 'Update params: ' . json_encode($params));
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update student details: ' . ($error['message'] ?? 'Database error')
+                ]);
+            }
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => 'Student updated successfully',
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Student update error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            $db = \Config\Database::connect();
+            $dbError = $db->error();
+            if (!empty($dbError)) {
+                log_message('error', 'Database error: ' . json_encode($dbError));
+            }
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'Failed to update student details: ' . $e->getMessage()
             ]);
         }
     }
@@ -185,6 +494,59 @@ class Student extends ResourceController
             $builder->orderBy('sc.created_date', 'DESC');
             
             $classes = $builder->get()->getResultArray();
+
+            // Process each class to add schedule and teacher information
+            foreach ($classes as &$class) {
+                // Get class schedule with teacher information
+                $scheduleBuilder = $db->table('class_schedule cs');
+                $scheduleBuilder->select('cs.slot_days, cs.start_time, cs.end_time, cs.teacher_id,
+                                        GROUP_CONCAT(DISTINCT CONCAT(up.first_name, " ", up.last_name) SEPARATOR ", ") as teacher_names');
+                $scheduleBuilder->join('user_profile up', 'FIND_IN_SET(up.user_id, cs.teacher_id)', 'left');
+                $scheduleBuilder->where('cs.class_id', $class['class_id']);
+                $scheduleBuilder->orderBy('cs.slot_days', 'ASC');
+                $scheduleBuilder->groupBy('cs.id');
+                $schedules = $scheduleBuilder->get()->getResultArray();
+                
+                // Format schedule data
+                $class['schedules'] = [];
+                $allTeacherNames = [];
+                foreach ($schedules as $schedule) {
+                    $dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    $dayName = isset($dayNames[$schedule['slot_days']]) ? $dayNames[$schedule['slot_days']] : 'Day ' . $schedule['slot_days'];
+                    
+                    $scheduleInfo = [
+                        'day' => $dayName,
+                        'day_number' => $schedule['slot_days'],
+                        'start_time' => $schedule['start_time'],
+                        'end_time' => $schedule['end_time'],
+                        'teacher_names' => !empty($schedule['teacher_names']) ? $schedule['teacher_names'] : ''
+                    ];
+                    $class['schedules'][] = $scheduleInfo;
+                    
+                    // Collect all teacher names
+                    if (!empty($schedule['teacher_names'])) {
+                        $teachers = explode(', ', $schedule['teacher_names']);
+                        $allTeacherNames = array_merge($allTeacherNames, $teachers);
+                    }
+                }
+                
+                // Remove duplicates and set primary teacher name
+                $allTeacherNames = array_unique(array_filter($allTeacherNames));
+                if (!empty($allTeacherNames)) {
+                    $class['teacher_first_name'] = '';
+                    $class['teacher_last_name'] = '';
+                    $class['teacher_full_name'] = implode(', ', $allTeacherNames);
+                    // Set first teacher as primary for backward compatibility
+                    $firstTeacher = explode(' ', $allTeacherNames[0]);
+                    if (count($firstTeacher) >= 2) {
+                        $class['teacher_first_name'] = $firstTeacher[0];
+                        $class['teacher_last_name'] = implode(' ', array_slice($firstTeacher, 1));
+                    } else {
+                        $class['teacher_first_name'] = $allTeacherNames[0];
+                        $class['teacher_last_name'] = '';
+                    }
+                }
+            }
 
             return $this->respond([
                 'IsSuccess' => true,

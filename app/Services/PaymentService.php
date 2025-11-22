@@ -437,13 +437,15 @@ class PaymentService
         // Get school_id from student or options
         $schoolId = $options['school_id'] ?? null;
         if (!$schoolId) {
-            // Try to get from student_user table
+            // Try to get from user and user_profile_details tables
+            // studentId is actually a user_id from the user table
             $db = \Config\Database::connect();
-            $student = $db->table('student_user')
-                ->where('student_id', $studentId)
-                ->get()
-                ->getRowArray();
-            $schoolId = $student['school_id'] ?? null;
+            $builder = $db->table('user u');
+            $builder->select('COALESCE(upd.school_id, u.school_id, 0) AS school_id');
+            $builder->join('user_profile_details upd', 'u.user_id = upd.user_id', 'left');
+            $builder->where('u.user_id', $studentId);
+            $result = $builder->get()->getRowArray();
+            $schoolId = $result['school_id'] ?? null;
         }
 
         if (!$schoolId) {
@@ -510,6 +512,16 @@ class PaymentService
 
         try {
             $transactionId = $this->transactionModel->insert($transactionData);
+            
+            // Log the transaction creation for debugging
+            log_message('info', sprintf(
+                'Manual payment recorded: transaction_id=%d, student_id=%d, school_id=%d, amount=%.2f, status=%s',
+                $transactionId,
+                $studentId,
+                $schoolId,
+                $amount,
+                $transactionData['status']
+            ));
 
             // Log usage
             $this->logUsage(
@@ -608,6 +620,98 @@ class PaymentService
 
         } catch (\Exception $e) {
             log_message('error', 'Refund failed: ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Void a transaction
+     */
+    public function voidTransaction(int $transactionId, ?string $reason = null): array
+    {
+        $transaction = $this->transactionModel->find($transactionId);
+
+        if (!$transaction) {
+            return ['success' => false, 'error' => 'Transaction not found'];
+        }
+
+        // Check if transaction can be voided
+        if ($transaction['status'] === 'cancelled' || $transaction['status'] === 'void') {
+            return ['success' => false, 'error' => 'Transaction is already voided'];
+        }
+
+        if ($transaction['status'] !== 'succeeded' && $transaction['status'] !== 'pending') {
+            return ['success' => false, 'error' => 'Can only void succeeded or pending transactions'];
+        }
+
+        // Check if already refunded
+        $alreadyRefunded = $this->transactionModel->getTotalRefunded($transactionId);
+        if ($alreadyRefunded > 0) {
+            return ['success' => false, 'error' => 'Cannot void transaction that has been refunded'];
+        }
+
+        try {
+            // For manual payments, just update status
+            if ($transaction['provider_id']) {
+                $providerModel = new \App\Models\ProviderModel();
+                $provider = $providerModel->find($transaction['provider_id']);
+                if ($provider && $provider['code'] === 'manual') {
+                    // Manual payment - just update status
+                    $this->transactionModel->update($transactionId, [
+                        'status' => 'cancelled',
+                        'internal_notes' => ($transaction['internal_notes'] ?? '') . "\nVoided: " . ($reason ?? 'No reason provided') . " at " . date('Y-m-d H:i:s')
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'transaction_id' => $transactionId,
+                        'status' => 'cancelled'
+                    ];
+                }
+            }
+
+            // For gateway payments, attempt to void through provider
+            if ($transaction['gateway_transaction_id']) {
+                $config = $this->providerConfigModel->getConfig($transaction['school_id'], $transaction['provider_id']);
+                if ($config) {
+                    $provider = $this->instantiateProvider($config);
+                    $result = $provider->voidTransaction($transaction['gateway_transaction_id']);
+
+                    if ($result['success']) {
+                        $this->transactionModel->update($transactionId, [
+                            'status' => 'cancelled',
+                            'gateway_response' => json_encode(array_merge(
+                                json_decode($transaction['gateway_response'] ?? '{}', true),
+                                ['void_result' => $result]
+                            )),
+                            'internal_notes' => ($transaction['internal_notes'] ?? '') . "\nVoided: " . ($reason ?? 'No reason provided') . " at " . date('Y-m-d H:i:s')
+                        ]);
+
+                        return [
+                            'success' => true,
+                            'transaction_id' => $transactionId,
+                            'status' => 'cancelled'
+                        ];
+                    } else {
+                        return ['success' => false, 'error' => $result['error'] ?? 'Void failed'];
+                    }
+                }
+            }
+
+            // Fallback: just update status to cancelled
+            $this->transactionModel->update($transactionId, [
+                'status' => 'cancelled',
+                'internal_notes' => ($transaction['internal_notes'] ?? '') . "\nVoided: " . ($reason ?? 'No reason provided') . " at " . date('Y-m-d H:i:s')
+            ]);
+
+            return [
+                'success' => true,
+                'transaction_id' => $transactionId,
+                'status' => 'cancelled'
+            ];
+
+        } catch (\Exception $e) {
+            log_message('error', 'Void failed: ' . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }

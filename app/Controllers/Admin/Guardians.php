@@ -203,13 +203,39 @@ class Guardians extends BaseController
             ];
 
             if (!empty($payload['id'])) {
+                // Update existing guardian
                 $this->guardianModel->update((int) $payload['id'], $guardianData);
                 $result = $this->guardianModel->find((int) $payload['id']);
                 $message = 'Guardian updated successfully';
             } else {
-                $guardianId = $this->guardianModel->insert($guardianData, true);
-                $result = $this->guardianModel->find($guardianId);
-                $message = 'Guardian created successfully';
+                // Check if guardian with same phone number exists for this school
+                $existingGuardian = null;
+                if (!empty($guardianData['phone'])) {
+                    $existingGuardian = $this->guardianModel
+                        ->where('school_id', $guardianData['school_id'])
+                        ->where('phone', $guardianData['phone'])
+                        ->first();
+                }
+                
+                // Also check by email if phone not found and email is provided
+                if (!$existingGuardian && !empty($guardianData['email'])) {
+                    $existingGuardian = $this->guardianModel
+                        ->where('school_id', $guardianData['school_id'])
+                        ->where('email', $guardianData['email'])
+                        ->first();
+                }
+                
+                if ($existingGuardian) {
+                    // Update existing guardian instead of creating new one
+                    $this->guardianModel->update($existingGuardian['id'], $guardianData);
+                    $result = $this->guardianModel->find($existingGuardian['id']);
+                    $message = 'Guardian updated successfully';
+                } else {
+                    // Create new guardian
+                    $guardianId = $this->guardianModel->insert($guardianData, true);
+                    $result = $this->guardianModel->find($guardianId);
+                    $message = 'Guardian created successfully';
+                }
             }
 
             return $this->successResponse($result, $message);
@@ -238,9 +264,13 @@ class Guardians extends BaseController
                 if ($tokenData) {
                     $userId = \App\Libraries\Authorization::getUserId($tokenData);
                     $isAdmin = \App\Libraries\Authorization::isAdmin($tokenData);
+                    $roleId = isset($tokenData->role_id) ? (int) $tokenData->role_id : 0;
                     
-                    // Check if non-admin user is trying to assign guardians to other students
-                    if (!$isAdmin) {
+                    // Allow admins and teachers (role_id 2, 4) to manage guardians for students
+                    $canManageOtherStudents = $isAdmin || in_array($roleId, [2, 4], true);
+                    
+                    // Check if non-admin/teacher user is trying to assign guardians to other students
+                    if (!$canManageOtherStudents) {
                         $studentIds = array_map('intval', (array) $payload['student_ids']);
                         foreach ($studentIds as $studentId) {
                             if ($userId != $studentId) {
@@ -308,9 +338,13 @@ class Guardians extends BaseController
                 if ($tokenData) {
                     $userId = \App\Libraries\Authorization::getUserId($tokenData);
                     $isAdmin = \App\Libraries\Authorization::isAdmin($tokenData);
+                    $roleId = isset($tokenData->role_id) ? (int) $tokenData->role_id : 0;
                     
-                    // Check if non-admin user is trying to remove guardians from other students
-                    if (!$isAdmin && !empty($payload['student_id'])) {
+                    // Allow admins and teachers (role_id 2, 4) to manage guardians for students
+                    $canManageOtherStudents = $isAdmin || in_array($roleId, [2, 4], true);
+                    
+                    // Check if non-admin/teacher user is trying to remove guardians from other students
+                    if (!$canManageOtherStudents && !empty($payload['student_id'])) {
                         $studentId = (int) $payload['student_id'];
                         if ($userId != $studentId) {
                             log_message('warning', '⚠️ Guardians::remove - Permission denied: user ' . $userId . ' tried to remove from student ' . $studentId);

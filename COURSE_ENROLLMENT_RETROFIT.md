@@ -38,8 +38,10 @@ Links courses to classes for automatic enrollment.
 #### `tbl_course`
 - **`fee_amount` (DECIMAL)** - Default fee amount for the course
 - **`fee_term` (INT)** - Billing frequency: 1 = one-time, 2 = recurring monthly
+- **`billing_cycle_days` (INT)** - Billing frequency in days (null = one-time, positive = recurring)
 - **`entity_id` (INT)** - School ID for filtering courses by school
 - Used as the source of default fee values and billing terms
+- **Note:** The `course_fee_plans` table has been removed. All billing cycle information is now stored directly in `tbl_course.billing_cycle_days`
 
 #### `class`
 - **`course_id` (INT)** - Links class to course (existing column)

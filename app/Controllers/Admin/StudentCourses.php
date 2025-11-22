@@ -54,6 +54,23 @@ class StudentCourses extends BaseController
             $status = $payload['status'] ?? null;
             $courses = $this->studentCourseModel->getStudentCourses($studentId, $schoolId, $status);
 
+            // Ensure each course has student_course_id field (alias for id)
+            foreach ($courses as &$course) {
+                if (!isset($course['student_course_id']) && isset($course['id'])) {
+                    $course['student_course_id'] = $course['id'];
+                }
+                // Ensure all required fields have default values
+                if (!isset($course['course_name'])) {
+                    $course['course_name'] = '';
+                }
+                if (!isset($course['course_description'])) {
+                    $course['course_description'] = '';
+                }
+                if (!isset($course['fee_plan_name'])) {
+                    $course['fee_plan_name'] = '';
+                }
+            }
+
             return $this->successResponse([
                 'student_id' => $studentId,
                 'courses' => $courses,
@@ -62,7 +79,8 @@ class StudentCourses extends BaseController
 
         } catch (\Throwable $e) {
             log_message('error', 'StudentCourses::list - ' . $e->getMessage());
-            return $this->errorResponse('Unable to load student courses');
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            return $this->errorResponse('Unable to load student courses: ' . $e->getMessage());
         }
     }
 
@@ -253,6 +271,81 @@ class StudentCourses extends BaseController
         } catch (\Throwable $e) {
             log_message('error', 'StudentCourses::updateStatus - ' . $e->getMessage());
             return $this->errorResponse('Unable to update course status');
+        }
+    }
+
+    /**
+     * Update course enrollment details (enrollment date, fee amount, notes)
+     */
+    public function update($id = null): ResponseInterface
+    {
+        try {
+            $payload = (array) ($this->request->getJSON() ?? []);
+            // Use $id parameter if provided, otherwise use student_course_id from payload
+            $studentCourseId = $id ? (int)$id : (int) ($payload['student_course_id'] ?? 0);
+
+            if ($studentCourseId <= 0) {
+                return $this->errorResponse('student_course_id is required');
+            }
+
+            $token = $this->validateToken();
+            if (!$token) {
+                return $this->unauthorizedResponse('Access token required');
+            }
+
+            $schoolId = (int) $this->getSchoolId($token);
+            if (!$schoolId) {
+                return $this->errorResponse('School ID not found');
+            }
+
+            // Verify the student course belongs to this school
+            $studentCourse = $this->studentCourseModel->find($studentCourseId);
+            if (!$studentCourse) {
+                return $this->errorResponse('Student course not found');
+            }
+
+            if ($studentCourse['school_id'] != $schoolId) {
+                return $this->errorResponse('Unauthorized access to this student course');
+            }
+
+            // Build update data
+            $updateData = [];
+            if (isset($payload['enrollment_date']) && !empty($payload['enrollment_date'])) {
+                $updateData['enrollment_date'] = $payload['enrollment_date'];
+            }
+            if (isset($payload['fee_amount'])) {
+                $updateData['fee_amount'] = $payload['fee_amount'] !== null && $payload['fee_amount'] !== '' 
+                    ? (float) $payload['fee_amount'] 
+                    : null;
+            }
+            if (isset($payload['notes'])) {
+                $updateData['notes'] = $payload['notes'];
+            }
+
+            if (empty($updateData)) {
+                return $this->errorResponse('No fields to update');
+            }
+
+            $updated = $this->studentCourseModel->update($studentCourseId, $updateData);
+
+            if (!$updated) {
+                return $this->errorResponse('Failed to update course enrollment details');
+            }
+
+            // Get updated course data
+            $updatedCourse = $this->studentCourseModel->getStudentCourses(
+                $studentCourse['student_id'],
+                $schoolId
+            );
+
+            return $this->successResponse([
+                'student_course_id' => $studentCourseId,
+                'course' => $updatedCourse
+            ], 'Course enrollment details updated successfully');
+
+        } catch (\Throwable $e) {
+            log_message('error', 'StudentCourses::update - ' . $e->getMessage());
+            return $this->errorResponse('Unable to update course enrollment details');
         }
     }
 

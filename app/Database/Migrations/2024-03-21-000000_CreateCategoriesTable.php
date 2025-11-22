@@ -57,7 +57,11 @@ class CreateCategoriesTable extends Migration
 
         $this->forge->addKey('category_id', true);
         $this->forge->addKey('subject_id');
-        $this->forge->createTable('categories');
+        
+        // Check if table already exists before creating
+        if (!$this->db->tableExists('categories')) {
+            $this->forge->createTable('categories');
+        }
     }
 
     public function down()

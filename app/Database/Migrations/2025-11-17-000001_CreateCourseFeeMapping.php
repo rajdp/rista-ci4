@@ -8,63 +8,8 @@ class CreateCourseFeeMapping extends Migration
 {
     public function up()
     {
-        // Course Fee Plans - Maps courses to their default fee plans
-        $this->forge->addField([
-            'id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-                'auto_increment' => true,
-            ],
-            'school_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-            ],
-            'course_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-                'comment' => 'References course ID',
-            ],
-            'fee_plan_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-                'null' => true,
-                'comment' => 'Default fee plan for this course',
-            ],
-            'default_amount' => [
-                'type' => 'DECIMAL',
-                'constraint' => '10,2',
-                'null' => true,
-                'comment' => 'Override amount (if not using fee plan)',
-            ],
-            'billing_cycle_days' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'null' => true,
-                'comment' => 'Billing frequency in days',
-            ],
-            'is_active' => [
-                'type' => 'TINYINT',
-                'constraint' => 1,
-                'default' => 1,
-            ],
-            'created_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
-            ],
-            'updated_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
-            ],
-        ]);
-        $this->forge->addKey('id', true);
-        $this->forge->addKey(['school_id', 'course_id']);
-        $this->forge->addKey('fee_plan_id');
-        $this->forge->createTable('course_fee_plans');
-
+        // Note: course_fee_plans table has been removed - billing_cycle_days is now stored in tbl_course
+        
         // Student Courses - Track which courses are assigned to students
         $this->forge->addField([
             'id' => [
@@ -194,7 +139,7 @@ class CreateCourseFeeMapping extends Migration
 
     public function down()
     {
-        $this->forge->dropTable('course_fee_plans', true);
+        // Note: course_fee_plans table is no longer created here
         $this->forge->dropTable('student_courses', true);
         $this->forge->dropTable('course_class_mapping', true);
     }

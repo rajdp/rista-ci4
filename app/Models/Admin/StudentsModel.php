@@ -158,17 +158,59 @@ class StudentsModel extends Model
     }
 
     /**
+     * Override find method to query user table instead of students table
+     */
+    public function find($id = null)
+    {
+        if ($id === null) {
+            return parent::find($id);
+        }
+
+        $db = \Config\Database::connect();
+        $builder = $db->table('user u');
+        $builder->select('u.user_id as id, 
+                         u.user_id,
+                         u.email_id as email,
+                         u.status,
+                         u.created_date,
+                         u.modified_date,
+                         up.first_name,
+                         up.last_name,
+                         up.gender,
+                         COALESCE(up.birthday, "") as date_of_birth,
+                         COALESCE(ua.address1, "") as address,
+                         COALESCE(ua.city, "") as city,
+                         COALESCE(ua.state, "") as state,
+                         COALESCE(ua.country, "") as country,
+                         COALESCE(ua.postal_code, "") as zip_code,
+                         upd.school_id,
+                         upd.grade_id,
+                         COALESCE(u.mobile, "") as phone,
+                         COALESCE(ua_parent.name, "") as parent_name,
+                         COALESCE(ua_parent.email_ids, "") as parent_email,
+                         "" as parent_phone,
+                         COALESCE(s.name, "") as school_name,
+                         COALESCE(g.grade_name, "") as grade_name');
+        $builder->join('user_profile up', 'u.user_id = up.user_id', 'left');
+        $builder->join('user_profile_details upd', 'u.user_id = upd.user_id', 'left');
+        $builder->join('user_address ua', 'u.user_id = ua.user_id', 'left');
+        $builder->join('user_address ua_parent', 'u.user_id = ua_parent.user_id AND ua_parent.address_type = 2', 'left');
+        $builder->join('school s', 'upd.school_id = s.school_id', 'left');
+        $builder->join('grade g', 'upd.grade_id = g.grade_id', 'left');
+        $builder->where('u.user_id', $id);
+        $builder->where('u.role_id', 5); // role_id 5 = Student
+        
+        $result = $builder->get()->getRowArray();
+        
+        return $result ?: null;
+    }
+
+    /**
      * Get student by ID
      */
     public function getStudentById($studentId)
     {
-        $builder = $this->builder();
-        $builder->select('students.*, schools.school_name, grades.grade_name');
-        $builder->join('schools', 'schools.id = students.school_id', 'left');
-        $builder->join('grades', 'grades.id = students.grade_id', 'left');
-        $builder->where('students.id', $studentId);
-        
-        return $builder->get()->getRowArray();
+        return $this->find($studentId);
     }
 
     /**

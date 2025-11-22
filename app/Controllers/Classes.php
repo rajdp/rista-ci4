@@ -67,6 +67,7 @@ class Classes extends BaseController
             $builder->select('c.class_id, c.class_name, c.subject, c.grade, c.start_date, c.end_date,
                              c.status, c.class_status, c.class_type, c.tags, c.class_code, c.batch_id,
                              c.meeting_link, c.meeting_id, c.passcode, c.announcement_type, c.course_id,
+                             COALESCE(tc.course_name, "") as course_name,
                              (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name,
                              (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name,
                              (SELECT COUNT(*) FROM student_class sc 
@@ -77,6 +78,7 @@ class Classes extends BaseController
                               FROM class_schedule cs2
                               LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
                               WHERE cs2.class_id = c.class_id) as teacher_name');
+            $builder->join('tbl_course tc', 'tc.course_id = c.course_id AND tc.entity_id = c.school_id', 'left');
             
             // Apply filters
             if (isset($params['school_id']) && !empty($params['school_id'])) {
@@ -793,6 +795,7 @@ class Classes extends BaseController
                 // If role is student (5), only show the logged-in student's details
                 $studentBuilder = $db->table('student_class sc');
                 $studentBuilder->select('sc.student_id, sc.status as student_class_status,
+                                        sc.joining_date, sc.validity,
                                         up.first_name, up.last_name,
                                         upd.grade_id, g.grade_name as student_grade_name,
                                         sc.class_type as student_class_type');
@@ -843,7 +846,9 @@ class Classes extends BaseController
                             'makeup_class_id' => $makeup['makeup_class_id'] ?? '',
                             'makeup_class_name' => $makeup['makeup_class_name'] ?? '',
                             'makeup_class_date' => $makeup['makeup_class_date'] ?? '',
-                            'student_class_type' => $student['student_class_type'] ?? ''
+                            'student_class_type' => $student['student_class_type'] ?? '',
+                            'joining_date' => $student['joining_date'] ?? '',
+                            'validity' => $student['validity'] ?? ''
                         ];
                     }
                 }

@@ -251,6 +251,7 @@ class PaymentController extends ResourceController
 
         try {
             $filters = [
+                'school_id' => (int)$schoolId, // Include school_id in filters
                 'status' => $this->request->getGet('status'),
                 'transaction_type' => $this->request->getGet('type'),
                 'from_date' => $this->request->getGet('from'),
@@ -259,7 +260,9 @@ class PaymentController extends ResourceController
                 'offset' => (int)($this->request->getGet('offset') ?? 0)
             ];
 
-            $filters = array_filter($filters);
+            $filters = array_filter($filters, function($value) {
+                return $value !== null && $value !== '';
+            });
 
             $transactions = $this->transactionModel->getStudentTransactions((int)$studentId, $filters);
 
@@ -295,6 +298,28 @@ class PaymentController extends ResourceController
         $transaction['metadata'] = json_decode($transaction['metadata'] ?? '{}', true);
 
         return $this->respond($transaction);
+    }
+
+    /**
+     * Void a transaction
+     * POST /api/payments/transactions/{id}/void
+     */
+    public function void($transactionId = null)
+    {
+        if (!$transactionId) {
+            return $this->respond(['error' => 'Transaction ID required'], 400);
+        }
+
+        $data = $this->request->getJSON(true);
+        $reason = $data['reason'] ?? null;
+
+        $result = $this->paymentService->voidTransaction((int)$transactionId, $reason);
+
+        if ($result['success']) {
+            return $this->respond($result);
+        }
+
+        return $this->respond($result, 400);
     }
 
     /**

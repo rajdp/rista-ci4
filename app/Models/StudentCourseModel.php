@@ -41,28 +41,64 @@ class StudentCourseModel extends Model
     /**
      * Get all courses for a student
      */
-    public function getStudentCourses(int $studentId, int $schoolId, string $status = null)
+    public function getStudentCourses(int $studentId, int $schoolId, ?string $status = null)
     {
-        $builder = $this->select('
+        try {
+            $db = \Config\Database::connect();
+            
+            // Check if tables exist before joining
+            $tables = $db->listTables();
+            $hasFeePlans = in_array('fee_plans', $tables);
+            $hasStudentFeePlans = in_array('student_fee_plans', $tables);
+            
+            // Build select statement
+            $selectFields = '
                 student_courses.*,
+                tbl_course.course_id,
                 tbl_course.course_name,
-                tbl_course.description as course_description,
-                fee_plans.name as fee_plan_name
-            ')
-            ->join('tbl_course', 'tbl_course.course_id = student_courses.course_id', 'left')
-            ->join('student_fee_plans sfp', 'sfp.id = student_courses.student_fee_plan_id', 'left')
-            ->join('fee_plans', 'fee_plans.id = sfp.fee_plan_id', 'left')
-            ->where([
+                tbl_course.description as course_description';
+            
+            if ($hasFeePlans && $hasStudentFeePlans) {
+                $selectFields .= ', COALESCE(fee_plans.name, "") as fee_plan_name';
+            } else {
+                $selectFields .= ', "" as fee_plan_name';
+            }
+            
+            $builder = $this->select($selectFields);
+            
+            // Join course table
+            $builder->join('tbl_course', 'tbl_course.course_id = student_courses.course_id', 'left');
+            
+            // Only add entity_id filter if column exists
+            if ($db->fieldExists('entity_id', 'tbl_course')) {
+                $builder->where('tbl_course.entity_id', $schoolId);
+            }
+            
+            // Join fee plan tables if they exist
+            if ($hasStudentFeePlans) {
+                $builder->join('student_fee_plans sfp', 'sfp.id = student_courses.student_fee_plan_id', 'left');
+                if ($hasFeePlans) {
+                    $builder->join('fee_plans', 'fee_plans.id = sfp.fee_plan_id', 'left');
+                }
+            }
+            
+            $builder->where([
                 'student_courses.student_id' => $studentId,
                 'student_courses.school_id' => $schoolId
             ]);
 
-        if ($status) {
-            $builder->where('student_courses.status', $status);
-        }
+            if ($status) {
+                $builder->where('student_courses.status', $status);
+            }
 
-        return $builder->orderBy('student_courses.enrollment_date', 'DESC')
-            ->findAll();
+            return $builder->orderBy('student_courses.enrollment_date', 'DESC')
+                ->findAll();
+        } catch (\Throwable $e) {
+            log_message('error', 'StudentCourseModel::getStudentCourses - ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            // Return empty array on error instead of throwing
+            return [];
+        }
     }
 
     /**

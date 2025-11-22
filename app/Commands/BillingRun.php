@@ -59,6 +59,20 @@ class BillingRun extends BaseCommand
                 }
             }
 
+            // Check manual billing for students with next_billing_date due
+            CLI::write("\nChecking manual billing...", 'cyan');
+            $manualBillingResult = $billingRunService->checkManualBilling($schoolId, $runDate);
+            CLI::write("  Students checked: {$manualBillingResult['checked']}", 'white');
+            CLI::write("  Invoices created: {$manualBillingResult['invoices_created']}", 'green');
+            CLI::write("  Already paid: {$manualBillingResult['already_paid']}", 'green');
+
+            if (!empty($manualBillingResult['errors'])) {
+                CLI::write("\nManual billing errors:", 'red');
+                foreach ($manualBillingResult['errors'] as $error) {
+                    CLI::write("  Student {$error['student_id']}: {$error['error']}", 'red');
+                }
+            }
+
             if ($result['failed'] > 0) {
                 return 1; // Exit with error code
             }

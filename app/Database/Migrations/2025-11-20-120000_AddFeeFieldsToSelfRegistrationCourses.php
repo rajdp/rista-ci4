@@ -121,3 +121,5 @@ class AddFeeFieldsToSelfRegistrationCourses extends Migration
     }
 }
 
+
+

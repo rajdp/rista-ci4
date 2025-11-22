@@ -123,6 +123,25 @@ class InvoiceBuilder
                 $totalCents += $feeCents;
             }
 
+            // 3. Student custom items (promos, discounts, additional charges)
+            $customItemModel = new \App\Models\StudentCustomItemModel();
+            $dueDate = $schedule['next_billing_date'] ?? date('Y-m-d');
+            $customItems = $customItemModel->getActiveItemsForStudent($schedule['student_id'], $schedule['school_id'], $dueDate);
+            
+            foreach ($customItems as $customItem) {
+                $itemCents = (int)round((float)$customItem['amount'] * 100);
+                $lineItems[] = [
+                    'description' => $customItem['description'],
+                    'quantity' => 1,
+                    'unit_cents' => $itemCents,
+                    'total_cents' => $itemCents,
+                    'kind' => $itemCents >= 0 ? 'credit' : 'credit', // Use 'credit' kind for custom items (can be positive or negative)
+                    'course_id' => null,
+                    'enrollment_id' => null,
+                ];
+                $totalCents += $itemCents;
+            }
+
             // 3. Deposit (if first invoice and deposit exists)
             if ($schedule['deposit_cents'] > 0 && $schedule['has_prorated_first'] == 0) {
                 $lineItems[] = [

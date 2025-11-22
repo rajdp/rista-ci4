@@ -14,6 +14,7 @@ class InvoiceItemModel extends Model
     protected $protectFields = true;
     protected $allowedFields = [
         'invoice_id',
+        'student_fee_plan_id',
         'description',
         'quantity',
         'unit_cents',

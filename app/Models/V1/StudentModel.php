@@ -82,66 +82,91 @@ class StudentModel extends Model
      */
     public function getStudents($data)
     {
-        $db = \Config\Database::connect();
-        
-        $schoolId = isset($data->school_id) && $data->school_id > 0 ? (int)$data->school_id : 0;
-        $studentId = isset($data->student_id) && $data->student_id > 0 ? (int)$data->student_id : 0;
-        
-        $builder = $db->table('user u');
-        $builder->select('u.user_id, u.role_id, u.email_id, COALESCE(u.mobile, "") AS mobile,
-                         upd.status, ' . $schoolId . ' AS school_id,
-                         COALESCE(s.name, "") AS school_name, u.login_type, u.created_by, u.created_date, u.modified_by, 
-                         u.modified_date, up.profile_id, 
-                         COALESCE(up.first_name, "") AS first_name, 
-                         COALESCE(up.last_name, "") AS last_name, upd.school_idno, 
-                         COALESCE(up.profile_url, "") AS profile_url,
-                         COALESCE(up.profile_thumb_url, "") AS profile_thumb_url, 
-                         COALESCE(up.gender, "") AS gender, 
-                         COALESCE(up.birthday, "") AS birthday, up.currency, upd.subject, upd.doj as registration_date,
-                         upd.dropped_date, upd.grade_id, DATE_FORMAT(upd.upgrade_date, "%m-%d-%Y") as upgrade_date,
-                         DATE_FORMAT(upd.created_date, "%m-%d-%Y") as graded_date, 
-                         COALESCE(g.grade_name, "") AS grade_name, upd.batch_id,
-                         COALESCE(b.batch_name, "") AS batch_name, ua.address_type, ua.name as address_name,
-                         ua.address1, 
-                         COALESCE(ua.address2, "") AS address2, ua.city, ua.state as state_id, ua.email_ids,
-                         COALESCE(st.name, "") AS state_name,
-                         COALESCE(c.name, "") AS country_name, ua.country as country_id, 
-                         ua.postal_code');
-        $builder->join('user_profile up', 'u.user_id = up.user_id', 'left');
-        $builder->join('user_address ua', 'u.user_id = ua.user_id', 'left');
-        $builder->join('user_profile_details upd', 'u.user_id = upd.user_id', 'left');
-        $builder->join('school s', 'upd.school_id = s.school_id', 'left');
-        $builder->join('grade g', 'upd.grade_id = g.grade_id', 'left');
-        $builder->join('batch b', 'upd.batch_id = b.batch_id', 'left');
-        $builder->join('state st', 'ua.state = st.id', 'left');
-        $builder->join('country c', 'ua.country = c.id', 'left');
-        
-        // Filter by role_id = 5 (Students)
-        $builder->where('u.role_id', 5);
-        
-        // Filter by school_id if provided
-        if ($schoolId > 0) {
-            $builder->groupStart()
-                ->where('u.school_id', $schoolId)
-                ->orWhere("FIND_IN_SET('{$schoolId}', u.school_id)", null, false)
-                ->groupEnd();
+        try {
+            $db = \Config\Database::connect();
             
-            // Only filter by upd.school_id if it's set (some students might not have profile details)
-            $builder->groupStart()
-                ->where('upd.school_id', $schoolId)
-                ->orWhere('upd.school_id IS NULL')
-                ->groupEnd();
+            // Handle both array and object input
+            if (is_array($data)) {
+                $data = (object)$data;
+            }
+            
+            $schoolId = isset($data->school_id) && $data->school_id > 0 ? (int)$data->school_id : 0;
+            $studentId = isset($data->student_id) && $data->student_id > 0 ? (int)$data->student_id : 0;
+            
+            // Check if next_billing_date column exists
+            $hasNextBillingDate = $db->fieldExists('next_billing_date', 'user_profile_details');
+            $nextBillingDateSelect = $hasNextBillingDate 
+                ? 'COALESCE(DATE_FORMAT(upd.next_billing_date, "%Y-%m-%d"), "") as next_billing_date'
+                : '"" as next_billing_date';
+            
+            $builder = $db->table('user u');
+            $builder->select('u.user_id, u.role_id, u.email_id, COALESCE(u.mobile, "") AS mobile,
+                             COALESCE(upd.status, "") as status, ' . $schoolId . ' AS school_id,
+                             COALESCE(s.name, "") AS school_name, u.login_type, u.created_by, u.created_date, u.modified_by, 
+                             u.modified_date, COALESCE(up.profile_id, "") as profile_id, 
+                             COALESCE(up.first_name, "") AS first_name, 
+                             COALESCE(up.last_name, "") AS last_name, COALESCE(upd.school_idno, "") as school_idno, 
+                             COALESCE(up.profile_url, "") AS profile_url,
+                             COALESCE(up.profile_thumb_url, "") AS profile_thumb_url, 
+                             COALESCE(up.gender, "") AS gender, 
+                             COALESCE(up.birthday, "") AS birthday, COALESCE(up.currency, "") as currency, 
+                             COALESCE(upd.subject, "") as subject, 
+                             COALESCE(DATE_FORMAT(upd.doj, "%Y-%m-%d"), "") as registration_date,
+                             COALESCE(upd.dropped_date, "") as dropped_date, 
+                             ' . $nextBillingDateSelect . ',
+                             COALESCE(upd.grade_id, "") as grade_id, 
+                             COALESCE(DATE_FORMAT(upd.upgrade_date, "%m-%d-%Y"), "") as upgrade_date,
+                             COALESCE(DATE_FORMAT(upd.created_date, "%m-%d-%Y"), "") as graded_date, 
+                             COALESCE(g.grade_name, "") AS grade_name, COALESCE(upd.batch_id, "") as batch_id,
+                             COALESCE(b.batch_name, "") AS batch_name, 
+                             COALESCE(ua.address_type, "") as address_type, 
+                             COALESCE(ua.name, "") as address_name,
+                             COALESCE(ua.address1, "") as address1, 
+                             COALESCE(ua.address2, "") AS address2, 
+                             COALESCE(ua.city, "") as city, 
+                             COALESCE(ua.state, "") as state_id, 
+                             COALESCE(ua.email_ids, "") as email_ids,
+                             COALESCE(st.name, "") AS state_name,
+                             COALESCE(c.name, "") AS country_name, 
+                             COALESCE(ua.country, "") as country_id, 
+                             COALESCE(ua.postal_code, "") as postal_code');
+            $builder->join('user_profile up', 'u.user_id = up.user_id', 'left');
+            $builder->join('user_address ua', 'u.user_id = ua.user_id', 'left');
+            $builder->join('user_profile_details upd', 'u.user_id = upd.user_id', 'left');
+            $builder->join('school s', 'upd.school_id = s.school_id', 'left');
+            $builder->join('grade g', 'upd.grade_id = g.grade_id', 'left');
+            $builder->join('batch b', 'upd.batch_id = b.batch_id', 'left');
+            $builder->join('state st', 'ua.state = st.id', 'left');
+            $builder->join('country c', 'ua.country = c.id', 'left');
+            
+            // Filter by role_id = 5 (Students)
+            $builder->where('u.role_id', 5);
+            
+            // Filter by school_id if provided
+            if ($schoolId > 0) {
+                // Primary filter: user's school_id (handles both integer and comma-separated string)
+                $builder->groupStart()
+                    ->where('u.school_id', $schoolId)
+                    ->orWhere("FIND_IN_SET('{$schoolId}', u.school_id)", null, false)
+                    ->groupEnd();
+                // Note: We don't filter upd.school_id here to avoid excluding students
+                // The next_billing_date will use the first matching record or be empty
+            }
+            
+            // Filter by specific student_id if provided
+            if ($studentId > 0) {
+                $builder->where('u.user_id', $studentId);
+            }
+            
+            // Order by user_id as fallback
+            $builder->orderBy('u.user_id', 'DESC');
+            
+            $results = $builder->get()->getResultArray();
+        } catch (\Exception $e) {
+            log_message('error', 'getStudents error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            return [];
         }
-        
-        // Filter by specific student_id if provided
-        if ($studentId > 0) {
-            $builder->where('u.user_id', $studentId);
-        }
-        
-        $builder->orderBy('upd.user_details_id', 'DESC');
-        $builder->orderBy('ua.address_id', 'ASC');
-        
-        $results = $builder->get()->getResultArray();
         
         // Group by student and organize data
         $students = [];
@@ -206,22 +231,37 @@ class StudentModel extends Model
      */
     public function studentFromClass($data)
     {
-        $builder = $this->db->table('class c');
-        $builder->select('c.class_id, c.class_name, c.teacher_id, u.user_id as student_id, 
-                         CONCAT(up.first_name, " ", up.last_name) as student_name');
-        $builder->join('student_class sc', 'sc.class_id = c.class_id', 'inner');
-        $builder->join('user u', 'u.user_id = sc.student_id', 'inner');
-        $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
-        
-        if (isset($data->school_id) && $data->school_id != 0) {
-            $builder->where('c.school_id', $data->school_id);
+        try {
+            $builder = $this->db->table('class c');
+            $builder->select('c.class_id, c.class_name, COALESCE(c.teacher_id, "") as teacher_id, u.user_id as student_id, 
+                             COALESCE(CONCAT(up.first_name, " ", up.last_name), "") as student_name');
+            $builder->join('student_class sc', 'sc.class_id = c.class_id', 'inner');
+            $builder->join('user u', 'u.user_id = sc.student_id', 'inner');
+            $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
+            
+            // Filter by school_id if provided and column exists
+            if (isset($data->school_id) && $data->school_id != 0) {
+                // Check if school_id column exists in class table
+                if ($this->db->fieldExists('school_id', 'class')) {
+                    $builder->where('c.school_id', $data->school_id);
+                } else {
+                    // If school_id doesn't exist in class, filter by student's school_id
+                    $builder->groupStart()
+                        ->where('u.school_id', $data->school_id)
+                        ->orWhere("FIND_IN_SET('{$data->school_id}', u.school_id)", null, false)
+                        ->groupEnd();
+                }
+            }
+            
+            $builder->where('c.status', 1);
+            $builder->where('sc.status', 1);
+            $builder->where('u.status', 1);
+            
+            return $builder->get()->getResultArray();
+        } catch (\Exception $e) {
+            log_message('error', 'studentFromClass error: ' . $e->getMessage());
+            return [];
         }
-        
-        $builder->where('c.status', 1);
-        $builder->where('sc.status', 1);
-        $builder->where('u.status', 1);
-        
-        return $builder->get()->getResultArray();
     }
     
     /**

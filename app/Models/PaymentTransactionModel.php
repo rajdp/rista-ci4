@@ -61,14 +61,59 @@ class PaymentTransactionModel extends Model
      */
     public function getStudentTransactions(int $studentId, array $filters = []): array
     {
-        $builder = $this->select('payment_transactions.*, providers.name as provider_name')
+        $builder = $this->select('payment_transactions.*, providers.name as provider_name, providers.code as provider_code')
             ->join('providers', 'providers.id = payment_transactions.provider_id', 'left')
             ->where('payment_transactions.student_id', $studentId);
 
-        $this->applyFilters($builder, $filters);
+        // Also filter by school_id if provided
+        // Note: We use a more flexible approach - if school_id is provided, filter by it
+        // but also log what we're filtering by for debugging
+        if (!empty($filters['school_id'])) {
+            $builder->where('payment_transactions.school_id', $filters['school_id']);
+            log_message('debug', sprintf(
+                'Filtering transactions by school_id=%d for student_id=%d',
+                $filters['school_id'],
+                $studentId
+            ));
+        } else {
+            log_message('debug', sprintf(
+                'No school_id filter applied for student_id=%d - returning all transactions for this student',
+                $studentId
+            ));
+        }
 
-        return $builder->orderBy('payment_transactions.created_at', 'DESC')
+        $this->applyFilters($builder, $filters);
+        
+        // Log query for debugging - also check what transactions exist in DB
+        $db = \Config\Database::connect();
+        $allTransactions = $db->table('payment_transactions')
+            ->where('student_id', $studentId)
+            ->select('id, student_id, school_id, amount, status, created_at')
+            ->get()
+            ->getResultArray();
+        
+        log_message('debug', sprintf(
+            'Querying transactions: student_id=%d, school_id=%s, filters=%s. Total transactions in DB for this student: %d',
+            $studentId,
+            $filters['school_id'] ?? 'N/A',
+            json_encode($filters),
+            count($allTransactions)
+        ));
+        
+        if (!empty($allTransactions)) {
+            log_message('debug', 'Sample transactions in DB: ' . json_encode(array_slice($allTransactions, 0, 3)));
+        }
+
+        $results = $builder->orderBy('payment_transactions.created_at', 'DESC')
             ->findAll($filters['limit'] ?? 100, $filters['offset'] ?? 0);
+            
+        log_message('debug', sprintf(
+            'Found %d transactions for student_id=%d after filtering',
+            count($results),
+            $studentId
+        ));
+
+        return $results;
     }
 
     /**

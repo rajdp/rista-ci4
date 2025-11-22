@@ -231,6 +231,87 @@ class StudentClass extends BaseController
     }
 
     /**
+     * Update student class enrollment details (joining date)
+     */
+    public function update($id = null): ResponseInterface
+    {
+        try {
+            $payload = (array) ($this->request->getJSON() ?? []);
+            // Use $id parameter if provided, otherwise use student_class_id from payload
+            $studentClassId = $id ? (int)$id : (int) ($payload['student_class_id'] ?? $payload['id'] ?? 0);
+            $studentId = (int) ($payload['student_id'] ?? 0);
+            $classId = (int) ($payload['class_id'] ?? 0);
+
+            // Either student_class_id or both student_id and class_id are required
+            if ($studentClassId <= 0 && ($studentId <= 0 || $classId <= 0)) {
+                return $this->errorResponse('student_class_id or (student_id and class_id) is required');
+            }
+
+            $token = $this->validateToken();
+            if (!$token) {
+                return $this->unauthorizedResponse('Access token required');
+            }
+
+            $schoolId = (int) $this->getSchoolId($token);
+            if (!$schoolId) {
+                return $this->errorResponse('School ID not found');
+            }
+
+            $userId = (int) $this->getUserId($token);
+
+            // Find the student_class record
+            $builder = $this->db->table('student_class sc')
+                ->join('class c', 'c.class_id = sc.class_id', 'left')
+                ->where('c.school_id', $schoolId);
+
+            if ($studentClassId > 0) {
+                $builder->where('sc.id', $studentClassId);
+            } else {
+                $builder->where('sc.student_id', $studentId)
+                    ->where('sc.class_id', $classId);
+            }
+
+            $studentClass = $builder->get()->getRowArray();
+
+            if (!$studentClass) {
+                return $this->errorResponse('Student class enrollment not found');
+            }
+
+            // Build update data
+            $updateData = [
+                'modified_by' => $userId,
+                'modified_date' => date('Y-m-d H:i:s')
+            ];
+
+            if (isset($payload['joining_date']) && !empty($payload['joining_date'])) {
+                $updateData['joining_date'] = $payload['joining_date'];
+            }
+
+            if (count($updateData) <= 2) { // Only modified_by and modified_date
+                return $this->errorResponse('No fields to update');
+            }
+
+            // Update the student_class record
+            $updated = $this->db->table('student_class')
+                ->where('id', $studentClass['id'])
+                ->update($updateData);
+
+            if (!$updated) {
+                return $this->errorResponse('Failed to update class enrollment details');
+            }
+
+            return $this->successResponse([
+                'student_class_id' => $studentClass['id'],
+                'joining_date' => $updateData['joining_date'] ?? $studentClass['joining_date']
+            ], 'Class enrollment details updated successfully');
+
+        } catch (\Throwable $e) {
+            log_message('error', 'StudentClass::update - ' . $e->getMessage());
+            return $this->errorResponse('Unable to update class enrollment details');
+        }
+    }
+
+    /**
      * Remove a class from a student (soft delete - sets status to 0 and validity date)
      */
     public function remove(): ResponseInterface
@@ -419,7 +500,7 @@ class StudentClass extends BaseController
                 ->getRowArray();
 
             $courses = [];
-            if ($class && !empty($class['course_id'])) {
+            if ($class && !empty($class['course_id']) && !empty($class['course_name'])) {
                 $courses[] = [
                     'course_id' => (int)$class['course_id'],
                     'course_name' => $class['course_name'] ?? '',
@@ -474,14 +555,76 @@ class StudentClass extends BaseController
                 ->get()
                 ->getResultArray();
 
+            // Filter out courses with missing course_id or course_name
+            $courses = array_filter($courses ?? [], function($course) {
+                return !empty($course['course_id']) && !empty($course['course_name']);
+            });
+
             return $this->successResponse([
                 'student_id' => $studentId,
-                'courses' => $courses ?? []
+                'courses' => array_values($courses) // Re-index array after filtering
             ]);
 
         } catch (\Throwable $e) {
             log_message('error', 'StudentClass::getStudentCourses - ' . $e->getMessage());
             return $this->errorResponse('Unable to load student courses');
+        }
+    }
+
+    /**
+     * Get active classes for a student in a specific course
+     */
+    public function getActiveClassesForCourse(): ResponseInterface
+    {
+        try {
+            $payload = (array) ($this->request->getJSON() ?? []);
+            $studentId = (int) ($payload['student_id'] ?? 0);
+            $courseId = (int) ($payload['course_id'] ?? 0);
+
+            if ($studentId <= 0) {
+                return $this->errorResponse('student_id is required');
+            }
+
+            if ($courseId <= 0) {
+                return $this->errorResponse('course_id is required');
+            }
+
+            $token = $this->validateToken();
+            if (!$token) {
+                return $this->unauthorizedResponse('Access token required');
+            }
+
+            $schoolId = (int) $this->getSchoolId($token);
+            if (!$schoolId) {
+                return $this->errorResponse('School ID not found');
+            }
+
+            // Get active classes for the student that are associated with the course
+            $activeClasses = $this->db->table('student_class sc')
+                ->select('sc.class_id, sc.student_id, sc.joining_date, sc.validity, sc.status,
+                         c.class_name, c.class_code, c.start_date, c.end_date,
+                         COALESCE(s.subject_name, "") as subject,
+                         COALESCE(gr.grade_name, "") as grade')
+                ->join('class c', 'c.class_id = sc.class_id', 'left')
+                ->join('subject s', 'c.subject = s.subject_id', 'left')
+                ->join('grade gr', 'c.grade = gr.grade_id', 'left')
+                ->where('sc.student_id', $studentId)
+                ->where('c.course_id', $courseId)
+                ->where('sc.status', '1') // Active student_class status
+                ->where('c.status', '1') // Active class status
+                ->orderBy('c.class_name', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->successResponse([
+                'student_id' => $studentId,
+                'course_id' => $courseId,
+                'active_classes' => $activeClasses ?? []
+            ]);
+
+        } catch (\Throwable $e) {
+            log_message('error', 'StudentClass::getActiveClassesForCourse - ' . $e->getMessage());
+            return $this->errorResponse('Unable to load active classes for course');
         }
     }
 }

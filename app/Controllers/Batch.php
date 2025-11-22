@@ -137,6 +137,125 @@ class Batch extends BaseController
     }
 
     /**
+     * Add new batch/folder
+     */
+    public function add(): ResponseInterface
+    {
+        try {
+            // Try to get data from JSON body first (most common for Angular apps)
+            $params = $this->request->getJSON(true) ?? [];
+            
+            // Fallback to POST data if JSON is empty
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+            
+            // Fallback to getJSON if both are empty
+            if (empty($params)) {
+                $params = json_decode(file_get_contents('php://input'), true) ?? [];
+            }
+            
+            // Log incoming data for debugging
+            log_message('debug', '🔍 [BATCH ADD] Received params: ' . json_encode($params));
+
+            // Validation
+            if (empty($params['platform'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Platform should not be empty'
+                ]);
+            }
+
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Role Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['school_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'School Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['batch_name'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Batch name should not be empty'
+                ]);
+            }
+
+            // Check if batch name already exists
+            $checkBatch = $this->batchModel->checkBatch($params, 'add');
+            if (!empty($checkBatch)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Batch name already exists'
+                ]);
+            }
+
+            // Prepare batch data
+            $data = [
+                'batch_name' => $params['batch_name'],
+                'school_id' => $params['school_id'],
+                'parent_batch_id' => isset($params['parent_batch_id']) && $params['parent_batch_id'] != '' ? $params['parent_batch_id'] : 0,
+                'status' => isset($params['status']) ? $params['status'] : 1,
+                'batch_type' => 1, // 1 = folder
+                'created_by' => $params['user_id']
+            ];
+
+            // Add corporate_id if role_id is 6 (corporate user)
+            if (isset($params['corporate_id']) && $params['role_id'] == 6) {
+                $data['corporate_id'] = $params['corporate_id'];
+            }
+
+            // Insert batch
+            $db = \Config\Database::connect();
+            $builder = $db->table('batch');
+            $builder->insert($data);
+            $batchId = $db->insertID();
+
+            if (!$batchId) {
+                throw new \Exception('Failed to insert batch');
+            }
+
+            log_message('debug', '🔍 [BATCH ADD] Insert successful, batch_id: ' . $batchId);
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => [
+                    'batch_id' => $batchId,
+                    'batch_name' => $params['batch_name']
+                ],
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '❌ [BATCH ADD] Error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => [],
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Helper function to form batch list
      */
     private function formBatchList($parent_key, $params)
