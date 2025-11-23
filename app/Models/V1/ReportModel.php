@@ -166,24 +166,31 @@ class ReportModel extends BaseModel
 
     public function getStudentGrades($params)
     {
-        $builder = $this->getBuilder('student_grade sg');
-        $builder->select('sg.grade_id, g.grade_name');
-        $builder->join('grade g', 'sg.grade_id = g.grade_id', 'left');
-        $builder->where('sg.student_id', $params['student_id']);
-        $builder->where('sg.school_id', $params['school_id']);
-        $builder->where('sg.status', 1);
+        $builder = $this->getBuilder('user_profile_details upd');
+        $builder->select('upd.grade_id, g.grade_name');
+        $builder->join('grade g', 'upd.grade_id = g.grade_id', 'left');
+        $builder->where('upd.user_id', $params['student_id']);
+        $builder->where('upd.school_id', $params['school_id']);
+        $builder->where('upd.status', 1);
+        $builder->where('upd.grade_id >', 0); // Only get grades that are set (not 0)
 
         return $this->getResult($builder);
     }
 
     public function getGradeSubjects($params)
     {
-        $builder = $this->getBuilder('grade_subject gs');
-        $builder->select('gs.subject_id, s.subject_name');
-        $builder->join('subject s', 'gs.subject_id = s.subject_id', 'left');
-        $builder->where('gs.grade_id', $params['grade_id']);
-        $builder->where('gs.school_id', $params['school_id']);
-        $builder->where('gs.status', 1);
+        // Get distinct subjects from classes that match the grade
+        // The class table has 'subject' and 'grade' fields
+        $builder = $this->getBuilder('class c');
+        $builder->select('c.subject as subject_id, s.subject_name');
+        $builder->distinct();
+        $builder->join('subject s', 'c.subject = s.subject_id', 'left');
+        // Check if grade_id is in the grade field (which may be comma-separated or single value)
+        $builder->where("(FIND_IN_SET('{$params['grade_id']}', c.grade) > 0 OR c.grade = '{$params['grade_id']}')", null, false);
+        $builder->where('c.school_id', $params['school_id']);
+        $builder->where('c.status', 1);
+        $builder->where('c.subject >', 0); // Only get classes with valid subject
+        $builder->orderBy('s.subject_name', 'ASC');
 
         return $this->getResult($builder);
     }
@@ -192,7 +199,8 @@ class ReportModel extends BaseModel
     {
         $builder = $this->getBuilder('class c');
         $builder->select('c.class_id, c.class_name');
-        $builder->where('c.subject_id', $subjectId);
+        // The class table uses 'subject' field (not 'subject_id'), and it may be comma-separated
+        $builder->where("(FIND_IN_SET('{$subjectId}', c.subject) > 0 OR c.subject = '{$subjectId}')", null, false);
         $builder->where('c.school_id', $params['school_id']);
         $builder->where('c.status', 1);
 
@@ -206,12 +214,24 @@ class ReportModel extends BaseModel
         $builder = $this->getBuilder('class_content cc');
         $builder->select('cc.content_id, c.name as content_name, c.content_format, c.content_type, cc.start_date');
         
-        // Join with student_content to get student-specific status if student_id is provided
+        // Calculate total_score (total points available)
+        $builder->select("(CASE 
+            WHEN (SELECT SUM(points) FROM text_questions WHERE content_id = cc.content_id) IS NOT NULL 
+                AND (SELECT SUM(points) FROM text_questions WHERE content_id = cc.content_id) != '' 
+            THEN (SELECT SUM(points) FROM text_questions WHERE content_id = cc.content_id) 
+            ELSE COALESCE((SELECT SUM(points) FROM answers WHERE content_id = cc.content_id AND status = 1), 0) 
+        END) AS total_score", false);
+        
+        // Join with student_content to get student-specific data if student_id is provided
         if ($studentId) {
             $builder->select('COALESCE(sc.status, 1) as status');
+            $builder->select('COALESCE(sc.points, 0) as points');
+            $builder->select('COALESCE(sc.earned_points, 0) as your_score');
             $builder->join('student_content sc', 'sc.class_content_id = cc.id AND sc.student_id = ' . (int)$studentId, 'left');
         } else {
             $builder->select('1 as status');
+            $builder->select('0 as points');
+            $builder->select('0 as your_score');
         }
         
         $builder->join('content c', 'cc.content_id = c.content_id', 'left');
@@ -333,6 +353,31 @@ class ReportModel extends BaseModel
         $builder->whereIn('c.content_id', explode(',', $contentIds));
         $builder->where('cc.class_id', $classId);
         $builder->where('cc.status', 1);
+
+        return $this->getResult($builder);
+    }
+
+    public function studentLists($params)
+    {
+        $builder = $this->getBuilder('user u');
+        $builder->select('u.user_id as student_id, CONCAT_WS(" ", up.first_name, up.last_name) AS student_name');
+        $builder->join('user_profile up', 'u.user_id = up.user_id', 'left');
+        $builder->join('user_profile_details upd', 'u.user_id = upd.user_id', 'left');
+        $builder->where('u.role_id', 5); // Students role
+        $builder->where('u.school_id', $params['school_id']);
+        $builder->where('upd.status', 1);
+        
+        // Filter by teacher if role_id is 4 (Teacher) and user_id is provided
+        if (isset($params['role_id']) && $params['role_id'] == 4 && isset($params['user_id']) && $params['user_id'] > 0) {
+            $builder->join('student_class sc', 'sc.student_id = u.user_id', 'left');
+            $builder->join('class_schedule cs', 'cs.class_id = sc.class_id', 'left');
+            $builder->where('cs.teacher_id', $params['user_id']);
+            $builder->where('sc.status', 1);
+        }
+        
+        $builder->orderBy('up.last_name', 'ASC');
+        $builder->orderBy('up.first_name', 'ASC');
+        $builder->distinct();
 
         return $this->getResult($builder);
     }

@@ -1,0 +1,16 @@
+classes/addAnnouncementComments
+classes/getAnnouncementComments
+classes/updateComments
+content/questionSkill
+mailbox/sendMessage
+mailbox/update
+student/addCategory
+student/editCategory
+student/getCurrentDateTime
+student/getModuleSubject
+student/getOpenAiFeedback
+student/googleRegister
+student/listCategory
+student/updateContentStartTime
+studentlogin/class-detail
+user/googleAuthenticate

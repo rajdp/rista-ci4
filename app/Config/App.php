@@ -16,7 +16,64 @@ class App extends BaseConfig
      *
      * E.g., http://example.com/
      */
-    public string $baseURL = 'http://localhost:8888/rista/public/';
+    public string $baseURL;
+
+    public bool $forceGlobalSecureRequests;
+
+    public function __construct()
+    {
+        parent::__construct();
+        
+        // Auto-detect baseURL from environment or server
+        $this->baseURL = env('app.baseURL', $this->detectBaseURL());
+        
+        // Load forceGlobalSecureRequests from environment
+        $this->forceGlobalSecureRequests = env('app.forceGlobalSecureRequests', false);
+    }
+
+    /**
+     * Auto-detect base URL from server environment
+     * Falls back to localhost for development
+     */
+    private function detectBaseURL(): string
+    {
+        // Check if running from command line
+        if (php_sapi_name() === 'cli' || defined('STDIN')) {
+            return 'http://localhost:8888/rista_ci4/public/';
+        }
+
+        // Get protocol (http or https)
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || 
+                     (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) 
+                    ? 'https' : 'http';
+        
+        // Get hostname
+        $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
+        
+        // Get script path and determine base path
+        $scriptPath = $_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? '';
+        
+        // Extract the base path (everything before /public/index.php)
+        // For GoDaddy: /edquillcrmlms/rista_ci4/public/index.php
+        // We want: /edquillcrmlms/rista_ci4/public/
+        if (strpos($scriptPath, '/public/') !== false) {
+            $basePath = substr($scriptPath, 0, strpos($scriptPath, '/public/') + 7);
+        } else {
+            // Fallback: try to detect from REQUEST_URI
+            $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+            if (strpos($requestUri, '/public/') !== false) {
+                $basePath = substr($requestUri, 0, strpos($requestUri, '/public/') + 7);
+            } else {
+                // Final fallback: assume standard structure
+                $basePath = '/rista_ci4/public/';
+            }
+        }
+        
+        // Build full URL
+        $baseURL = $protocol . '://' . $host . $basePath;
+        
+        return $baseURL;
+    }
 
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.
@@ -157,7 +214,6 @@ class App extends BaseConfig
      * secure, the user will be redirected to a secure version of the page
      * and the HTTP Strict Transport Security (HSTS) header will be set.
      */
-    public bool $forceGlobalSecureRequests = false;
 
     /**
      * --------------------------------------------------------------------------

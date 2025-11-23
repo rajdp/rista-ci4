@@ -352,6 +352,109 @@ class Teacher extends ResourceController
     }
 
     /**
+     * Get list of students assigned to a specific content (SSE format for streaming)
+     * This method returns data in Server-Sent Events format for real-time updates
+     */
+    public function teacherassignStudentPrint(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📥 Teacher::teacherassignStudentPrint (SSE) called with params: ' . json_encode($params));
+
+            // Validate required parameters
+            if (empty($params['content_id'])) {
+                $response = service('response');
+                $response->setHeader('Content-Type', 'text/event-stream');
+                $response->setHeader('Cache-Control', 'no-cache');
+                $response->setHeader('Connection', 'keep-alive');
+                echo 'data: ' . json_encode([
+                    'IsSuccess' => false,
+                    'ErrorObject' => 'Content ID is required'
+                ]) . "\n\n";
+                return $response;
+            }
+
+            // Get assigned students for this content
+            $studentList = $this->teacherModel->teacherAssign($params);
+            
+            // Ensure studentList is an array
+            if (!is_array($studentList)) {
+                $studentList = [];
+            }
+            
+            // Calculate percentages
+            if (count($studentList) > 0) {
+                foreach($studentList as $key => $value) {
+                    if ($value['total_question'] != 0) {
+                        if ($value['attend_questions'] == '-') {
+                            $studentList[$key]['attend_questions'] = 0;
+                        }
+                    }
+                    if($value['attend_questions'] == '-' || $value['attend_questions'] != 0) {
+                        $studentList[$key]['percentage'] = $value['total_points'] != 0 
+                            ? round($value['earned_points'] ? ($value['earned_points'] / $value['total_points']) * 100 : 0) 
+                            : 0;
+                        $studentList[$key]['percentage'] = $studentList[$key]['percentage'] . '%';
+                    } else {
+                        $studentList[$key]['percentage'] = 0;
+                        $studentList[$key]['percentage'] = $studentList[$key]['percentage'] . '%';
+                    }
+                }
+            }
+            
+            log_message('debug', '✅ Teacher::teacherassignStudentPrint (SSE) returning ' . count($studentList) . ' students');
+
+            // Set SSE headers and output data
+            $response = service('response');
+            $response->setHeader('Content-Type', 'text/event-stream');
+            $response->setHeader('Cache-Control', 'no-cache');
+            $response->setHeader('Connection', 'keep-alive');
+            $response->setHeader('X-Accel-Buffering', 'no'); // Disable buffering for nginx
+            $response->setHeader('Access-Control-Allow-Origin', '*');
+            $response->setHeader('Access-Control-Allow-Headers', 'Content-Type');
+            
+            // Return empty array if no students (frontend handles empty arrays)
+            $output = count($studentList) > 0 ? $studentList : [];
+            
+            // Send data in proper SSE format
+            echo 'data: ' . json_encode($output) . "\n\n";
+            
+            // Flush output immediately
+            if (ob_get_level() > 0) {
+                ob_flush();
+            }
+            flush();
+            
+            // Send a comment to keep connection alive briefly, then close gracefully
+            echo ": keepalive\n\n";
+            flush();
+            
+            return $response;
+
+        } catch (\Exception $e) {
+            log_message('error', '❌ Teacher::teacherassignStudentPrint (SSE) error: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            
+            $response = service('response');
+            $response->setHeader('Content-Type', 'text/event-stream');
+            $response->setHeader('Cache-Control', 'no-cache');
+            $response->setHeader('Connection', 'keep-alive');
+            echo 'data: ' . json_encode([
+                'IsSuccess' => false,
+                'ErrorObject' => $e->getMessage()
+            ]) . "\n\n";
+            flush();
+            
+            return $response;
+        }
+    }
+
+    /**
      * Get student answer list for a specific submission
      * Returns detailed answers for grading
      */
@@ -375,12 +478,57 @@ class Teacher extends ResourceController
                 ], 400);
             }
 
+            // If student_content_id is not provided, try to find or create it
             if (empty($params['student_content_id'])) {
-                return $this->respond([
-                    'IsSuccess' => false,
-                    'ResponseObject' => null,
-                    'ErrorObject' => 'Student Content ID is required'
-                ], 400);
+                // Try to find existing student_content record
+                if (!empty($params['student_id']) && !empty($params['content_id']) && !empty($params['class_id'])) {
+                    $db = \Config\Database::connect();
+                    
+                    // First, try to find existing student_content
+                    $studentContent = $db->table('student_content')
+                        ->where('student_id', $params['student_id'])
+                        ->where('content_id', $params['content_id'])
+                        ->where('class_id', $params['class_id'])
+                        ->where('draft_status', '1')
+                        ->get()
+                        ->getRowArray();
+                    
+                    if (!empty($studentContent)) {
+                        $params['student_content_id'] = $studentContent['id'];
+                    } else {
+                        // Try to find via class_content
+                        if (!empty($params['class_id'])) {
+                            $classContent = $db->table('class_content')
+                                ->where('content_id', $params['content_id'])
+                                ->where('class_id', $params['class_id'])
+                                ->get()
+                                ->getRowArray();
+                            
+                            if (!empty($classContent)) {
+                                // Try to find student_content with class_content_id
+                                $studentContent = $db->table('student_content')
+                                    ->where('student_id', $params['student_id'])
+                                    ->where('class_content_id', $classContent['id'])
+                                    ->where('draft_status', '1')
+                                    ->get()
+                                    ->getRowArray();
+                                
+                                if (!empty($studentContent)) {
+                                    $params['student_content_id'] = $studentContent['id'];
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // If still not found, return error
+                if (empty($params['student_content_id'])) {
+                    return $this->respond([
+                        'IsSuccess' => false,
+                        'ResponseObject' => null,
+                        'ErrorObject' => 'Student Content ID is required. Please provide student_content_id, or ensure student_id, content_id, and class_id are provided to locate the record.'
+                    ], 400);
+                }
             }
 
             // Get student answer details

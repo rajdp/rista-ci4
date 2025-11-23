@@ -8,6 +8,11 @@ class CreateTeacherAvailability extends Migration
 {
     public function up()
     {
+        // Skip if table already exists
+        if ($this->db->tableExists('t_teacher_availability')) {
+            return;
+        }
+
         $this->forge->addField([
             'id' => [
                 'type'           => 'INT',

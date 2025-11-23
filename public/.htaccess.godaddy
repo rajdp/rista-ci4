@@ -1,0 +1,37 @@
+# GoDaddy-Optimized .htaccess for CodeIgniter 4
+# Use this if the default .htaccess causes 403 errors
+
+# Disable directory browsing
+Options -Indexes
+
+# Enable Rewrite Engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Set base path - UNCOMMENT and adjust if needed
+    # RewriteBase /rista_ci4/public/
+    
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    
+    # Redirect to index.php if file doesn't exist
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>
+
+# If mod_rewrite is not available
+<IfModule !mod_rewrite.c>
+    ErrorDocument 404 /index.php
+</IfModule>
+
+# CORS for static PDF files (if needed)
+<IfModule mod_headers.c>
+    <FilesMatch "\.(pdf)$">
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Access-Control-Allow-Methods "GET, OPTIONS"
+        Header always set Access-Control-Allow-Headers "Content-Type, Accept, Origin, Range"
+    </FilesMatch>
+</IfModule>
+

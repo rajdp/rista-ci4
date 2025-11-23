@@ -21,9 +21,33 @@ class Dashboard extends BaseController
                 return $this->unauthorizedResponse('Access token required');
             }
 
+            // Get school_id from token, payload, or user profile
             $schoolId = $this->getSchoolId($token);
+            
+            // Fallback 1: Check if school_id is in request payload
+            if (!$schoolId && isset($payload['school_id'])) {
+                $schoolId = (int) $payload['school_id'];
+            }
+            
+            // Fallback 2: Get from user profile if available
             if (!$schoolId) {
-                return $this->errorResponse('School ID required');
+                $userId = $this->getUserId($token);
+                if ($userId) {
+                    $db = Database::connect();
+                    $user = $db->table('user')
+                        ->select('school_id')
+                        ->where('user_id', $userId)
+                        ->get()
+                        ->getRowArray();
+                    
+                    if ($user && !empty($user['school_id'])) {
+                        $schoolId = (int) $user['school_id'];
+                    }
+                }
+            }
+            
+            if (!$schoolId) {
+                return $this->errorResponse('School ID required. Please provide school_id in request or ensure your account is associated with a school.');
             }
 
             $fromDate = $payload['from'] ?? date('Y-m-d', strtotime('-30 days'));

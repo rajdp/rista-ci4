@@ -91,6 +91,7 @@ $routes->group('', function($routes) {
     $routes->post('content/addQuestion', 'Content::addQuestion');
     $routes->post('content/editQuestion', 'Content::editQuestion');
     $routes->post('content/deleteQuestion', 'Content::deleteQuestion');
+    $routes->post('content/questionDelete', 'Content::questionDelete');
     $routes->post('content/addStudentAnswer', 'Content::addStudentAnswer');
 
     // CRM public endpoints
@@ -160,6 +161,10 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('student/classDetail', 'Classes::classDetail'); // Student class detail endpoint
     $routes->post('student/ClassRecording', 'Student::classRecording'); // Student class recording endpoint
     $routes->match(['POST', 'OPTIONS'], 'student/saveAnnotation', 'Student::saveAnnotation');
+    $routes->post('student/makeUpClass', 'Student::makeUpClass'); // Makeup class endpoint
+    $routes->post('student/completedCfsContent', 'Student::completedCfsContent'); // Completed content folder content
+    $routes->post('student/cfsReport', 'Student::cfsReport'); // Content folder report
+    $routes->post('student/updateContentStartTime', 'Student::updateContentStartTime'); // Update content start time
     
     // Self-registration admin actions
     $routes->post('admin/self-registration/list', 'Admin\SelfRegistration::list');
@@ -321,6 +326,9 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('classes/addCurriculumTopic', 'Classes::addCurriculumTopic');
     $routes->post('classes/getClassNotes', 'Classes::getClassNotes');
     $routes->post('classes/classAddNotes', 'Classes::classAddNotes');
+    $routes->post('classes/addAnnouncementComments', 'Classes::addAnnouncementComments');
+    $routes->post('classes/getAnnouncementComments', 'Classes::getAnnouncementComments');
+    $routes->post('classes/updateComments', 'Classes::updateComments');
     $routes->post('classes/enrollStudent', 'Classes::enrollStudent');
     $routes->post('classes/slotList', 'Classes::slotList');
     $routes->post('classes/updateClass', 'Classes::updateClass');
@@ -446,7 +454,8 @@ $routes->post('content/detail', 'Content::detail');
     $routes->get('report/student', 'Report::student');
     $routes->get('report/teacher', 'Report::teacher');
     $routes->get('report/school', 'Report::school');
-    $routes->post('report/studentReportClassPrint', 'Report::studentReportClassPrint');
+    $routes->post('report/studentReportClass', 'Report::studentReportClass_post');
+    $routes->post('report/studentReportClassPrint', 'Report::studentReportClassPrint_post');
     $routes->post('report/classPerformanceList', 'Report::classPerformanceList');
     $routes->post('report/classList', 'Report::classList');
     $routes->post('report/assessmentList', 'Report::assessmentList');
@@ -455,6 +464,7 @@ $routes->post('content/detail', 'Content::detail');
     $routes->post('report/assignmentReports', 'Report::assignmentReports');
     $routes->post('report/gradeReport', 'Report::gradeReport');
     $routes->post('report/studentPerformanceContent', 'Report::studentPerformanceContent');
+    $routes->post('report/studentPerformanceList', 'Report::studentPerformanceList_post');
     $routes->post('report/reportCard', 'Report::reportCard_post');
     $routes->post('report/pendingPayments', 'Report::pendingPayments');
     $routes->post('report/payments', 'Report::payments');
@@ -484,6 +494,8 @@ $routes->post('content/detail', 'Content::detail');
     $routes->post('mailbox/listMessages', 'Mailbox::listMessages');
     $routes->post('mailbox/getMessageCount', 'MailboxCI4::getMessageCount');  // Use CI4 controller
     $routes->post('mailbox/send', 'Mailbox::send');
+    $routes->post('mailbox/sendMessage', 'Mailbox::send'); // Alias for sendMessage
+    $routes->post('mailbox/update', 'MailboxCI4::update'); // Update message status
     $routes->post('mailbox/reply', 'Mailbox::reply');
     
     // Common protected endpoints

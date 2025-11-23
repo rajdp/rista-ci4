@@ -1562,15 +1562,19 @@ class Report extends ResourceController
                         $totalContentPercentage = 0;
                         foreach ($value3['assignment'] as $key4 => $value4) {
                             //$totalpointsAssignment += $value4['total_score'];
-                            $assignmentPercentage += round($value4['total_score'] != 0 ? ($value4['your_score'] / $value4['total_score']) * 100 : 0, 2);
+                            $totalScore = isset($value4['total_score']) ? (float)$value4['total_score'] : 0;
+                            $yourScore = isset($value4['your_score']) ? (float)$value4['your_score'] : 0;
+                            $assignmentPercentage += round($totalScore != 0 ? ($yourScore / $totalScore) * 100 : 0, 2);
                             //$earnedpointsAssignment += $value4['your_score'];
-                            $data[$key1]['subjects'][$key2]['classes'][$key3]['assignment'][$key4]['percentage'] = round($value4['total_score'] != 0 ? ($value4['your_score'] / $value4['total_score']) * 100 : 0, 2) . "%";
+                            $data[$key1]['subjects'][$key2]['classes'][$key3]['assignment'][$key4]['percentage'] = round($totalScore != 0 ? ($yourScore / $totalScore) * 100 : 0, 2) . "%";
                         }
                         foreach ($value3['assessment'] as $key5 => $value5) {
 //                            $totalpointsAssessment += $value5['total_score'];
 //                            $earnedpointsAssessment += $value5['your_score'];
-                            $assessmentPercentage += round($value5['total_score'] != 0 ? ($value5['your_score'] / $value5['total_score']) * 100 : 0, 2);
-                            $data[$key1]['subjects'][$key2]['classes'][$key3]['assessment'][$key5]['percentage'] = round($value5['total_score'] != 0 ? ($value5['your_score'] / $value5['total_score']) * 100 : 0, 2) . "%";
+                            $totalScore = isset($value5['total_score']) ? (float)$value5['total_score'] : 0;
+                            $yourScore = isset($value5['your_score']) ? (float)$value5['your_score'] : 0;
+                            $assessmentPercentage += round($totalScore != 0 ? ($yourScore / $totalScore) * 100 : 0, 2);
+                            $data[$key1]['subjects'][$key2]['classes'][$key3]['assessment'][$key5]['percentage'] = round($totalScore != 0 ? ($yourScore / $totalScore) * 100 : 0, 2) . "%";
                         }
                         //$earnedcontentpoints = $earnedpointsAssignment + $earnedpointsAssessment;
                         //$totalContentPoints = $totalpointsAssignment + $totalpointsAssessment;
@@ -1678,15 +1682,19 @@ class Report extends ResourceController
                         $totalContentPercentage = 0;
                         foreach ($value3['assignment'] as $key4 => $value4) {
                             //$totalpointsAssignment += $value4['total_score'];
-                            $assignmentPercentage += round($value4['total_score'] != 0 ? ($value4['your_score'] / $value4['total_score']) * 100 : 0, 2);
+                            $totalScore = isset($value4['total_score']) ? (float)$value4['total_score'] : 0;
+                            $yourScore = isset($value4['your_score']) ? (float)$value4['your_score'] : 0;
+                            $assignmentPercentage += round($totalScore != 0 ? ($yourScore / $totalScore) * 100 : 0, 2);
                             //$earnedpointsAssignment += $value4['your_score'];
-                            $data[$key1]['subjects'][$key2]['classes'][$key3]['assignment'][$key4]['percentage'] = round($value4['total_score'] != 0 ? ($value4['your_score'] / $value4['total_score']) * 100 : 0, 2) . "%";
+                            $data[$key1]['subjects'][$key2]['classes'][$key3]['assignment'][$key4]['percentage'] = round($totalScore != 0 ? ($yourScore / $totalScore) * 100 : 0, 2) . "%";
                         }
                         foreach ($value3['assessment'] as $key5 => $value5) {
 //                            $totalpointsAssessment += $value5['total_score'];
 //                            $earnedpointsAssessment += $value5['your_score'];
-                            $assessmentPercentage += round($value5['total_score'] != 0 ? ($value5['your_score'] / $value5['total_score']) * 100 : 0, 2);
-                            $data[$key1]['subjects'][$key2]['classes'][$key3]['assessment'][$key5]['percentage'] = round($value5['total_score'] != 0 ? ($value5['your_score'] / $value5['total_score']) * 100 : 0, 2) . "%";
+                            $totalScore = isset($value5['total_score']) ? (float)$value5['total_score'] : 0;
+                            $yourScore = isset($value5['your_score']) ? (float)$value5['your_score'] : 0;
+                            $assessmentPercentage += round($totalScore != 0 ? ($yourScore / $totalScore) * 100 : 0, 2);
+                            $data[$key1]['subjects'][$key2]['classes'][$key3]['assessment'][$key5]['percentage'] = round($totalScore != 0 ? ($yourScore / $totalScore) * 100 : 0, 2) . "%";
                         }
                         //$earnedcontentpoints = $earnedpointsAssignment + $earnedpointsAssessment;
                         //$totalContentPoints = $totalpointsAssignment + $totalpointsAssessment;
@@ -1740,14 +1748,14 @@ class Report extends ResourceController
             $this->common_model->createLog($params,'v1/report/gradeReport','only request','gradeReport');
             $params['type'] = 8;
             $studentList = [];
-            $getAllClasses = $this->report_model->classListNew($params);
+            $getAllClasses = $this->report_model->classList($params);
             $i = 0;
             foreach($getAllClasses as $classkey => $classvalue) {
                 $getPercentages = 0;
-                $getStudents = $this->report_model->getStudents($classvalue);
+                $getStudents = $this->report_model->getStudents(['class_id' => $classvalue['class_id']]);
                 if (count($getStudents) > 0) {
-                    $studentList[$i]['class_name'] = $classvalue['classcode'];
-                    $studentList[$i]['class_code'] = $classvalue['class_code'];
+                    $studentList[$i]['class_name'] = $classvalue['class_name'];
+                    $studentList[$i]['class_code'] = isset($classvalue['class_code']) ? $classvalue['class_code'] : $classvalue['class_id'];
                     foreach($getStudents as $key => $value) {
                         $studentList[$i]['student_list'][$key] = array('student_id' => $value['student_id'],
                                                                         'student_name' => $value['student_name'],
@@ -1818,7 +1826,7 @@ class Report extends ResourceController
             $this->jsonarr["ErrorObject"] = "School Id should not be empty";
         } elseif (count($this->jsonarr) == 0) {
             $this->common_model->createLog($params,'v1/report/classPerformanceList','only request','classPerformanceList');
-            $getClasses = $this->report_model->allClass($params);
+            $getClasses = $this->report_model->classList($params);
             if (count($getClasses) > 0) {
                 $this->jsonarr['IsSuccess'] = true;
                 $this->jsonarr['ResponseObject'] = $getClasses;

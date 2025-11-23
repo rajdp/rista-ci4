@@ -1,0 +1,33 @@
+# CORS headers for PDF files - Firefox compatibility (especially private browsing)
+# This file is specifically for PDF files in the content/answerKey directory
+# IMPORTANT: This .htaccess applies to all files in this directory and subdirectories
+
+# Handle OPTIONS preflight FIRST - return 200 immediately for PDF files
+# Firefox sends OPTIONS requests before accessing PDF files, and these must be handled before file serving
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} ^OPTIONS
+    RewriteCond %{REQUEST_URI} \.pdf$ [NC]
+    RewriteRule ^(.*)$ - [R=200,L]
+</IfModule>
+
+# Set CORS headers for all PDF requests (GET and OPTIONS)
+<IfModule mod_headers.c>
+    # Set CORS headers for all PDF files in this directory and subdirectories
+    # The "always" keyword ensures headers are set even for OPTIONS requests
+    <FilesMatch "\.(pdf)$">
+        # CORS headers - allow all origins for PDF files (required for Firefox)
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Access-Control-Allow-Methods "GET, OPTIONS"
+        Header always set Access-Control-Allow-Headers "Content-Type, Accept, Origin, Range"
+        Header always set Access-Control-Max-Age "3600"
+        
+        # Expose headers for range requests (critical for PDF rendering in Firefox)
+        # Firefox needs these headers exposed to handle PDF partial content requests
+        Header always set Access-Control-Expose-Headers "Accept-Ranges, Content-Encoding, Content-Length, Content-Range"
+        
+        # Ensure proper Content-Type for PDF files
+        Header always set Content-Type "application/pdf"
+    </FilesMatch>
+</IfModule>
+

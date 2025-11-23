@@ -198,9 +198,31 @@ class SelfRegistration extends BaseController
      */
     public function submit(): ResponseInterface
     {
+        // Check request size early to provide better error messages
+        $contentLength = (int) ($this->request->getServer('CONTENT_LENGTH') ?? 0);
+        $postMaxSize = $this->parseSize(ini_get('post_max_size'));
+        
+        if ($contentLength > 0 && $contentLength > $postMaxSize) {
+            return $this->errorResponse(
+                sprintf(
+                    'Request payload is too large (%s). Maximum allowed size is %s. Please reduce document file sizes or upload fewer documents.',
+                    $this->formatBytes($contentLength),
+                    $this->formatBytes($postMaxSize)
+                ),
+                413
+            );
+        }
+
         $payload = $this->request->getJSON(true) ?? [];
 
         if (empty($payload)) {
+            // Check if this might be a size issue
+            if ($contentLength > 0) {
+                return $this->errorResponse(
+                    'Request payload is too large or invalid. Please reduce document file sizes.',
+                    413
+                );
+            }
             return $this->errorResponse('Invalid payload');
         }
 
@@ -223,6 +245,12 @@ class SelfRegistration extends BaseController
         $guardian = $payload['guardian'] ?? [];
         $courses = $payload['courses'] ?? [];
         $documents = $payload['documents'] ?? [];
+
+        // Validate document sizes before processing
+        $documentSizeErrors = $this->validateDocumentSizes($documents);
+        if (!empty($documentSizeErrors)) {
+            return $this->errorResponse(implode(' ', $documentSizeErrors), 413);
+        }
 
         $institutionType = isset($school['institution_type']) ? (int) $school['institution_type'] : null;
         $validationErrors = $this->validateSubmission($student, $payment, $guardian, $institutionType);
@@ -656,5 +684,141 @@ class SelfRegistration extends BaseController
         return [
             'sections' => $sections
         ];
+    }
+
+    /**
+     * Validate document sizes to prevent payload size issues.
+     * 
+     * @param array $documents Array of document objects with 'content', 'size', 'name'
+     * @return array Array of error messages (empty if validation passes)
+     */
+    private function validateDocumentSizes(array $documents): array
+    {
+        if (empty($documents)) {
+            return [];
+        }
+
+        $errors = [];
+        // Base64 encoding increases size by ~33%, so we need to account for that
+        // Get server's actual post_max_size to set realistic limits
+        $postMaxSize = $this->parseSize(ini_get('post_max_size'));
+        // Reserve 200KB for JSON structure and other form data
+        $reservedSize = 200 * 1024;
+        $availableSize = max($postMaxSize - $reservedSize, 5 * 1024 * 1024); // At least 5MB
+        
+        // Limit original file size to account for base64 overhead
+        // Base64 increases size by ~33%, so we can accept files up to ~75% of available size
+        $maxDocumentSize = (int) ($availableSize * 0.75); // ~75% to account for base64 overhead
+        $maxTotalSize = (int) ($availableSize * 0.75); // Same for total
+        $totalSize = 0;
+        $totalEncodedSize = 0; // Track encoded size for payload estimation
+
+        foreach ($documents as $index => $document) {
+            $documentSize = isset($document['size']) ? (int) $document['size'] : 0;
+            $documentName = $document['name'] ?? "Document " . ($index + 1);
+            $encodedSize = 0;
+            
+            // Calculate both original and encoded sizes
+            if (!empty($document['content'])) {
+                $content = $document['content'];
+                $encodedSize = strlen($content); // Base64 encoded size in JSON
+                
+                if (str_contains($content, ',')) {
+                    [, $encoded] = explode(',', $content, 2);
+                    $encodedSize = strlen($encoded); // Just the base64 part
+                    
+                    // Decode to get actual file size
+                    $decoded = base64_decode($encoded, true);
+                    if ($decoded !== false) {
+                        $documentSize = strlen($decoded);
+                    } else {
+                        // Estimate: base64 is ~4/3 of original size, so original is ~3/4 of encoded
+                        $documentSize = (int) ($encodedSize * 0.75);
+                    }
+                }
+            }
+
+            // Check original file size limit
+            if ($documentSize > $maxDocumentSize) {
+                $encodedEstimate = (int) ($documentSize * 1.33); // Base64 overhead
+                $errors[] = sprintf(
+                    'Document "%s" is too large (%s). When encoded, this becomes approximately %s, which exceeds the server limit of %s. Maximum file size per document is %s. Please compress the file (reduce image quality or use PDF compression) or use a smaller file.',
+                    $documentName,
+                    $this->formatBytes($documentSize),
+                    $this->formatBytes($encodedEstimate),
+                    $this->formatBytes($postMaxSize),
+                    $this->formatBytes($maxDocumentSize)
+                );
+            }
+
+            $totalSize += $documentSize;
+            $totalEncodedSize += $encodedSize;
+        }
+
+        // Check total original file size
+        if ($totalSize > $maxTotalSize) {
+            $errors[] = sprintf(
+                'Total size of all documents (%s) exceeds the maximum allowed (%s). Please reduce file sizes or upload fewer documents.',
+                $this->formatBytes($totalSize),
+                $this->formatBytes($maxTotalSize)
+            );
+        }
+
+        // Also check if encoded size (what's actually sent) would exceed post_max_size
+        // Add 200KB buffer for other JSON data (student info, courses, etc.)
+        $estimatedPayloadSize = $totalEncodedSize + $reservedSize;
+        
+        if ($estimatedPayloadSize > $postMaxSize) {
+            $errors[] = sprintf(
+                'The uploaded documents are too large when encoded (%s estimated payload). Server limit is %s. Please reduce file sizes or compress images before uploading.',
+                $this->formatBytes($estimatedPayloadSize),
+                $this->formatBytes($postMaxSize)
+            );
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Parse PHP ini size string (e.g., "10M", "512K") to bytes.
+     * 
+     * @param string $size Size string from ini_get
+     * @return int Size in bytes
+     */
+    private function parseSize(string $size): int
+    {
+        $size = trim($size);
+        $last = strtolower($size[strlen($size) - 1]);
+        $value = (int) $size;
+
+        switch ($last) {
+            case 'g':
+                $value *= 1024;
+                // fall through
+            case 'm':
+                $value *= 1024;
+                // fall through
+            case 'k':
+                $value *= 1024;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Format bytes to human-readable string.
+     * 
+     * @param int $bytes Size in bytes
+     * @return string Formatted size string
+     */
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+
+        return round($bytes, 2) . ' ' . $units[$pow];
     }
 }

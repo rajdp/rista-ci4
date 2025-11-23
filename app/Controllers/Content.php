@@ -211,8 +211,25 @@ class Content extends ResourceController
                 if ($contentFormat == '3' || $contentFormat == 3) {
                     try {
                         $questions = $this->contentModel->getQuestionsForContent($params['content_id']);
+                        
+                        log_message('debug', '🔍 [CONTENT DETAIL] Raw questions from DB (before processing): ' . json_encode($questions, JSON_PRETTY_PRINT));
+                        
                         // Process questions - decode JSON fields
-                        foreach ($questions as &$question) {
+                        foreach ($questions as $index => &$question) {
+                            log_message('debug', "🔍 [CONTENT DETAIL] Processing question #{$index} - question_id: " . ($question['question_id'] ?? 'NOT SET'));
+                            log_message('debug', "🔍 [CONTENT DETAIL] BEFORE processing - question value: " . var_export($question['question'] ?? 'NOT SET', true));
+                            log_message('debug', "🔍 [CONTENT DETAIL] BEFORE processing - question type: " . gettype($question['question'] ?? null));
+                            
+                            // Ensure question property is set and not "undefined"
+                            if (!isset($question['question']) || $question['question'] === null || 
+                                $question['question'] === 'undefined' || $question['question'] === 'null' ||
+                                strtolower($question['question']) === 'undefined' || strtolower($question['question']) === 'null') {
+                                log_message('debug', "🔍 [CONTENT DETAIL] Question #{$index} question field is invalid, setting to empty string");
+                                $question['question'] = '';
+                            }
+                            
+                            log_message('debug', "🔍 [CONTENT DETAIL] AFTER processing - question value: " . var_export($question['question'] ?? 'NOT SET', true));
+                            
                             // Decode options - handle empty strings and null
                             if (isset($question['options']) && $question['options'] !== null && $question['options'] !== '') {
                                 $decoded = json_decode($question['options'], true);
@@ -253,7 +270,43 @@ class Content extends ResourceController
                                 $question['skill'] = [];
                             }
                         }
+                        
+                        // Ensure all questions have required fields, even if they're empty
+                        foreach ($questions as &$question) {
+                            // Ensure question field always exists
+                            if (!isset($question['question'])) {
+                                $question['question'] = '';
+                            }
+                            // Ensure other critical fields exist
+                            if (!isset($question['question_id'])) {
+                                $question['question_id'] = '';
+                            }
+                            if (!isset($question['question_type_id'])) {
+                                $question['question_type_id'] = '';
+                            }
+                            if (!isset($question['options'])) {
+                                $question['options'] = [];
+                            }
+                            if (!isset($question['answer'])) {
+                                $question['answer'] = [];
+                            }
+                            if (!isset($question['given_answer'])) {
+                                $question['given_answer'] = '';
+                            }
+                        }
+                        unset($question); // Break reference
+                        
                         $contentList['questions'] = $questions;
+                        
+                        log_message('debug', '🔍 [CONTENT DETAIL] Final questions array (after processing): ' . json_encode($questions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                        log_message('debug', '🔍 [CONTENT DETAIL] Total questions count: ' . count($questions));
+                        
+                        // Log each question's key fields
+                        foreach ($questions as $idx => $q) {
+                            log_message('debug', "🔍 [CONTENT DETAIL] Question #{$idx} - question_id: " . ($q['question_id'] ?? 'MISSING') . 
+                                        ", question_type_id: " . ($q['question_type_id'] ?? 'MISSING') . 
+                                        ", question: " . (isset($q['question']) ? (strlen($q['question']) > 0 ? substr($q['question'], 0, 50) . '...' : 'EMPTY') : 'MISSING'));
+                        }
                     } catch (\Exception $e) {
                         log_message('error', 'Error loading questions in contentDetail: ' . $e->getMessage());
                         log_message('error', 'Stack trace: ' . $e->getTraceAsString());
@@ -389,6 +442,34 @@ class Content extends ResourceController
                         $contentList['all_autograde'] = (count($questionDetails) == $autoGradeCount) ? 1 : 0;
                     } else {
                         $contentList['all_autograde'] = 0;
+                    }
+                }
+                
+                // Add student_content_status to response if student_content_id is available
+                if (isset($params['student_content_id']) && $params['student_content_id'] > 0) {
+                    $db = \Config\Database::connect();
+                    $statusQuery = $db->table('student_content')
+                        ->select('status')
+                        ->where('id', $params['student_content_id'])
+                        ->get()
+                        ->getRowArray();
+                    
+                    if ($statusQuery) {
+                        $contentList['student_content_status'] = (string)$statusQuery['status'];
+                        log_message('debug', '🔍 [CONTENT DETAIL] Added student_content_status: ' . $contentList['student_content_status']);
+                    }
+                }
+                
+                // Log the final response being sent
+                log_message('debug', '🔍 [CONTENT DETAIL] Final ResponseObject being sent:');
+                log_message('debug', '🔍 [CONTENT DETAIL] - content_id: ' . ($contentList['content_id'] ?? 'NOT SET'));
+                log_message('debug', '🔍 [CONTENT DETAIL] - content_format: ' . ($contentList['content_format'] ?? 'NOT SET'));
+                log_message('debug', '🔍 [CONTENT DETAIL] - student_content_status: ' . ($contentList['student_content_status'] ?? 'NOT SET'));
+                log_message('debug', '🔍 [CONTENT DETAIL] - questions count: ' . (isset($contentList['questions']) ? count($contentList['questions']) : 'NOT SET'));
+                if (isset($contentList['questions'])) {
+                    foreach ($contentList['questions'] as $idx => $q) {
+                        log_message('debug', "🔍 [CONTENT DETAIL] - questions[{$idx}]: question_id=" . ($q['question_id'] ?? 'NOT SET') . 
+                                    ", question=" . var_export($q['question'] ?? 'NOT SET', true));
                     }
                 }
                 
@@ -1919,6 +2000,75 @@ class Content extends ResourceController
     }
 
     /**
+     * Delete question answer(s) by answer_id (soft delete - sets status to 0)
+     */
+    public function questionDelete(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON(true);
+            
+            // Validate required parameters
+            if (!isset($data['platform']) || ($data['platform'] != "web" && $data['platform'] != "ios")) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Platform should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Role Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "User Id should not be empty"
+                ], 400);
+            }
+            
+            if (empty($data['answer_id']) || !is_array($data['answer_id']) || count($data['answer_id']) == 0) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Answer Id should not be empty"
+                ], 400);
+            }
+            
+            $db = \Config\Database::connect();
+            
+            // Convert answer_id array to integers
+            $answerIds = array_map('intval', $data['answer_id']);
+            
+            // Soft delete answers by setting status to 0
+            $updated = $db->table('answers')
+                ->whereIn('answer_id', $answerIds)
+                ->update(['status' => 0]);
+            
+            if ($updated) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => "Question Deleted Successfully"
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ErrorObject' => "Unable to delete question"
+                ], 400);
+            }
+            
+        } catch (\Exception $e) {
+            log_message('error', 'questionDelete error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Student views content (lazy creation trigger)
      */
     public function viewContent(): ResponseInterface
@@ -2457,6 +2607,9 @@ class Content extends ResourceController
             }
 
             log_message('debug', '📝 Content::addStudentAnswer called with params: ' . json_encode($params));
+            log_message('debug', '📝 Content::addStudentAnswer - content_format: ' . ($params['content_format'] ?? 'NOT SET'));
+            log_message('debug', '📝 Content::addStudentAnswer - has answers: ' . (isset($params['answers']) && is_array($params['answers']) ? 'YES (' . count($params['answers']) . ')' : 'NO'));
+            log_message('debug', '📝 Content::addStudentAnswer - has questions: ' . (isset($params['questions']) && is_array($params['questions']) ? 'YES (' . count($params['questions']) . ')' : 'NO'));
 
             // Validation
             if (empty($params['platform']) || !in_array($params['platform'], ['web', 'ios'])) {
@@ -2501,6 +2654,43 @@ class Content extends ResourceController
 
             $db = \Config\Database::connect();
             $commonModel = new \App\Models\V1\CommonModel();
+            
+            // Helper function to build INSERT SQL for logging
+            $buildInsertSQL = function($table, $data) {
+                $fields = array_keys($data);
+                $values = array_map(function($val) {
+                    if (is_null($val)) return 'NULL';
+                    if (is_string($val)) return "'" . addslashes($val) . "'";
+                    if (is_bool($val)) return $val ? '1' : '0';
+                    return $val;
+                }, array_values($data));
+                return "INSERT INTO {$table} (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $values) . ")";
+            };
+            
+            // Helper function to build UPDATE SQL for logging
+            $buildUpdateSQL = function($table, $data, $where) {
+                $set = [];
+                foreach ($data as $key => $val) {
+                    if (is_null($val)) {
+                        $set[] = "{$key} = NULL";
+                    } elseif (is_string($val)) {
+                        $set[] = "{$key} = '" . addslashes($val) . "'";
+                    } elseif (is_bool($val)) {
+                        $set[] = "{$key} = " . ($val ? '1' : '0');
+                    } else {
+                        $set[] = "{$key} = {$val}";
+                    }
+                }
+                $whereClause = [];
+                foreach ($where as $key => $val) {
+                    if (is_string($val)) {
+                        $whereClause[] = "{$key} = '" . addslashes($val) . "'";
+                    } else {
+                        $whereClause[] = "{$key} = {$val}";
+                    }
+                }
+                return "UPDATE {$table} SET " . implode(', ', $set) . " WHERE " . implode(' AND ', $whereClause);
+            };
 
             // Get student platform info
             $platformQuery = $db->table('student_content')
@@ -2553,13 +2743,12 @@ class Content extends ResourceController
             $workCondition = ['student_content_id' => $params['student_content_id']];
             $db->table('student_work')->update($workData, $workCondition);
 
-            // Save answers if provided (non-PDF content)
+            // Save answers if provided (PDF content)
             if (isset($params['answers']) && is_array($params['answers']) && !empty($params['answers'])) {
                 $contentFormat = $params['content_format'] ?? 1;
                 
                 if ($contentFormat != 3) { // Not PDF format
-                    // Process and save answers
-                    // This is a simplified version - full implementation would handle all question types
+                    // Process and save answers for PDF content
                     foreach ($params['answers'] as $answerGroup) {
                         if (isset($answerGroup['section']) && is_array($answerGroup['section'])) {
                             foreach ($answerGroup['section'] as $section) {
@@ -2585,21 +2774,33 @@ class Content extends ResourceController
                                         }
 
                                         // Check if answer already exists
-                                        $existing = $db->table('student_answers')
+                                        $existingQuery = $db->table('student_answers')
                                             ->where('answer_id', $answerData['answer_id'])
-                                            ->where('student_content_id', $params['student_content_id'])
-                                            ->get()
-                                            ->getRowArray();
+                                            ->where('student_content_id', $params['student_content_id']);
+                                        $existing = $existingQuery->get()->getRowArray();
+                                        log_message('debug', '🔍 [SAVE ANSWER] Check existing answer SQL: SELECT * FROM student_answers WHERE answer_id = ' . $answerData['answer_id'] . ' AND student_content_id = ' . $params['student_content_id']);
+                                        log_message('debug', '🔍 [SAVE ANSWER] Existing answer found: ' . (empty($existing) ? 'NO' : 'YES'));
 
                                         if ($existing) {
                                             // Update existing answer
                                             unset($answerData['created_by'], $answerData['created_date']);
+                                            $updateData = $answerData;
+                                            $updateWhere = [
+                                                'answer_id' => $answerData['answer_id'],
+                                                'student_content_id' => $params['student_content_id']
+                                            ];
+                                            $updateSQL = $buildUpdateSQL('student_answers', $updateData, $updateWhere);
+                                            log_message('debug', '🔍 [SAVE ANSWER] UPDATE SQL: ' . $updateSQL);
+                                            log_message('debug', '🔍 [SAVE ANSWER] UPDATE data: ' . json_encode($updateData, JSON_PRETTY_PRINT));
                                             $db->table('student_answers')
                                                 ->where('answer_id', $answerData['answer_id'])
                                                 ->where('student_content_id', $params['student_content_id'])
-                                                ->update($answerData);
+                                                ->update($updateData);
                                         } else {
                                             // Insert new answer
+                                            $insertSQL = $buildInsertSQL('student_answers', $answerData);
+                                            log_message('debug', '🔍 [SAVE ANSWER] INSERT SQL: ' . $insertSQL);
+                                            log_message('debug', '🔍 [SAVE ANSWER] INSERT data: ' . json_encode($answerData, JSON_PRETTY_PRINT));
                                             $db->table('student_answers')->insert($answerData);
                                         }
                                     }
@@ -2609,17 +2810,284 @@ class Content extends ResourceController
                     }
                 }
             }
+            
+            // Save questions if provided (non-PDF content - content_format = 3)
+            if (isset($params['questions']) && is_array($params['questions']) && !empty($params['questions'])) {
+                log_message('debug', '🔍 [SAVE ANSWER] Processing questions array. Count: ' . count($params['questions']));
+                
+                for ($i = 0; $i < count($params['questions']); $i++) {
+                    $question = $params['questions'][$i];
+                    
+                    // Handle questions with subQuestions (question_type_id = 24)
+                    if (isset($question['subQuestions']) && is_array($question['subQuestions'])) {
+                        log_message('debug', "🔍 [SAVE ANSWER] Processing question #{$i} with subQuestions. Count: " . count($question['subQuestions']));
+                        
+                        for ($j = 0; $j < count($question['subQuestions']); $j++) {
+                            $subQ = $question['subQuestions'][$j];
+                            $questionId = $subQ['question_id'] ?? null;
+                            
+                            if (!$questionId) {
+                                log_message('warning', "🔍 [SAVE ANSWER] Question #{$i}, subQuestion #{$j} missing question_id, skipping");
+                                continue;
+                            }
+                            
+                            // Check if answer already exists
+                            $checkQuery = $db->table('student_answers')
+                                ->where('answer_id', $questionId)
+                                ->where('student_content_id', $params['student_content_id']);
+                            $checkStudentAnswer = $checkQuery->get()->getResultArray();
+                            log_message('debug', '🔍 [SAVE ANSWER] Check existing subQuestion SQL: SELECT * FROM student_answers WHERE answer_id = ' . $questionId . ' AND student_content_id = ' . $params['student_content_id']);
+                            log_message('debug', '🔍 [SAVE ANSWER] Existing subQuestion found: ' . (empty($checkStudentAnswer) ? 'NO' : 'YES (' . count($checkStudentAnswer) . ')'));
+                            
+                            $data = [];
+                            
+                            // Handle graph questions (type 40, 41) - would need getGraphQuestions method
+                            if (($subQ['question_type_id'] == 40 || $subQ['question_type_id'] == 41)) {
+                                // TODO: Implement graph question handling if needed
+                                log_message('debug', "🔍 [SAVE ANSWER] Graph question type {$subQ['question_type_id']} - skipping for now");
+                                continue;
+                            }
+                            
+                            // Prepare student_answer from given_answer or use student_answer if already set
+                            $studentAnswer = '';
+                            if (isset($subQ['student_answer']) && $subQ['student_answer'] !== '') {
+                                // Use student_answer if already provided
+                                $studentAnswer = $subQ['student_answer'];
+                            } elseif (isset($subQ['given_answer'])) {
+                                if (is_array($subQ['given_answer'])) {
+                                    // For array-based answers (types 20, 28, 40, 41, 55)
+                                    if (isset($subQ['given_answer'][0])) {
+                                        if (isset($subQ['given_answer'][0]['isSelected'])) {
+                                            $studentAnswer = $subQ['given_answer'][0]['isSelected'];
+                                        } elseif (isset($subQ['given_answer'][0]['correctAnswer'])) {
+                                            $studentAnswer = $subQ['given_answer'][0]['correctAnswer'];
+                                        } else {
+                                            $studentAnswer = json_encode($subQ['given_answer']);
+                                        }
+                                    } else {
+                                        $studentAnswer = json_encode($subQ['given_answer']);
+                                    }
+                                } else {
+                                    $studentAnswer = $subQ['given_answer'];
+                                }
+                            }
+                            log_message('debug', "🔍 [SAVE ANSWER] subQuestion #{$j} - extracted student_answer: " . var_export($studentAnswer, true));
+                            
+                            if (count($checkStudentAnswer) == 0) {
+                                // Insert new answer
+                                $data = [
+                                    'answer_id' => $questionId,
+                                    'content_id' => $params['content_id'],
+                                    'student_id' => $params['student_id'] ?? $params['user_id'],
+                                    'student_content_id' => $params['student_content_id'],
+                                    'question_no' => $subQ['question_no'] ?? '',
+                                    'correct_answer' => isset($subQ['answer']) ? json_encode($subQ['answer']) : '',
+                                    'student_answer' => $studentAnswer !== '' ? $studentAnswer : '',
+                                    'options' => isset($subQ['options']) ? json_encode($subQ['options']) : '',
+                                    'actual_points' => $subQ['points'] ?? 0,
+                                    'earned_points' => $subQ['earned_points'] ?? 0,
+                                    'student_answer_image' => $subQ['student_answer_image'] ?? '',
+                                    'rough_image_thumb_url' => $subQ['rough_image_thumb_url'] ?? '',
+                                    'rough_image_url' => $subQ['rough_image_url'] ?? '',
+                                    'jiixdata' => $subQ['jiixdata'] ?? '',
+                                    'roughdata' => $subQ['roughdata'] ?? '',
+                                    'student_roughdata' => $subQ['student_roughdata'] ?? '',
+                                    'time_taken' => $subQ['time_taken'] ?? '',
+                                    'is_correct' => $subQ['is_correct'] ?? '',
+                                    'no_of_attempt' => $subQ['no_of_attempt'] ?? 1,
+                                    'marked_review' => isset($subQ['markedAsReview']) ? ($subQ['markedAsReview'] ? 1 : 0) : null,
+                                    'answer_status' => $status == 4 ? 4 : ($studentAnswer ? 5 : 4),
+                                    'created_by' => $params['user_id'],
+                                    'created_date' => date('Y-m-d H:i:s')
+                                ];
+                                
+                                if (isset($params['class_id'])) {
+                                    $data['class_id'] = $params['class_id'];
+                                }
+                                if (isset($params['is_test']) && $params['is_test'] == 1 && isset($params['module_id'])) {
+                                    $data['module_id'] = $params['module_id'];
+                                }
+                                
+                            $insertSQL = $buildInsertSQL('student_answers', $data);
+                            log_message('debug', '🔍 [SAVE ANSWER] INSERT subQuestion SQL: ' . $insertSQL);
+                            log_message('debug', '🔍 [SAVE ANSWER] INSERT subQuestion data: ' . json_encode($data, JSON_PRETTY_PRINT));
+                            $db->table('student_answers')->insert($data);
+                            } else {
+                                // Update existing answer
+                                $data = [
+                                    'student_answer' => $studentAnswer !== '' ? $studentAnswer : '',
+                                    'options' => isset($subQ['options']) ? json_encode($subQ['options']) : '',
+                                    'student_answer_image' => $subQ['student_answer_image'] ?? '',
+                                    'rough_image_thumb_url' => $subQ['rough_image_thumb_url'] ?? '',
+                                    'rough_image_url' => $subQ['rough_image_url'] ?? '',
+                                    'jiixdata' => $subQ['jiixdata'] ?? '',
+                                    'roughdata' => $subQ['roughdata'] ?? '',
+                                    'student_roughdata' => $subQ['student_roughdata'] ?? '',
+                                    'time_taken' => $subQ['time_taken'] ?? '',
+                                    'is_correct' => $subQ['is_correct'] ?? '',
+                                    'no_of_attempt' => $subQ['no_of_attempt'] ?? 1,
+                                    'marked_review' => isset($subQ['markedAsReview']) ? ($subQ['markedAsReview'] ? 1 : 0) : null,
+                                    'answer_status' => $status == 4 ? 4 : ($studentAnswer ? 5 : 4),
+                                    'modified_by' => $params['user_id'],
+                                    'modified_date' => date('Y-m-d H:i:s')
+                                ];
+                                
+                                if (isset($subQ['earned_points'])) {
+                                    $data['earned_points'] = $subQ['earned_points'];
+                                }
+                                
+                                $updateCondition = [
+                                    'answer_id' => $questionId,
+                                    'student_content_id' => $params['student_content_id']
+                                ];
+                                
+                            $updateSQL = $buildUpdateSQL('student_answers', $data, [
+                                'answer_id' => $questionId,
+                                'student_content_id' => $params['student_content_id']
+                            ]);
+                            log_message('debug', '🔍 [SAVE ANSWER] UPDATE subQuestion SQL: ' . $updateSQL);
+                            log_message('debug', '🔍 [SAVE ANSWER] UPDATE subQuestion data: ' . json_encode($data, JSON_PRETTY_PRINT));
+                            $db->table('student_answers')
+                                ->where('answer_id', $questionId)
+                                ->where('student_content_id', $params['student_content_id'])
+                                ->update($data);
+                            }
+                        }
+                    } else {
+                        // Handle questions without subQuestions
+                        $questionId = $question['question_id'] ?? null;
+                        
+                        if (!$questionId) {
+                            log_message('warning', "🔍 [SAVE ANSWER] Question #{$i} missing question_id, skipping");
+                            continue;
+                        }
+                        
+                        log_message('debug', "🔍 [SAVE ANSWER] Processing question #{$i} without subQuestions. question_id: {$questionId}");
+                        
+                        // Check if answer already exists
+                        $checkQuery = $db->table('student_answers')
+                            ->where('answer_id', $questionId)
+                            ->where('student_content_id', $params['student_content_id']);
+                        $checkStudentAnswer = $checkQuery->get()->getResultArray();
+                        log_message('debug', '🔍 [SAVE ANSWER] Check existing question SQL: SELECT * FROM student_answers WHERE answer_id = ' . $questionId . ' AND student_content_id = ' . $params['student_content_id']);
+                        log_message('debug', '🔍 [SAVE ANSWER] Existing question found: ' . (empty($checkStudentAnswer) ? 'NO' : 'YES (' . count($checkStudentAnswer) . ')'));
+                        
+                        // Prepare student_answer from given_answer
+                        $studentAnswer = '';
+                        if (isset($question['given_answer'])) {
+                            if (is_array($question['given_answer'])) {
+                                // For array-based answers (types 20, 28, 40, 41, 55)
+                                if (isset($question['given_answer'][0])) {
+                                    if (isset($question['given_answer'][0]['isSelected'])) {
+                                        $studentAnswer = $question['given_answer'][0]['isSelected'];
+                                    } elseif (isset($question['given_answer'][0]['correctAnswer'])) {
+                                        $studentAnswer = $question['given_answer'][0]['correctAnswer'];
+                                    } else {
+                                        $studentAnswer = json_encode($question['given_answer']);
+                                    }
+                                } else {
+                                    $studentAnswer = json_encode($question['given_answer']);
+                                }
+                            } else {
+                                $studentAnswer = $question['given_answer'];
+                            }
+                        }
+                        
+                        if (count($checkStudentAnswer) == 0) {
+                            // Insert new answer
+                            $data = [
+                                'answer_id' => $questionId,
+                                'content_id' => $params['content_id'],
+                                'student_id' => $params['student_id'] ?? $params['user_id'],
+                                'student_content_id' => $params['student_content_id'],
+                                'question_no' => $question['question_no'] ?? '',
+                                'correct_answer' => isset($question['answer']) ? json_encode($question['answer']) : '',
+                                'student_answer' => $studentAnswer !== '' ? $studentAnswer : '',
+                                'options' => isset($question['options']) ? json_encode($question['options']) : '',
+                                'actual_points' => $question['points'] ?? 0,
+                                'earned_points' => $question['earned_points'] ?? 0,
+                                'student_answer_image' => $question['student_answer_image'] ?? '',
+                                'rough_image_thumb_url' => $question['rough_image_thumb_url'] ?? '',
+                                'rough_image_url' => $question['rough_image_url'] ?? '',
+                                'jiixdata' => $question['jiixdata'] ?? '',
+                                'roughdata' => $question['roughdata'] ?? '',
+                                'student_roughdata' => $question['student_roughdata'] ?? '',
+                                'time_taken' => $question['time_taken'] ?? '',
+                                'is_correct' => $question['is_correct'] ?? '',
+                                'no_of_attempt' => $question['no_of_attempt'] ?? 1,
+                                'marked_review' => isset($question['markedAsReview']) ? ($question['markedAsReview'] ? 1 : 0) : null,
+                                'answer_status' => $status == 4 ? 4 : ($studentAnswer ? 5 : 4),
+                                'created_by' => $params['user_id'],
+                                'created_date' => date('Y-m-d H:i:s')
+                            ];
+                            
+                            if (isset($params['class_id'])) {
+                                $data['class_id'] = $params['class_id'];
+                            }
+                            if (isset($params['is_test']) && $params['is_test'] == 1 && isset($params['module_id'])) {
+                                $data['module_id'] = $params['module_id'];
+                            }
+                            
+                            $insertSQL = $buildInsertSQL('student_answers', $data);
+                            log_message('debug', '🔍 [SAVE ANSWER] INSERT question SQL: ' . $insertSQL);
+                            log_message('debug', '🔍 [SAVE ANSWER] INSERT question data: ' . json_encode($data, JSON_PRETTY_PRINT));
+                            $db->table('student_answers')->insert($data);
+                        } else {
+                            // Update existing answer
+                            $data = [
+                                'student_answer' => $studentAnswer !== '' ? $studentAnswer : '',
+                                'options' => isset($question['options']) ? json_encode($question['options']) : '',
+                                'student_answer_image' => $question['student_answer_image'] ?? '',
+                                'rough_image_thumb_url' => $question['rough_image_thumb_url'] ?? '',
+                                'rough_image_url' => $question['rough_image_url'] ?? '',
+                                'jiixdata' => $question['jiixdata'] ?? '',
+                                'roughdata' => $question['roughdata'] ?? '',
+                                'student_roughdata' => $question['student_roughdata'] ?? '',
+                                'time_taken' => $question['time_taken'] ?? '',
+                                'is_correct' => $question['is_correct'] ?? '',
+                                'no_of_attempt' => $question['no_of_attempt'] ?? 1,
+                                'marked_review' => isset($question['markedAsReview']) ? ($question['markedAsReview'] ? 1 : 0) : null,
+                                'answer_status' => $status == 4 ? 4 : ($studentAnswer ? 5 : 4),
+                                'modified_by' => $params['user_id'],
+                                'modified_date' => date('Y-m-d H:i:s')
+                            ];
+                            
+                            if (isset($question['earned_points'])) {
+                                $data['earned_points'] = $question['earned_points'];
+                            }
+                            
+                            $updateCondition = [
+                                'answer_id' => $questionId,
+                                'student_content_id' => $params['student_content_id']
+                            ];
+                            
+                            $updateSQL = $buildUpdateSQL('student_answers', $data, [
+                                'answer_id' => $questionId,
+                                'student_content_id' => $params['student_content_id']
+                            ]);
+                            log_message('debug', '🔍 [SAVE ANSWER] UPDATE question SQL: ' . $updateSQL);
+                            log_message('debug', '🔍 [SAVE ANSWER] UPDATE question data: ' . json_encode($data, JSON_PRETTY_PRINT));
+                            $db->table('student_answers')
+                                ->where('answer_id', $questionId)
+                                ->where('student_content_id', $params['student_content_id'])
+                                ->update($data);
+                        }
+                    }
+                }
+            }
 
             if ($updateResult) {
                 // Calculate total score if status is submitted
                 if ($status == 4) {
                     // Calculate earned points and total points
-                    $totalScore = $db->query("
+                    $totalScoreQuery = "
                         SELECT COALESCE(SUM(earned_points), 0) as earned_points,
                                COALESCE(SUM(actual_points), 0) as points
                         FROM student_answers
                         WHERE student_content_id = {$params['student_content_id']}
-                    ")->getRowArray();
+                    ";
+                    log_message('debug', '🔍 [SAVE ANSWER] Total score query: ' . $totalScoreQuery);
+                    $totalScore = $db->query($totalScoreQuery)->getRowArray();
 
                     if ($totalScore) {
                         $db->table('student_content')

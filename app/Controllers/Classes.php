@@ -2534,4 +2534,223 @@ class Classes extends BaseController
             ]);
         }
     }
+
+    /**
+     * Get announcement comments for a note
+     */
+    public function getAnnouncementComments(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validation
+            if (empty($params['note_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Note ID should not be empty'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+            $noteId = (int)$params['note_id'];
+
+            // Get comments for this note
+            $builder = $db->table('note_comments n');
+            $builder->select('n.id, n.note_id, n.comment, n.status, n.comment_date, 
+                            CONCAT_WS(" ", up.first_name, up.last_name) as created_by, 
+                            n.created_by as user_id');
+            $builder->join('user_profile up', 'up.user_id = n.created_by');
+            $builder->where('n.note_id', $noteId);
+            $builder->where('n.status', 1);
+            $builder->orderBy('n.id', 'DESC');
+
+            $comments = $builder->get()->getResultArray();
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $comments,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Get announcement comments error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Add comment to an announcement/note
+     */
+    public function addAnnouncementComments(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validation
+            if (empty($params['note_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Note ID should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['comment'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Comment should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User ID should not be empty'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Prepare comment data
+            $commentData = [
+                'note_id' => (int)$params['note_id'],
+                'comment' => $params['comment'],
+                'status' => 1,
+                'comment_date' => date('Y-m-d H:i:s'),
+                'created_by' => (int)$params['user_id'],
+                'created_date' => date('Y-m-d H:i:s')
+            ];
+
+            // Insert comment
+            $builder = $db->table('note_comments');
+            $insertSuccess = $builder->insert($commentData);
+
+            if ($insertSuccess) {
+                $commentId = $db->insertID();
+                
+                // Get the created comment with user info
+                $builder = $db->table('note_comments n');
+                $builder->select('n.id, n.note_id, n.comment, n.status, n.comment_date, 
+                                CONCAT_WS(" ", up.first_name, up.last_name) as created_by, 
+                                n.created_by as user_id');
+                $builder->join('user_profile up', 'up.user_id = n.created_by');
+                $builder->where('n.id', $commentId);
+                $comment = $builder->get()->getRowArray();
+
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => $comment ?: $commentData,
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to add comment'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Add announcement comment error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update comment
+     */
+    public function updateComments(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validation
+            if (empty($params['id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Comment ID should not be empty'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+            $commentId = (int)$params['id'];
+
+            // Prepare update data
+            $updateData = [];
+            if (isset($params['comment']) && !empty($params['comment'])) {
+                $updateData['comment'] = $params['comment'];
+            }
+            if (isset($params['status'])) {
+                $updateData['status'] = (int)$params['status'];
+            }
+
+            if (empty($updateData)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'No update data provided'
+                ], 400);
+            }
+
+            // Update comment
+            $builder = $db->table('note_comments');
+            $builder->where('id', $commentId);
+            $updateSuccess = $builder->update($updateData);
+
+            if ($updateSuccess) {
+                // Get updated comment with user info
+                $builder = $db->table('note_comments n');
+                $builder->select('n.id, n.note_id, n.comment, n.status, n.comment_date, 
+                                CONCAT_WS(" ", up.first_name, up.last_name) as created_by, 
+                                n.created_by as user_id');
+                $builder->join('user_profile up', 'up.user_id = n.created_by');
+                $builder->where('n.id', $commentId);
+                $comment = $builder->get()->getRowArray();
+
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => $comment ?: 'Comment updated successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update comment'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Update comment error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -139,5 +139,106 @@ class MailboxCI4 extends ResourceController
             exit;
         }
     }
+
+    /**
+     * Update message status (mark as read/unread)
+     */
+    public function update(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validation
+            if (empty($params['platform']) || ($params['platform'] != "web" && $params['platform'] != "ios")) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['class_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class Id should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+            $classId = (int)$params['class_id'];
+            $userId = (int)$params['user_id'];
+            
+            // Get all messages for this class and user
+            $builder = $db->table('mailbox m');
+            $builder->select('md.message_detail_id');
+            $builder->join('mailbox_details md', 'm.message_id = md.message_id');
+            $builder->where('m.class_id', $classId);
+            $builder->where('md.user_id', $userId);
+            $messages = $builder->get()->getResultArray();
+
+            if (empty($messages)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'No messages found'
+                ], 404);
+            }
+
+            // Update message status
+            $updateData = [];
+            if (isset($params['is_read']) && $params['is_read'] != '') {
+                $updateData['is_read'] = (int)$params['is_read'];
+            }
+
+            if (empty($updateData)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'No update data provided'
+                ], 400);
+            }
+
+            // Update all messages for this class and user
+            $messageDetailIds = array_column($messages, 'message_detail_id');
+            $updateResult = $db->table('mailbox_details')
+                ->whereIn('message_detail_id', $messageDetailIds)
+                ->update($updateData);
+
+            if ($updateResult) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Message Updated Successfully',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed To Update'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Mailbox update error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
 

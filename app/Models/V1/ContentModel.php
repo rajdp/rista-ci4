@@ -512,7 +512,13 @@ class ContentModel extends BaseModel
         
         $query = "SELECT tq.question_id, tq.content_id, tq.question_type_id, tq.sub_question_type_id, 
                   COALESCE(tq.editor_context, '') AS editor_context, tq.editor_type, tq.question_no,
-                  tq.sub_question_no, tq.has_sub_question, tq.question, tq.options, tq.answer, tq.level, tq.heading_option,
+                  tq.sub_question_no, tq.has_sub_question, 
+                  CASE 
+                    WHEN tq.question IS NULL OR tq.question = '' OR LOWER(TRIM(tq.question)) = 'undefined' OR LOWER(TRIM(tq.question)) = 'null' 
+                    THEN '' 
+                    ELSE tq.question 
+                  END AS question, 
+                  tq.options, tq.answer, tq.level, tq.heading_option,
                   tq.multiple_response, tq.audo_grade, tq.points, tq.exact_match, tq.hint, tq.explanation, 
                   COALESCE(tq.resource, '') AS resource, tq.word_limit,
                   tq.scoring_instruction, COALESCE(tq.editor_answer, '') as editor_answer,
@@ -525,7 +531,36 @@ class ContentModel extends BaseModel
                   WHERE tq.content_id = '$contentId'
                   ORDER BY tq.question_no ASC, tq.sub_question_no ASC";
         
-        return $db->query($query)->getResultArray();
+        log_message('debug', '🔍 [TEXT_QUESTIONS] Query: ' . $query);
+        log_message('debug', '🔍 [TEXT_QUESTIONS] Content ID: ' . $contentId);
+        
+        $results = $db->query($query)->getResultArray();
+        
+        // Log what's being fetched from the database
+        log_message('debug', '🔍 [TEXT_QUESTIONS] Total questions found: ' . count($results));
+        
+        foreach ($results as $index => $question) {
+            log_message('debug', "🔍 [TEXT_QUESTIONS] Question #{$index}:");
+            log_message('debug', "   - question_id: " . ($question['question_id'] ?? 'NOT SET'));
+            log_message('debug', "   - question_no: " . ($question['question_no'] ?? 'NOT SET'));
+            log_message('debug', "   - question_type_id: " . ($question['question_type_id'] ?? 'NOT SET'));
+            log_message('debug', "   - question (RAW from DB): " . var_export($question['question'] ?? 'NOT SET', true));
+            log_message('debug', "   - question (type): " . gettype($question['question'] ?? null));
+            log_message('debug', "   - question (is_null): " . (is_null($question['question'] ?? null) ? 'YES' : 'NO'));
+            log_message('debug', "   - question (is_empty): " . (empty($question['question'] ?? null) ? 'YES' : 'NO'));
+            log_message('debug', "   - question (length): " . (isset($question['question']) ? strlen($question['question']) : 'N/A'));
+            log_message('debug', "   - question (first 100 chars): " . (isset($question['question']) ? substr($question['question'], 0, 100) : 'N/A'));
+        }
+        
+        // Also log the raw SQL result for the question column
+        $rawQuery = "SELECT question_id, question_no, question, question_type_id 
+                     FROM text_questions 
+                     WHERE content_id = '$contentId'
+                     ORDER BY question_no ASC, sub_question_no ASC";
+        $rawResults = $db->query($rawQuery)->getResultArray();
+        log_message('debug', '🔍 [TEXT_QUESTIONS] Raw SQL results for question column: ' . json_encode($rawResults, JSON_PRETTY_PRINT));
+        
+        return $results;
     }
 
     /**
@@ -639,18 +674,21 @@ class ContentModel extends BaseModel
         $db = \Config\Database::connect();
         
         $condition = "";
-        if (isset($params['student_id']) && $params['student_id'] > 0) {
-            $condition = ",COALESCE((SELECT COALESCE(student_answer,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as student_answer,
-                            COALESCE((SELECT COALESCE(jiixdata,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as jiixdata,
-                            COALESCE((SELECT COALESCE(roughdata,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as roughdata,
-                            COALESCE((SELECT COALESCE(rough_image_url,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as rough_image_url,
-                            COALESCE((SELECT COALESCE(rough_image_thumb_url,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as rough_image_thumb_url,
-                            COALESCE((SELECT COALESCE(student_answer_image,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as student_answer_image,
-                            COALESCE((SELECT COALESCE(student_roughdata,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as student_roughdata,
-                           (SELECT status FROM student_content WHERE id = {$params['student_content_id']}) as student_content_status,
-                           COALESCE((SELECT COALESCE(annotation,'') FROM student_content WHERE id = {$params['student_content_id']}),'') as student_annotation,
+        // Only add student-specific fields if we have a valid student_content_id
+        if (isset($params['student_id']) && $params['student_id'] > 0 && 
+            isset($params['student_content_id']) && $params['student_content_id'] > 0) {
+            $studentContentId = (int)$params['student_content_id'];
+            $condition = ",COALESCE((SELECT COALESCE(student_answer,'') FROM student_answers WHERE student_content_id = {$studentContentId} AND answer_id = a.answer_id),'') as student_answer,
+                            COALESCE((SELECT COALESCE(jiixdata,'') FROM student_answers WHERE student_content_id = {$studentContentId} AND answer_id = a.answer_id),'') as jiixdata,
+                            COALESCE((SELECT COALESCE(roughdata,'') FROM student_answers WHERE student_content_id = {$studentContentId} AND answer_id = a.answer_id),'') as roughdata,
+                            COALESCE((SELECT COALESCE(rough_image_url,'') FROM student_answers WHERE student_content_id = {$studentContentId} AND answer_id = a.answer_id),'') as rough_image_url,
+                            COALESCE((SELECT COALESCE(rough_image_thumb_url,'') FROM student_answers WHERE student_content_id = {$studentContentId} AND answer_id = a.answer_id),'') as rough_image_thumb_url,
+                            COALESCE((SELECT COALESCE(student_answer_image,'') FROM student_answers WHERE student_content_id = {$studentContentId} AND answer_id = a.answer_id),'') as student_answer_image,
+                            COALESCE((SELECT COALESCE(student_roughdata,'') FROM student_answers WHERE student_content_id = {$studentContentId} AND answer_id = a.answer_id),'') as student_roughdata,
+                           (SELECT status FROM student_content WHERE id = {$studentContentId}) as student_content_status,
+                           COALESCE((SELECT COALESCE(annotation,'') FROM student_content WHERE id = {$studentContentId}),'') as student_annotation,
                            COALESCE((select suggestion_query from student_suggestions where content_id={$params['content_id']} AND class_id = {$params['class_id']} AND student_id = {$params['student_id']} AND answer_id = a.answer_id),'') as student_feedback,
-                           COALESCE((SELECT COALESCE(editor_answer,'') FROM student_answers WHERE student_content_id = {$params['student_content_id']} AND answer_id = a.answer_id),'') as student_editor_answer";
+                           COALESCE((SELECT COALESCE(editor_answer,'') FROM student_answers WHERE student_content_id = {$studentContentId} AND answer_id = a.answer_id),'') as student_editor_answer";
         }
         
         $query = "SELECT a.answer_id, a.question_no, 
@@ -687,6 +725,32 @@ class ContentModel extends BaseModel
         // Expected structure: [{heading: "...", section: [{has_sub_question: 0, sub_questions: [...]}]}]
         $groupedAnswers = [];
         foreach ($results as $answer) {
+            // Ensure given_answer is set from student_answer if available
+            if (!isset($answer['given_answer']) && isset($answer['student_answer'])) {
+                $answer['given_answer'] = $answer['student_answer'];
+            } elseif (!isset($answer['given_answer'])) {
+                $answer['given_answer'] = '';
+            }
+            
+            // Ensure question is set and not null or the string "undefined"
+            if (!isset($answer['question']) || $answer['question'] === null || $answer['question'] === 'undefined' || $answer['question'] === 'null') {
+                $answer['question'] = '';
+            }
+            
+            // Clean up any "undefined" strings that might have been set
+            if (isset($answer['question']) && (strtolower($answer['question']) === 'undefined' || strtolower($answer['question']) === 'null')) {
+                $answer['question'] = '';
+            }
+            
+            // Ensure options/array are properly initialized
+            if (isset($answer['options']) && is_string($answer['options']) && !empty($answer['options'])) {
+                $decoded = json_decode($answer['options'], true);
+                if ($decoded !== null) {
+                    $answer['array'] = $decoded;
+                    $answer['mob_options'] = $decoded;
+                }
+            }
+            
             $heading = $answer['heading'] ?? '';
             $hasSubQuestion = isset($answer['has_sub_question']) ? (int)$answer['has_sub_question'] : 0;
             

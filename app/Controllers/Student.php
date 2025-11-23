@@ -2491,6 +2491,399 @@ class Student extends ResourceController
         }
     }
 
+    /**
+     * Get completed content folder content for a student, organized by test type
+     * Returns content grouped by test type (content, sat, act)
+     */
+    public function completedCfsContent(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Get student ID - use student_id if provided and not empty, otherwise use user_id
+            $studentId = (!empty($params['student_id'])) ? $params['student_id'] : ($params['user_id'] ?? null);
+            $schoolId = $params['school_id'] ?? null;
+            $classId = $params['class_id'] ?? null;
+
+            if (empty($studentId)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student ID or User ID is required'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Build query to get completed content with test type information
+            // Note: test_type_id comes directly from content table
+            // batch relationship is through classroom_content table, not directly on content
+            $sql = "
+                SELECT DISTINCT
+                    c.content_id,
+                    c.name as content_name,
+                    c.content_type,
+                    c.content_format,
+                    c.file_path,
+                    COALESCE(c.test_type_id, 1) as test_type_id,
+                    (CASE 
+                        WHEN c.test_type_id = 1 THEN 'content'
+                        WHEN c.test_type_id = 2 THEN 'sat'
+                        WHEN c.test_type_id = 3 THEN 'act'
+                        ELSE 'content'
+                    END) as test_type_key,
+                    (CASE 
+                        WHEN c.test_type_id = 1 THEN 'Content'
+                        WHEN c.test_type_id = 2 THEN 'SAT'
+                        WHEN c.test_type_id = 3 THEN 'ACT'
+                        ELSE 'Content'
+                    END) as test_type,
+                    sc.id as student_content_id,
+                    sc.status as student_content_status,
+                    sc.answer_completed_date,
+                    sc.earned_points,
+                    sc.points,
+                    cc.id as class_content_id,
+                    cc.class_id,
+                    cl.class_name,
+                    COALESCE(b.batch_id, 0) as batch_id,
+                    COALESCE(b.batch_name, '') as batch_name,
+                    sc.student_id,
+                    COALESCE(up.first_name, '') as first_name,
+                    COALESCE(up.last_name, '') as last_name,
+                    CONCAT(COALESCE(up.first_name, ''), ' ', COALESCE(up.last_name, '')) as student_name
+                FROM student_content sc
+                INNER JOIN class_content cc ON sc.class_content_id = cc.id
+                INNER JOIN content c ON sc.content_id = c.content_id
+                INNER JOIN class cl ON sc.class_id = cl.class_id
+                LEFT JOIN classroom_content clc ON c.content_id = clc.content_id AND clc.status = 1
+                LEFT JOIN batch b ON clc.batch_id = b.batch_id
+                LEFT JOIN user_profile up ON sc.student_id = up.user_id
+                WHERE sc.student_id = ?
+                AND sc.status IN (3, 4, 5)
+                AND sc.draft_status = '1'
+            ";
+
+            $queryParams = [$studentId];
+
+            if (!empty($schoolId)) {
+                $sql .= " AND cl.school_id = ?";
+                $queryParams[] = $schoolId;
+            }
+
+            if (!empty($classId)) {
+                $sql .= " AND sc.class_id = ?";
+                $queryParams[] = $classId;
+            }
+
+            $sql .= " ORDER BY sc.answer_completed_date DESC, c.name ASC";
+
+            $results = $db->query($sql, $queryParams)->getResultArray();
+
+            // Organize results by test type
+            $organizedContent = [
+                'content' => [],
+                'sat' => [],
+                'act' => []
+            ];
+
+            // Group content by content_id, test_type, and student_id
+            // Multiple student_content records can exist for same content_id + student_id
+            $contentGroups = [];
+            foreach ($results as $row) {
+                $testTypeKey = $row['test_type_key'] ?? 'content';
+                $contentId = $row['content_id'];
+                $studentId = $row['student_id'];
+                
+                // Initialize content group if not exists
+                if (!isset($contentGroups[$testTypeKey][$contentId])) {
+                    $contentGroups[$testTypeKey][$contentId] = [
+                        'content_id' => $contentId,
+                        'content_name' => $row['content_name'],
+                        'content_type' => $row['content_type'],
+                        'content_format' => $row['content_format'],
+                        'file_path' => $row['file_path'],
+                        'class_content_id' => $row['class_content_id'],
+                        'class_id' => $row['class_id'],
+                        'class_name' => $row['class_name'],
+                        'batch_id' => $row['batch_id'],
+                        'batch_name' => $row['batch_name'],
+                        'test_type_id' => $row['test_type_id'],
+                        'test_type' => $row['test_type'],
+                        'student_details' => []
+                    ];
+                }
+
+                // Check if student detail already exists for this content
+                $studentDetailKey = null;
+                foreach ($contentGroups[$testTypeKey][$contentId]['student_details'] as $key => $detail) {
+                    if ($detail['student_id'] == $studentId) {
+                        $studentDetailKey = $key;
+                        break;
+                    }
+                }
+
+                if ($studentDetailKey !== null) {
+                    // Add student_content_id to existing student detail
+                    if (!in_array($row['student_content_id'], $contentGroups[$testTypeKey][$contentId]['student_details'][$studentDetailKey]['student_content_id'])) {
+                        $contentGroups[$testTypeKey][$contentId]['student_details'][$studentDetailKey]['student_content_id'][] = $row['student_content_id'];
+                    }
+                } else {
+                    // Create new student detail
+                    $contentGroups[$testTypeKey][$contentId]['student_details'][] = [
+                        'student_id' => $studentId,
+                        'student_name' => trim($row['student_name']),
+                        'student_content_id' => [$row['student_content_id']],
+                        'status' => $row['student_content_status'],
+                        'answer_completed_date' => $row['answer_completed_date'],
+                        'earned_points' => $row['earned_points'],
+                        'points' => $row['points']
+                    ];
+                }
+            }
+
+            // Convert to array format expected by frontend
+            // Ensure all test type keys exist (even if empty) to prevent frontend errors
+            foreach ($contentGroups as $testTypeKey => $contents) {
+                $organizedContent[$testTypeKey] = array_values($contents);
+            }
+            
+            // Ensure all expected keys exist with empty arrays if missing
+            // This prevents "Cannot read properties of undefined" errors in frontend
+            $expectedKeys = ['content', 'sat', 'act', 'other'];
+            foreach ($expectedKeys as $key) {
+                if (!isset($organizedContent[$key])) {
+                    $organizedContent[$key] = [];
+                }
+            }
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $organizedContent,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Student::completedCfsContent - ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => [
+                    'content' => [],
+                    'sat' => [],
+                    'act' => []
+                ],
+                'ErrorObject' => 'Unable to load completed content: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get CFS (Content Folder) report for student performance
+     * Returns detailed report with question topics, subtopics, and student answers
+     */
+    public function cfsReport(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Get parameters
+            $studentId = (!empty($params['student_id'])) ? $params['student_id'] : ($params['user_id'] ?? null);
+            $schoolId = $params['school_id'] ?? null;
+            $classId = $params['class_id'] ?? null;
+            $content = $params['content'] ?? []; // Array of content IDs
+            $testTypeId = $params['test_type_id'] ?? '1';
+
+            if (empty($studentId)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Student ID or User ID is required'
+                ], 400);
+            }
+
+            if (empty($content) || !is_array($content) || count($content) === 0) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => [],
+                    'ErrorObject' => ''
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            $results = [];
+
+            // Get student name
+            $studentNameQuery = $db->table('user_profile up')
+                ->select("CONCAT(COALESCE(up.first_name, ''), ' ', COALESCE(up.last_name, '')) as student_name")
+                ->where('up.user_id', $studentId)
+                ->get()
+                ->getRowArray();
+            
+            $studentName = trim($studentNameQuery['student_name'] ?? '') ?: 'Unknown Student';
+
+            // Process each content item
+            foreach ($content as $contentItem) {
+                $contentId = is_array($contentItem) ? ($contentItem['content_id'] ?? null) : $contentItem;
+                if (empty($contentId)) {
+                    continue;
+                }
+
+                // Get content details
+                $contentQuery = $db->table('content c')
+                    ->select('c.content_id, c.name as content_name, c.content_type, c.content_format, c.test_type_id')
+                    ->where('c.content_id', $contentId)
+                    ->get()
+                    ->getRowArray();
+
+                if (empty($contentQuery)) {
+                    continue;
+                }
+
+                // Get student_content_id(s) for this content
+                $studentContentQuery = $db->table('student_content sc')
+                    ->select('sc.id as student_content_id')
+                    ->where('sc.student_id', $studentId)
+                    ->where('sc.content_id', $contentId)
+                    ->where('sc.status', '>=', 3) // Completed status
+                    ->where('sc.draft_status', '1')
+                    ->get()
+                    ->getResultArray();
+
+                if (empty($studentContentQuery)) {
+                    continue;
+                }
+
+                // Use the first student_content_id (or could aggregate multiple attempts)
+                $studentContentId = $studentContentQuery[0]['student_content_id'];
+
+                // Get questions with topics and subtopics
+                $questionsQuery = "
+                    SELECT DISTINCT
+                        q.question_id,
+                        q.question_no,
+                        COALESCE(q.question, '') as question,
+                        COALESCE(qt.question_topic_id, 0) as question_topic_id,
+                        COALESCE(qt.question_topic, '') as question_topic,
+                        COALESCE(st.sub_topic_id, 0) as sub_topic_id,
+                        COALESCE(st.sub_topic, '') as sub_topic,
+                        COALESCE(sa.student_answer, '') as student_answer,
+                        COALESCE(sa.answer_status, 0) as answer_status,
+                        COALESCE(sa.earned_points, 0) as earned_points,
+                        COALESCE(q.points, 0) as points,
+                        COALESCE(q.answer, '') as correct_answer
+                    FROM answers q
+                    LEFT JOIN question_topic qt ON q.question_topic_id = qt.question_topic_id
+                    LEFT JOIN sub_topic st ON q.sub_topic_id = st.sub_topic_id
+                    LEFT JOIN student_answers sa ON q.answer_id = sa.answer_id 
+                        AND sa.student_content_id = ?
+                    WHERE q.content_id = ?
+                    AND q.status = 1
+                    ORDER BY q.display_order, q.question_no
+                ";
+
+                $questions = $db->query($questionsQuery, [$studentContentId, $contentId])->getResultArray();
+
+                // Organize by topics and subtopics
+                $topics = [];
+                $subTopics = [];
+
+                foreach ($questions as $q) {
+                    $topicId = $q['question_topic_id'] ?? 0;
+                    $subTopicId = $q['sub_topic_id'] ?? 0;
+                    $topicName = $q['question_topic'] ?? 'Uncategorized';
+                    $subTopicName = $q['sub_topic'] ?? 'Uncategorized';
+
+                    // Group by topic
+                    if (!isset($topics[$topicId])) {
+                        $topics[$topicId] = [
+                            'question_topic_id' => $topicId,
+                            'question_topic' => $topicName,
+                            'question_data' => []
+                        ];
+                    }
+
+                    // Group by subtopic
+                    if (!isset($subTopics[$subTopicId])) {
+                        $subTopics[$subTopicId] = [
+                            'sub_topic_id' => $subTopicId,
+                            'sub_topic' => $subTopicName,
+                            'question_data' => []
+                        ];
+                    }
+
+                    // Add question data
+                    $questionData = [
+                        'question_id' => $q['question_id'],
+                        'question_no' => $q['question_no'],
+                        'question' => $q['question'],
+                        'student_answer' => $q['student_answer'],
+                        'correct_answer' => $q['correct_answer'],
+                        'answer_status' => $q['answer_status'],
+                        'earned_points' => $q['earned_points'],
+                        'points' => $q['points']
+                    ];
+
+                    $topics[$topicId]['question_data'][] = $questionData;
+                    $subTopics[$subTopicId]['question_data'][] = $questionData;
+                }
+
+                // Build response structure
+                $contentData = [
+                    'student_id' => (int)$studentId,
+                    'student_name' => $studentName,
+                    'student_content_id' => (int)$studentContentId,
+                    'content_id' => (int)$contentId,
+                    'content_name' => $contentQuery['content_name'],
+                    'question_topics' => array_values($topics),
+                    'question_sub_topics' => array_values($subTopics)
+                ];
+
+                // For SAT/ACT, add subject/module structure (simplified for now)
+                if ($testTypeId != '1' && $testTypeId != 1) {
+                    $contentData['subject'] = [
+                        [
+                            'subject_name' => 'Math', // Default - should be determined from content
+                            'modules' => [
+                                [
+                                    'module_id' => 1,
+                                    'module_name' => 'Module 1',
+                                    'question_topics' => array_values($topics),
+                                    'question_sub_topics' => array_values($subTopics)
+                                ]
+                            ]
+                        ]
+                    ];
+                }
+
+                $results[] = $contentData;
+            }
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $results,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Student::cfsReport - ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => [],
+                'ErrorObject' => 'Unable to load report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function updateContentStartTime(): ResponseInterface
     {
         try {
@@ -2617,6 +3010,170 @@ class Student extends ResourceController
 
         } catch (\Exception $e) {
             log_message('error', 'Student updateContentStartTime error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Make up class - Transfer student to a makeup class
+     */
+    public function makeUpClass(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            // Validation
+            if (empty($params['platform'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform Should not be Empty'
+                ]);
+            }
+            
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id Should not be Empty'
+                ]);
+            }
+            
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role Id Should not be Empty'
+                ]);
+            }
+            
+            if (empty($params['to_class'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'MakeUp Class Should not be Empty'
+                ]);
+            }
+            
+            if (empty($params['from_class'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Current Class Should not be Empty'
+                ]);
+            }
+            
+            if (empty($params['student_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student Id Should not be Empty'
+                ]);
+            }
+            
+            $db = \Config\Database::connect();
+            
+            // Check if makeup class transfer already exists
+            $transferBuilder = $db->table('student_class_transfer');
+            $transferBuilder->where('from_class', $params['from_class']);
+            $transferBuilder->where('to_class', $params['to_class']);
+            $transferBuilder->where('student_id', $params['student_id']);
+            $transferBuilder->where('type', 'M');
+            $existingTransfer = $transferBuilder->get()->getRowArray();
+            
+            // Prepare makeup class transfer data
+            $makeUpClass = [
+                'class_id' => $params['to_class'],
+                'from_class' => $params['from_class'],
+                'to_class' => $params['to_class'],
+                'student_id' => $params['student_id'],
+                'validity' => $params['start_date'] ?? $params['absent_date'] ?? date('Y-m-d'),
+                'absent_date' => $params['absent_date'] ?? date('Y-m-d'),
+                'status' => $params['status'] ?? 1,
+                'type' => 'M',
+                'joining_date' => $params['start_date'] ?? $params['absent_date'] ?? date('Y-m-d')
+            ];
+            
+            $makeUpClassId = 0;
+            
+            if (empty($existingTransfer)) {
+                // Insert new makeup class transfer
+                $makeUpClass['created_by'] = $params['user_id'];
+                $makeUpClass['created_date'] = date('Y-m-d H:i:s');
+                $db->table('student_class_transfer')->insert($makeUpClass);
+                $makeUpClassId = $db->insertID();
+            } else {
+                // Update existing makeup class transfer
+                $makeUpClass['modified_by'] = $params['user_id'];
+                $makeUpClass['modified_date'] = date('Y-m-d H:i:s');
+                $db->table('student_class_transfer')
+                    ->where('id', $existingTransfer['id'])
+                    ->update($makeUpClass);
+                $makeUpClassId = $existingTransfer['id'];
+            }
+            
+            // Check if student already exists in the target class
+            $studentClassBuilder = $db->table('student_class');
+            $studentClassBuilder->where('student_id', $params['student_id']);
+            $studentClassBuilder->where('class_id', $params['to_class']);
+            $existingStudentClass = $studentClassBuilder->get()->getRowArray();
+            
+            $studentClassId = 0;
+            
+            if (!empty($existingStudentClass)) {
+                // Update existing student class record
+                $studentData = [
+                    'class_id' => $params['to_class'],
+                    'from_class' => $params['from_class'],
+                    'student_id' => $params['student_id'],
+                    'joining_date' => $params['start_date'] ?? $params['absent_date'] ?? date('Y-m-d'),
+                    'validity' => $params['start_date'] ?? $params['absent_date'] ?? date('Y-m-d'),
+                    'status' => 1,
+                    'modified_by' => $params['user_id'],
+                    'modified_date' => date('Y-m-d H:i:s')
+                ];
+                $db->table('student_class')
+                    ->where('student_id', $params['student_id'])
+                    ->where('class_id', $params['to_class'])
+                    ->update($studentData);
+                $studentClassId = $existingStudentClass['id'] ?? 1;
+            } else {
+                // Insert new student class record
+                $studentClassData = [
+                    'class_id' => $params['to_class'],
+                    'from_class' => $params['from_class'],
+                    'student_id' => $params['student_id'],
+                    'joining_date' => $params['start_date'] ?? $params['absent_date'] ?? date('Y-m-d'),
+                    'validity' => $params['start_date'] ?? $params['absent_date'] ?? date('Y-m-d'),
+                    'status' => 1,
+                    'class_type' => 2,
+                    'created_by' => $params['user_id'],
+                    'created_date' => date('Y-m-d H:i:s')
+                ];
+                $db->table('student_class')->insert($studentClassData);
+                $studentClassId = $db->insertID();
+            }
+            
+            if ($studentClassId > 0 && $makeUpClassId > 0) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => 'Student Added Successfully.',
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to add'
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            log_message('error', 'makeUpClass error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,

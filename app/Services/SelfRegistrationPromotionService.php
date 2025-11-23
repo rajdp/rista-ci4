@@ -329,7 +329,22 @@ class SelfRegistrationPromotionService
             ->get()
             ->getRowArray();
 
-        return $student['school_id'] ?? null;
+        if (!isset($student['school_id']) || $student['school_id'] === null || $student['school_id'] === '') {
+            return null;
+        }
+
+        $schoolId = $student['school_id'];
+        
+        // Handle comma-separated school_id values (take the first one)
+        if (is_string($schoolId) && strpos($schoolId, ',') !== false) {
+            $schoolId = trim(explode(',', $schoolId)[0]);
+        }
+        
+        // Convert to integer
+        $schoolIdInt = (int) $schoolId;
+        
+        // Return null if conversion resulted in 0 (invalid)
+        return $schoolIdInt > 0 ? $schoolIdInt : null;
     }
 
     /**
