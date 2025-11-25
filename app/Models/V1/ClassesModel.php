@@ -14,6 +14,7 @@ class ClassesModel extends BaseModel
 
     /**
      * Get teacher list for a school
+     * Role ID 4 = Teacher
      */
     public function getTeacherList($schoolId)
     {
@@ -24,12 +25,18 @@ class ClassesModel extends BaseModel
                     up.profile_url
                     FROM user u
                     INNER JOIN user_profile up ON u.user_id = up.user_id
-                    WHERE u.role_id = 2 
+                    WHERE u.role_id = 4 
                     AND u.school_id = ? 
                     AND u.status = 1
                     ORDER BY up.first_name";
         
-        return $db->query($query, [$schoolId])->getResultArray();
+        log_message('debug', '🔍 ClassesModel::getTeacherList query: ' . $query . ' with school_id: ' . $schoolId);
+        
+        $result = $db->query($query, [$schoolId])->getResultArray();
+        
+        log_message('debug', '✅ ClassesModel::getTeacherList found ' . count($result) . ' teachers for school_id: ' . $schoolId);
+        
+        return $result;
     }
 
     /**

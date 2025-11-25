@@ -107,6 +107,16 @@ class CourseEnrollmentService
                 $enrollmentId = $enrollmentResult['student_course_id'];
                 $startDate = $options['enrollment_date'] ?? date('Y-m-d');
                 
+                // Convert deposit from dollars to cents if provided
+                $depositCents = 0;
+                if (isset($options['deposit_cents'])) {
+                    // Already in cents
+                    $depositCents = (int)round($options['deposit_cents']);
+                } elseif (isset($options['deposit']) && $options['deposit'] > 0) {
+                    // Convert from dollars to cents
+                    $depositCents = (int)round($options['deposit'] * 100);
+                }
+                
                 $billingResult = $this->billingScheduler->seedSchedule(
                     $enrollmentId,
                     $studentId,
@@ -114,8 +124,8 @@ class CourseEnrollmentService
                     $schoolId,
                     $startDate,
                     [
-                        'deposit_policy' => $options['deposit_policy'] ?? 'none',
-                        'deposit_cents' => isset($options['deposit_cents']) ? (int)round($options['deposit_cents'] * 100) : 0,
+                        'deposit_policy' => ($depositCents > 0) ? ($options['deposit_policy'] ?? 'required') : 'none',
+                        'deposit_cents' => $depositCents,
                         'anchor_day' => $options['anchor_day'] ?? null,
                         'anchor_month' => $options['anchor_month'] ?? null,
                     ]

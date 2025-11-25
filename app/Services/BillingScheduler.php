@@ -102,8 +102,11 @@ class BillingScheduler
             // Ensure anchorDay is always an integer
             $anchorDay = (int)($anchorDay ?? 1);
 
-            // Compute next_billing_date
-            $nextBillingDate = $this->computeNextBillingDate($term, $startDate, $anchorDay, $anchorMonth);
+            // Use provided next_billing_date if available, otherwise compute it
+            $nextBillingDate = $options['next_billing_date'] ?? null;
+            if (!$nextBillingDate) {
+                $nextBillingDate = $this->computeNextBillingDate($term, $startDate, $anchorDay, $anchorMonth);
+            }
 
             // Check if proration is needed
             $hasProratedFirst = 0;

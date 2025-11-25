@@ -61,7 +61,20 @@ class SelfRegistrationPromotionService
         $this->db->transBegin();
 
         try {
+            log_message('debug', sprintf(
+                'SelfRegistrationPromotionService::promote - Starting promotion for registration_id=%d, actor_id=%d',
+                $registrationId,
+                $actorId
+            ));
+            
             [$studentUserId, $studentSummary] = $this->promoteStudent($registration, $actorId, $now);
+            
+            log_message('debug', sprintf(
+                'SelfRegistrationPromotionService::promote - Student promoted: user_id=%d, created=%s',
+                $studentUserId,
+                $studentSummary['created'] ? 'yes' : 'no'
+            ));
+            
             $guardianSummary = $this->promoteGuardians($registration, $studentUserId, $actorId, $now);
             $enrolledClasses = $this->enrollApprovedCourses($payload['courses'] ?? [], $studentUserId, $actorId, $now);
 
@@ -95,7 +108,19 @@ class SelfRegistrationPromotionService
 
             $this->registrations->markConverted($registrationId, $updateData);
 
+            log_message('debug', sprintf(
+                'SelfRegistrationPromotionService::promote - Marking registration_id=%d as converted with student_user_id=%d',
+                $registrationId,
+                $studentUserId
+            ));
+
             $this->db->transCommit();
+            
+            log_message('debug', sprintf(
+                'SelfRegistrationPromotionService::promote - Transaction committed successfully. Registration_id=%d converted to student_user_id=%d',
+                $registrationId,
+                $studentUserId
+            ));
 
             return [
                 'status' => 'converted',
@@ -107,8 +132,35 @@ class SelfRegistrationPromotionService
                 'enrolled_classes' => $enrolledClasses,
             ];
         } catch (\Throwable $e) {
-            $this->db->transRollback();
-            throw $e instanceof RuntimeException ? $e : new RuntimeException($e->getMessage(), 0, $e);
+            $errorDetails = [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'registration_id' => $registrationId,
+                'actor_id' => $actorId,
+            ];
+            
+            log_message('error', sprintf(
+                'SelfRegistrationPromotionService::promote - Error during promotion: %s',
+                json_encode($errorDetails, JSON_PRETTY_PRINT)
+            ));
+            
+            // Check if transaction is still active before rolling back
+            if ($this->db->transStatus() !== false) {
+                $this->db->transRollback();
+                log_message('debug', 'SelfRegistrationPromotionService::promote - Transaction rolled back');
+            }
+            
+            // Provide more detailed error message
+            $errorMessage = $e->getMessage();
+            if (strpos($errorMessage, 'getRowArray()') !== false) {
+                $errorMessage = 'Database query failed. Please check the logs for details.';
+            } elseif (strpos($errorMessage, 'create student user') !== false) {
+                $errorMessage = 'Failed to create student account. ' . $errorMessage;
+            }
+            
+            throw $e instanceof RuntimeException ? new RuntimeException($errorMessage, $e->getCode(), $e) : new RuntimeException($errorMessage, 0, $e);
         }
     }
 
@@ -119,22 +171,70 @@ class SelfRegistrationPromotionService
      */
     private function promoteStudent(array $registration, int $actorId, string $now): array
     {
+        $email = strtolower($registration['email'] ?? '');
+        $mobile = $registration['mobile'] ?? '';
+        
+        log_message('debug', sprintf(
+            'SelfRegistrationPromotionService::promoteStudent - Searching for existing student email=%s mobile=%s',
+            $email,
+            $mobile
+        ));
+        
         $student = $this->findStudent($registration);
 
         $studentCreated = false;
         $generatedPassword = null;
 
+        // Check if found user is actually a student (role_id = 5)
+        // If not, or if email doesn't match, create a new student
+        if ($student) {
+            $foundRoleId = (int) ($student['role_id'] ?? 0);
+            $foundEmail = strtolower($student['email_id'] ?? '');
+            $registrationEmail = strtolower($registration['email'] ?? '');
+            
+            // Only reuse if it's a student role AND email matches
+            if ($foundRoleId === 5 && $foundEmail === $registrationEmail) {
+                $userId = (int) $student['user_id'];
+                log_message('debug', sprintf(
+                    'SelfRegistrationPromotionService::promoteStudent - Found existing student user_id=%d, email=%s, role_id=%d',
+                    $userId,
+                    $foundEmail,
+                    $foundRoleId
+                ));
+                $this->ensureStudentSchoolMapping($student, (int) $registration['school_id'], $now);
+            } else {
+                // Found user but wrong role or email mismatch - create new student
+                log_message('debug', sprintf(
+                    'SelfRegistrationPromotionService::promoteStudent - Found user but wrong role (found=%d, required=5) or email mismatch (found=%s, required=%s). Creating new student.',
+                    $foundRoleId,
+                    $foundEmail,
+                    $registrationEmail
+                ));
+                $student = null; // Force creation of new student
+            }
+        }
+
         if (! $student) {
+            log_message('debug', 'SelfRegistrationPromotionService::promoteStudent - No existing student found, creating new user');
             $generatedPassword = $this->generatePassword();
             $userId = $this->createStudentUser($registration, $generatedPassword, $actorId, $now);
-            $student = $this->db->table('user')
+            log_message('debug', sprintf('SelfRegistrationPromotionService::promoteStudent - Created new student user_id=%d', $userId));
+            
+            $result = $this->db->table('user')
                 ->where('user_id', $userId)
-                ->get()
-                ->getRowArray();
+                ->get();
+            
+            if ($result === false || $result->getNumRows() === 0) {
+                throw new RuntimeException(sprintf('Failed to retrieve created student user_id=%d', $userId));
+            }
+            
+            $student = $result->getRowArray();
+            
+            if (empty($student)) {
+                throw new RuntimeException(sprintf('Failed to retrieve created student user_id=%d', $userId));
+            }
+            
             $studentCreated = true;
-        } else {
-            $userId = (int) $student['user_id'];
-            $this->ensureStudentSchoolMapping($student, (int) $registration['school_id'], $now);
         }
 
         $this->syncUserProfile($userId, $registration, $actorId, $now);
@@ -323,28 +423,42 @@ class SelfRegistrationPromotionService
      */
     private function getStudentSchoolId(int $studentUserId): ?int
     {
-        $student = $this->db->table('user')
+        $result = $this->db->table('user')
             ->select('school_id')
             ->where('user_id', $studentUserId)
-            ->get()
-            ->getRowArray();
+            ->get();
+        
+        if ($result === false || $result->getNumRows() === 0) {
+            return null;
+        }
+        
+        $student = $result->getRowArray();
 
-        if (!isset($student['school_id']) || $student['school_id'] === null || $student['school_id'] === '') {
+        if (empty($student) || empty($student['school_id'])) {
             return null;
         }
 
         $schoolId = $student['school_id'];
         
-        // Handle comma-separated school_id values (take the first one)
+        // Handle comma-separated list (take first school_id)
         if (is_string($schoolId) && strpos($schoolId, ',') !== false) {
-            $schoolId = trim(explode(',', $schoolId)[0]);
+            $schoolIds = explode(',', $schoolId);
+            $schoolId = trim($schoolIds[0] ?? '');
         }
         
-        // Convert to integer
-        $schoolIdInt = (int) $schoolId;
+        // Ensure we have a valid numeric value
+        if ($schoolId === '' || $schoolId === null) {
+            return null;
+        }
         
-        // Return null if conversion resulted in 0 (invalid)
-        return $schoolIdInt > 0 ? $schoolIdInt : null;
+        $intValue = (int) $schoolId;
+        
+        // Return null if conversion resulted in 0 and original wasn't numeric
+        if ($intValue === 0 && $schoolId !== '0' && $schoolId !== 0) {
+            return null;
+        }
+        
+        return $intValue;
     }
 
     /**
@@ -379,7 +493,7 @@ class SelfRegistrationPromotionService
                     ->where('id', (int) $course['approved_schedule_id'])
                     ->get();
                 
-                if ($result !== false) {
+                if ($result !== false && $result->getNumRows() > 0) {
                     $schedule = $result->getRowArray();
                 }
             }
@@ -391,7 +505,7 @@ class SelfRegistrationPromotionService
                     ->where('id', (int) $course['approved_schedule_id'])
                     ->get();
                 
-                if ($result !== false) {
+                if ($result !== false && $result->getNumRows() > 0) {
                     $schedule = $result->getRowArray();
                 }
             }
@@ -403,7 +517,7 @@ class SelfRegistrationPromotionService
                     ->where('class_id', (int) $course['approved_schedule_id'])
                     ->get();
                 
-                if ($result !== false) {
+                if ($result !== false && $result->getNumRows() > 0) {
                     $classRow = $result->getRowArray();
                     if ($classRow) {
                         $schedule = ['class_id' => $classRow['class_id']];
@@ -434,28 +548,32 @@ class SelfRegistrationPromotionService
         }
 
         if (!empty($course['approved_schedule_id'])) {
-            $schedule = $this->db->table('class_schedule')
+            $result = $this->db->table('class_schedule')
                 ->select('class_id')
                 ->where('id', (int) $course['approved_schedule_id'])
-                ->get()
-                ->getRowArray();
-
-            if (!empty($schedule['class_id'])) {
-                return (int) $schedule['class_id'];
+                ->get();
+            
+            if ($result !== false && $result->getNumRows() > 0) {
+                $schedule = $result->getRowArray();
+                if (!empty($schedule['class_id'])) {
+                    return (int) $schedule['class_id'];
+                }
             }
         }
 
         if (!empty($course['course_id'])) {
-            $class = $this->db->table('class')
+            $result = $this->db->table('class')
                 ->select('class_id')
                 ->where('course_id', (int) $course['course_id'])
                 ->orderBy('start_date', 'ASC')
                 ->limit(1)
-                ->get()
-                ->getRowArray();
-
-            if (!empty($class['class_id'])) {
-                return (int) $class['class_id'];
+                ->get();
+            
+            if ($result !== false && $result->getNumRows() > 0) {
+                $class = $result->getRowArray();
+                if (!empty($class['class_id'])) {
+                    return (int) $class['class_id'];
+                }
             }
         }
 
@@ -464,11 +582,17 @@ class SelfRegistrationPromotionService
 
     private function ensureStudentClassEnrollment(int $studentUserId, int $classId, int $actorId, string $now): bool
     {
-        $class = $this->db->table('class')
+        $result = $this->db->table('class')
             ->select('class_id, class_name, end_date, status')
             ->where('class_id', $classId)
-            ->get()
-            ->getRowArray();
+            ->get();
+        
+        if ($result === false || $result->getNumRows() === 0) {
+            log_message('warning', sprintf('[SelfRegistration] Class %d not found while enrolling student %d', $classId, $studentUserId));
+            return false;
+        }
+        
+        $class = $result->getRowArray();
 
         if (empty($class)) {
             log_message('warning', sprintf('[SelfRegistration] Class %d not found while enrolling student %d', $classId, $studentUserId));
@@ -479,11 +603,12 @@ class SelfRegistrationPromotionService
             ? $class['end_date']
             : '2099-12-31';
 
-        $existing = $this->db->table('student_class')
+        $result = $this->db->table('student_class')
             ->where('student_id', $studentUserId)
             ->where('class_id', $classId)
-            ->get()
-            ->getRowArray();
+            ->get();
+        
+        $existing = ($result !== false && $result->getNumRows() > 0) ? $result->getRowArray() : null;
 
         if ($existing) {
             $needsUpdate = ($existing['status'] ?? '0') !== '1';
@@ -518,18 +643,34 @@ class SelfRegistrationPromotionService
 
     private function findStudent(array $registration): ?array
     {
-        $email = strtolower($registration['email']);
-        $builder = $this->db->table('user');
-        $builder->select('*');
-        $builder->where('LOWER(email_id)', $email);
-        $existing = $builder->get()->getRowArray();
-
-        if ($existing) {
-            return $existing;
+        $email = strtolower($registration['email'] ?? '');
+        
+        // First, try to find by email (most reliable)
+        if (!empty($email)) {
+            $builder = $this->db->table('user');
+            $builder->select('*');
+            $builder->where('LOWER(email_id)', $email);
+            $result = $builder->get();
+            
+            if ($result !== false && $result->getNumRows() > 0) {
+                $existing = $result->getRowArray();
+                if ($existing) {
+                    log_message('debug', sprintf(
+                        'SelfRegistrationPromotionService::findStudent - Found existing user by email: user_id=%d, email=%s, role_id=%s',
+                        $existing['user_id'] ?? 'N/A',
+                        $existing['email_id'] ?? 'N/A',
+                        $existing['role_id'] ?? 'N/A'
+                    ));
+                    return $existing;
+                }
+            }
         }
 
+        // Only search by mobile if email didn't match AND we have mobile
+        // But we'll validate the role in promoteStudent
         $mobile = $this->normaliseDigits($registration['mobile'] ?? '');
         if ($mobile === '') {
+            log_message('debug', 'SelfRegistrationPromotionService::findStudent - No email or mobile provided, returning null');
             return null;
         }
 
@@ -540,35 +681,130 @@ class SelfRegistrationPromotionService
             ->orWhere('mobile', $mobile)
             ->groupEnd();
 
-        return $builder->get()->getRowArray() ?: null;
+        $result = $builder->get();
+        
+        if ($result !== false && $result->getNumRows() > 0) {
+            $existing = $result->getRowArray();
+            if ($existing) {
+                log_message('debug', sprintf(
+                    'SelfRegistrationPromotionService::findStudent - Found existing user by mobile: user_id=%d, mobile=%s, role_id=%s, email=%s',
+                    $existing['user_id'] ?? 'N/A',
+                    $existing['mobile'] ?? 'N/A',
+                    $existing['role_id'] ?? 'N/A',
+                    $existing['email_id'] ?? 'N/A'
+                ));
+                return $existing;
+            }
+        }
+        
+        log_message('debug', 'SelfRegistrationPromotionService::findStudent - No existing student found');
+        return null;
     }
 
     private function createStudentUser(array $registration, string $plainPassword, int $actorId, string $now): int
     {
         $passwordHash = md5($plainPassword);
         $schoolId = (int) $registration['school_id'];
+        $email = strtolower($registration['email'] ?? '');
+        $mobile = $this->normaliseDigits($registration['mobile'] ?? '');
 
-        $insert = $this->filterColumns('user', [
-            'email_id' => strtolower($registration['email']),
+        $insertData = [
+            'email_id' => $email,
             'password' => $passwordHash,
             'default_password' => $plainPassword,
             'role_id' => 5,
             'school_id' => (string) $schoolId,
             'status' => 1,
-            'mobile' => $this->normaliseDigits($registration['mobile'] ?? ''),
+            'mobile' => $mobile,
             'created_by' => $actorId,
             'created_date' => $now,
             'modified_date' => $now,
             'login_type' => 'WEB',
-        ]);
+        ];
 
-        $this->db->table('user')->insert($insert);
+        log_message('debug', sprintf(
+            'SelfRegistrationPromotionService::createStudentUser - Attempting to create user with email=%s, school_id=%d, role_id=5',
+            $email,
+            $schoolId
+        ));
 
-        if ((int) $this->db->affectedRows() <= 0) {
-            throw new RuntimeException('Unable to create student user');
+        $insert = $this->filterColumns('user', $insertData);
+        
+        log_message('debug', sprintf(
+            'SelfRegistrationPromotionService::createStudentUser - Original insert data: %s',
+            json_encode($insertData)
+        ));
+        
+        log_message('debug', sprintf(
+            'SelfRegistrationPromotionService::createStudentUser - Filtered insert data: %s',
+            json_encode($insert)
+        ));
+        
+        // Validate required fields are present
+        $requiredFields = ['email_id', 'password', 'role_id', 'school_id', 'status'];
+        $missingFields = [];
+        foreach ($requiredFields as $field) {
+            if (!isset($insert[$field]) || $insert[$field] === '') {
+                $missingFields[] = $field;
+            }
+        }
+        
+        if (!empty($missingFields)) {
+            log_message('error', sprintf(
+                'SelfRegistrationPromotionService::createStudentUser - Missing required fields: %s',
+                implode(', ', $missingFields)
+            ));
+            throw new RuntimeException('Missing required fields for student creation: ' . implode(', ', $missingFields));
         }
 
-        return (int) $this->db->insertID();
+        try {
+            $this->db->table('user')->insert($insert);
+            $insertId = (int) $this->db->insertID();
+            $affectedRows = (int) $this->db->affectedRows();
+
+            log_message('debug', sprintf(
+                'SelfRegistrationPromotionService::createStudentUser - Insert result: insertID=%d, affectedRows=%d',
+                $insertId,
+                $affectedRows
+            ));
+
+            if ($affectedRows <= 0 || $insertId <= 0) {
+                $error = $this->db->error();
+                log_message('error', sprintf(
+                    'SelfRegistrationPromotionService::createStudentUser - Failed to create user. Error: %s, Insert data: %s',
+                    json_encode($error),
+                    json_encode($insert)
+                ));
+                
+                // Check for specific database errors
+                $errorMessage = 'Unable to create student user';
+                if (!empty($error['message'])) {
+                    $errorMessage .= ': ' . $error['message'];
+                } elseif (!empty($error['code'])) {
+                    $errorMessage .= ' (Error code: ' . $error['code'] . ')';
+                } else {
+                    $errorMessage .= ': Unknown database error';
+                }
+                
+                throw new RuntimeException($errorMessage);
+            }
+            
+            log_message('info', sprintf(
+                'SelfRegistrationPromotionService::createStudentUser - Successfully created student user_id=%d, email=%s, school_id=%s',
+                $insertId,
+                $email,
+                $schoolId
+            ));
+
+            return $insertId;
+        } catch (\Exception $e) {
+            log_message('error', sprintf(
+                'SelfRegistrationPromotionService::createStudentUser - Exception during insert: %s, Trace: %s',
+                $e->getMessage(),
+                $e->getTraceAsString()
+            ));
+            throw new RuntimeException('Failed to create student user: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     private function ensureStudentSchoolMapping(array $student, int $schoolId, string $now): void
@@ -592,7 +828,8 @@ class SelfRegistrationPromotionService
     private function syncUserProfile(int $userId, array $registration, int $actorId, string $now): void
     {
         $builder = $this->db->table('user_profile');
-        $profile = $builder->where('user_id', $userId)->get()->getRowArray();
+        $result = $builder->where('user_id', $userId)->get();
+        $profile = ($result !== false && $result->getNumRows() > 0) ? $result->getRowArray() : null;
 
         [$firstName, $lastName] = $this->splitName(
             trim(($registration['student_first_name'] ?? '') . ' ' . ($registration['student_last_name'] ?? ''))
@@ -623,11 +860,12 @@ class SelfRegistrationPromotionService
 
     private function syncUserProfileDetails(int $userId, array $registration, int $actorId, string $now): void
     {
-        $details = $this->db->table('user_profile_details')
+        $result = $this->db->table('user_profile_details')
             ->where('user_id', $userId)
             ->where('school_id', (int) $registration['school_id'])
-            ->get()
-            ->getRowArray();
+            ->get();
+        
+        $details = ($result !== false && $result->getNumRows() > 0) ? $result->getRowArray() : null;
 
         $gradeId = isset($registration['grade_id']) ? (int) $registration['grade_id'] : 0;
         $data = $this->filterColumns('user_profile_details', [
@@ -711,7 +949,8 @@ class SelfRegistrationPromotionService
             $builder->where('first_name', $name);
         }
 
-        $existing = $builder->get()->getRowArray();
+        $result = $builder->get();
+        $existing = ($result !== false && $result->getNumRows() > 0) ? $result->getRowArray() : null;
 
         [$firstName, $lastName] = $this->splitName($name);
 
@@ -767,13 +1006,14 @@ class SelfRegistrationPromotionService
     private function linkGuardianToStudent(int $studentUserId, int $guardianId, bool $isPrimary, int $actorId, string $now): void
     {
         $builder = $this->db->table('student_guardians');
-        $builder->where('student_user_id', $studentUserId);
+        $builder->where('student_id', $studentUserId);
         $builder->where('guardian_id', $guardianId);
 
-        $existing = $builder->get()->getRowArray();
+        $result = $builder->get();
+        $existing = ($result !== false && $result->getNumRows() > 0) ? $result->getRowArray() : null;
 
         $payload = $this->filterColumns('student_guardians', [
-            'student_user_id' => $studentUserId,
+            'student_id' => $studentUserId,
             'guardian_id' => $guardianId,
             'is_primary' => $isPrimary ? 1 : 0,
             'relationship_override' => null,
@@ -782,7 +1022,7 @@ class SelfRegistrationPromotionService
         ]);
 
         if ($existing) {
-            unset($payload['student_user_id'], $payload['guardian_id'], $payload['created_at']);
+            unset($payload['student_id'], $payload['guardian_id'], $payload['created_at']);
             if (!empty($payload)) {
                 $this->db->table('student_guardians')
                     ->where('id', $existing['id'])
@@ -837,15 +1077,30 @@ class SelfRegistrationPromotionService
         $map = $this->getColumnMap($table);
 
         if (empty($map)) {
+            log_message('warning', sprintf(
+                'SelfRegistrationPromotionService::filterColumns - No column map for table %s, returning original data',
+                $table
+            ));
             return $data;
         }
 
         $filtered = [];
+        $filteredOut = [];
         foreach ($data as $key => $value) {
             $lookup = strtolower($key);
             if (isset($map[$lookup])) {
                 $filtered[$map[$lookup]] = $value;
+            } else {
+                $filteredOut[] = $key;
             }
+        }
+        
+        if (!empty($filteredOut)) {
+            log_message('debug', sprintf(
+                'SelfRegistrationPromotionService::filterColumns - Filtered out columns for table %s: %s',
+                $table,
+                implode(', ', $filteredOut)
+            ));
         }
 
         return $filtered;

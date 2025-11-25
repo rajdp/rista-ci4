@@ -470,12 +470,14 @@ class ContentModel extends BaseModel
                   COALESCE(c.allow_answer_key, '0') as allow_answer_key,
                   COALESCE(c.content_duration, '0') as content_duration,
                   COALESCE(c.total_questions, 0) as total_questions,
-                  COALESCE((SELECT GROUP_CONCAT(grade_name) FROM grade 
+                  COALESCE((SELECT GROUP_CONCAT(grade_name) FROM grade
                            WHERE FIND_IN_SET(grade_id, c.grade)), '') AS grade_name,
-                  COALESCE((SELECT GROUP_CONCAT(subject_name) FROM subject 
+                  COALESCE((SELECT GROUP_CONCAT(subject_name) FROM subject
                            WHERE FIND_IN_SET(subject_id, c.subject)), '') AS subject_name,
+                  COALESCE((SELECT GROUP_CONCAT(DISTINCT batch_id) FROM classroom_content
+                           WHERE content_id = c.content_id AND status = 1), '') AS batch_id,
                   $condition
-                  (SELECT CONCAT_WS(' ', first_name, last_name) FROM user_profile 
+                  (SELECT CONCAT_WS(' ', first_name, last_name) FROM user_profile
                   WHERE user_id = c.created_by) as created_by,
                   c.created_by, c.created_date
                   $notes $download $allowFeedback $allowWorkspace $showTimer
@@ -569,13 +571,25 @@ class ContentModel extends BaseModel
     public function checkBatchContent($batchId, $contentId)
     {
         $db = \Config\Database::connect();
-        
+
         return $db->table('classroom_content')
                   ->where('batch_id', $batchId)
                   ->where('content_id', $contentId)
                   ->where('status', 1)
                   ->get()
                   ->getResultArray();
+    }
+
+    /**
+     * Get batch details for content (GROUP_CONCAT of batch_ids)
+     */
+    public function batchDetail($contentId, $type = '')
+    {
+        $db = \Config\Database::connect();
+        $condition = $type != '' ? " AND status = 1" : "";
+
+        $query = $db->query("SELECT GROUP_CONCAT(batch_id) as batch_id FROM classroom_content WHERE content_id = {$contentId}{$condition}");
+        return $query->getResultArray();
     }
 
     /**

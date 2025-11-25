@@ -64,6 +64,27 @@ abstract class ApptController extends BaseController
 
     protected function jsonPayload(): array
     {
-        return $this->request->getJSON(true) ?? $this->request->getPost() ?? [];
+        // Try to get JSON payload first
+        $json = $this->request->getJSON(true);
+        if ($json !== null && is_array($json)) {
+            return $json;
+        }
+        
+        // Fall back to POST data
+        $post = $this->request->getPost();
+        if (!empty($post)) {
+            return $post;
+        }
+        
+        // Last resort: try to parse raw body as JSON
+        $rawBody = $this->request->getBody();
+        if (!empty($rawBody)) {
+            $decoded = json_decode($rawBody, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return $decoded;
+            }
+        }
+        
+        return [];
     }
 }

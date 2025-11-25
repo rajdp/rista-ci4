@@ -40,13 +40,42 @@ class PolicyService
 
     public function savePolicy(int $schoolId, array $policy): array
     {
-        $normalized = array_merge($this->defaultPolicy, array_intersect_key($policy, $this->defaultPolicy));
+        // Remove school_id from policy if present (it's not part of the policy data)
+        unset($policy['school_id']);
+        
+        // Normalize the policy: only keep keys that exist in defaultPolicy, and ensure proper types
+        $filtered = array_intersect_key($policy, $this->defaultPolicy);
+        $normalized = array_merge($this->defaultPolicy, $filtered);
+        
+        // Ensure numeric values are properly cast to integers
+        if (isset($normalized['lead_time_min'])) {
+            $normalized['lead_time_min'] = (int) $normalized['lead_time_min'];
+        }
+        if (isset($normalized['buffer_min'])) {
+            $normalized['buffer_min'] = (int) $normalized['buffer_min'];
+        }
+        if (isset($normalized['max_per_day'])) {
+            $normalized['max_per_day'] = (int) $normalized['max_per_day'];
+        }
+        
+        // Log what we're about to save for debugging
+        log_message('debug', sprintf('[AppointmentsPolicy] Saving policy for school %d: %s', $schoolId, json_encode($normalized)));
+        
+        // Save timezone separately if provided
         if (!empty($normalized['timezone'])) {
             $this->persistTimezoneSetting($schoolId, $normalized['timezone']);
         }
-        $this->persistPolicySetting($schoolId, $normalized);
+        
+        // Save policy without timezone (since it's stored separately and resolved dynamically)
+        $policyToSave = $normalized;
+        unset($policyToSave['timezone']);
+        $this->persistPolicySetting($schoolId, $policyToSave);
 
-        return $this->getPolicy($schoolId);
+        // Fetch the saved policy to return
+        $savedPolicy = $this->getPolicy($schoolId);
+        log_message('debug', sprintf('[AppointmentsPolicy] Retrieved policy for school %d: %s', $schoolId, json_encode($savedPolicy)));
+        
+        return $savedPolicy;
     }
 
     private function resolveTimezoneFromSettings(int $schoolId): ?string
@@ -117,16 +146,25 @@ class PolicyService
             ->getRowArray();
 
         if (empty($row['value'])) {
+            log_message('debug', sprintf('[AppointmentsPolicy] No stored policy found for school %d', $schoolId));
             return null;
         }
 
         $decoded = json_decode($row['value'], true);
-        return is_array($decoded) ? $decoded : null;
+        if (!is_array($decoded)) {
+            log_message('error', sprintf('[AppointmentsPolicy] Failed to decode policy JSON for school %d: %s', $schoolId, $row['value']));
+            return null;
+        }
+        
+        log_message('debug', sprintf('[AppointmentsPolicy] Fetched policy for school %d: %s', $schoolId, json_encode($decoded)));
+        return $decoded;
     }
 
     private function persistPolicySetting(int $schoolId, array $policy): void
     {
-        $this->upsertSetting($schoolId, 'appointments.policy', json_encode($policy), 'Serialized appointments policy');
+        $jsonValue = json_encode($policy, JSON_UNESCAPED_SLASHES);
+        log_message('debug', sprintf('[AppointmentsPolicy] Persisting policy JSON for school %d: %s', $schoolId, $jsonValue));
+        $this->upsertSetting($schoolId, 'appointments.policy', $jsonValue, 'Serialized appointments policy');
     }
 
     private function upsertSetting(int $schoolId, string $name, string $value, string $description = ''): void
@@ -150,13 +188,27 @@ class PolicyService
 
         $action = 'inserted';
         if ($existing) {
-            $builder->set($data)
+            // Create a fresh builder instance for update to avoid query state issues
+            $result = $this->db->table('admin_settings_school')
+                ->set($data)
                 ->where('id', $existing['id'])
                 ->update();
             $action = 'updated';
+            if (!$result) {
+                log_message('error', sprintf('[AppointmentsPolicy] Failed to update setting %s for school %d', $name, $schoolId));
+                throw new \RuntimeException("Failed to update setting: {$name}");
+            }
         } else {
             $data['sys_time'] = date('Y-m-d H:i:s');
-            $builder->insert($data);
+            // Create a fresh builder instance for insert to avoid query state issues
+            $result = $this->db->table('admin_settings_school')
+                ->insert($data);
+            if (!$result) {
+                $error = $this->db->error();
+                $errorMsg = is_array($error) && isset($error['message']) ? $error['message'] : 'Unknown error';
+                log_message('error', sprintf('[AppointmentsPolicy] Failed to insert setting %s for school %d. Error: %s', $name, $schoolId, $errorMsg));
+                throw new \RuntimeException("Failed to insert setting: {$name}");
+            }
         }
         $this->logSettingChange($schoolId, $name, $action);
     }

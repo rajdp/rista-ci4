@@ -93,7 +93,37 @@ class BookingsController extends ApptController
             return $this->errorResponse('Slot already booked. Please pick another time.', 409);
         }
 
-        $apptId = $this->bookingModel->insert($data, true);
+        try {
+            $apptId = $this->bookingModel->insert($data, true);
+        } catch (DatabaseException $e) {
+            $errorCode = (int) $e->getCode();
+            
+            // Handle duplicate entry error (1062) - likely a cancelled appointment slot
+            if ($errorCode === 1062 || strpos($e->getMessage(), 'Duplicate entry') !== false || strpos($e->getMessage(), 'ux_host_slot') !== false) {
+                // Try to reuse the cancelled slot
+                $apptId = $this->reuseCancelledSlot($data);
+                if ($apptId) {
+                    log_message('info', sprintf(
+                        'Booking reused cancelled slot (appt_id: %d, school_id: %d, admin_user_id: %d)',
+                        $apptId,
+                        $data['school_id'],
+                        $data['admin_user_id']
+                    ));
+                } else {
+                    // Couldn't reuse, return error
+                    return $this->errorResponse('Slot already booked. Please pick another time.', 409);
+                }
+            } else {
+                // Some other database error
+                log_message('error', sprintf(
+                    'Booking insert failed (school_id: %d, admin_user_id: %d): %s',
+                    $data['school_id'],
+                    $data['admin_user_id'],
+                    $e->getMessage()
+                ));
+                return $this->errorResponse('Unable to create appointment. Please try again.', 500);
+            }
+        }
 
         if (!empty($payload['invitee_email'])) {
             $this->guestModel->insert([
@@ -402,6 +432,9 @@ class BookingsController extends ApptController
     public function autoAssign(): ResponseInterface
     {
         $payload = $this->jsonPayload();
+        
+        // Log the received payload for debugging (without sensitive data)
+        log_message('debug', sprintf('[AutoAssign] Received payload: %s', json_encode(array_merge($payload, ['email' => isset($payload['email']) ? '[REDACTED]' : null]))));
 
         // Resolve school_id from school_key or direct school_id
         $schoolId = null;
@@ -430,8 +463,36 @@ class BookingsController extends ApptController
             return $this->errorResponse('start_at_iso and end_at_iso are required');
         }
 
-        $startUtc = date('Y-m-d H:i:s', strtotime($startAtIso));
-        $endUtc = date('Y-m-d H:i:s', strtotime($endAtIso));
+        // Validate and parse dates
+        try {
+            $fromDate = new \DateTimeImmutable($startAtIso);
+            $toDate = new \DateTimeImmutable($endAtIso);
+        } catch (\Exception $e) {
+            log_message('error', sprintf('Invalid date format in auto-assign: start=%s, end=%s, error=%s', $startAtIso, $endAtIso, $e->getMessage()));
+            return $this->errorResponse('Invalid date format. Please provide dates in ISO 8601 format (e.g., 2024-01-15T10:00:00Z)');
+        }
+
+        // Validate that start is before end
+        if ($fromDate >= $toDate) {
+            return $this->errorResponse('start_at_iso must be before end_at_iso');
+        }
+
+        // Validate location_type if provided
+        $validLocationTypes = ['video', 'phone', 'in_person'];
+        $locationType = $payload['location_type'] ?? 'video';
+        if (!in_array($locationType, $validLocationTypes, true)) {
+            return $this->errorResponse('Invalid location_type. Must be one of: ' . implode(', ', $validLocationTypes));
+        }
+
+        // Validate created_by if provided
+        $validCreatedBy = ['student', 'parent', 'admin'];
+        $createdBy = $payload['created_by'] ?? 'student';
+        if (!in_array($createdBy, $validCreatedBy, true)) {
+            return $this->errorResponse('Invalid created_by. Must be one of: ' . implode(', ', $validCreatedBy));
+        }
+
+        $startUtc = $fromDate->format('Y-m-d H:i:s');
+        $endUtc = $toDate->format('Y-m-d H:i:s');
 
         // Get all active staff for this school
         $hosts = $this->loadHosts($schoolId);
@@ -443,8 +504,6 @@ class BookingsController extends ApptController
         // Try to find an available staff member
         $slotGenerator = service('slotgenerator');
         $policy = $this->policyService->getPolicy($schoolId);
-        $fromDate = new \DateTimeImmutable($startAtIso);
-        $toDate = new \DateTimeImmutable($endAtIso);
 
         // Calculate duration in minutes
         $duration = (int) (($toDate->getTimestamp() - $fromDate->getTimestamp()) / 60);
@@ -470,17 +529,25 @@ class BookingsController extends ApptController
 
                 // Check if the requested time slot is in the available slots
                 foreach ($slots as $slot) {
-                    if ($slot['start'] === $startAtIso && $slot['end'] === $endAtIso) {
+                    // Compare dates more flexibly by parsing them
+                    try {
+                        $slotStart = new \DateTimeImmutable($slot['start']);
+                        $slotEnd = new \DateTimeImmutable($slot['end']);
+                        // Allow 1 minute tolerance for timezone/format differences
+                        $startDiff = abs($slotStart->getTimestamp() - $fromDate->getTimestamp());
+                        $endDiff = abs($slotEnd->getTimestamp() - $toDate->getTimestamp());
+                        
+                        if ($startDiff <= 60 && $endDiff <= 60) {
                         $data = [
                             'school_id' => $schoolId,
                             'admin_user_id' => $adminUserId,
-                            'created_by' => $payload['created_by'] ?? 'student',
+                            'created_by' => $createdBy,
                             'student_id' => $payload['student_id'] ?? null,
                             'parent_id' => $payload['parent_id'] ?? null,
                             'title' => $payload['title'] ?? 'Appointment',
                             'topic' => $payload['topic'] ?? null,
                             'note' => $payload['note'] ?? null,
-                            'location_type' => $payload['location_type'] ?? 'video',
+                            'location_type' => $locationType,
                             'location_details' => $payload['location_details'] ?? null,
                             'start_at_utc' => $startUtc,
                             'end_at_utc' => $endUtc,
@@ -537,7 +604,7 @@ class BookingsController extends ApptController
                                 'appt_id' => $apptId,
                                 'email' => $payload['invitee_email'],
                                 'name' => $payload['invitee_name'] ?? null,
-                                'role' => $payload['created_by'] ?? 'other',
+                                'role' => $createdBy === 'admin' ? 'other' : $createdBy,
                             ]);
                         }
 
@@ -548,7 +615,7 @@ class BookingsController extends ApptController
                                 'email' => $payload['email'],
                                 'name' => $payload['name'] ?? null,
                                 'mobile' => $payload['mobile'] ?? null,
-                                'role' => $payload['created_by'] ?? 'student',
+                                'role' => $createdBy === 'admin' ? 'student' : $createdBy,
                             ]);
                         }
 
@@ -561,6 +628,11 @@ class BookingsController extends ApptController
                             'message' => 'Appointment booked successfully',
                             'ics' => base64_encode($ics),
                         ], 'Appointment booked');
+                        }
+                    } catch (\Exception $e) {
+                        // Skip this slot if date parsing fails
+                        log_message('debug', sprintf('Skipping slot due to date parse error: %s', $e->getMessage()));
+                        continue;
                     }
                 }
             } catch (\Throwable $e) {
@@ -728,6 +800,7 @@ class BookingsController extends ApptController
             $updateData = $data;
             unset($updateData['school_id'], $updateData['admin_user_id'], $updateData['start_at_utc'], $updateData['end_at_utc']);
             $updateData['status'] = 'confirmed';
+            $updateData['cancel_reason'] = null; // Clear cancellation reason
             $this->bookingModel->update($apptId, $updateData);
             return $apptId;
         }

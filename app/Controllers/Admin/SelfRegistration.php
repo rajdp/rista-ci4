@@ -898,8 +898,13 @@ class SelfRegistration extends BaseController
                 return $this->unauthorizedResponse('Access token required');
             }
 
-            $schoolId = $this->getSchoolId($token);
-            $users = $this->selfRegistrationModel->getAssignableUsers($schoolId ? (int) $schoolId : null);
+            // Get school_id from payload if provided, otherwise from token
+            $payload = (array) ($this->request->getJSON() ?? []);
+            $schoolId = isset($payload['school_id']) && $payload['school_id'] > 0
+                ? (int) $payload['school_id']
+                : ($this->getSchoolId($token) ? (int) $this->getSchoolId($token) : null);
+            
+            $users = $this->selfRegistrationModel->getAssignableUsers($schoolId);
 
             $response = array_map(function (array $user): array {
                 $roleId = (int) ($user['role_id'] ?? 0);
@@ -911,6 +916,7 @@ class SelfRegistration extends BaseController
                     'role_label' => $roleLabel,
                     'name' => $user['name'],
                     'email' => $user['email'],
+                    'school_id' => $user['school_id'] ?? null,
                 ];
             }, $users);
 
@@ -1003,10 +1009,31 @@ class SelfRegistration extends BaseController
 
             return $this->successResponse($result, 'Registration converted successfully');
         } catch (RuntimeException $e) {
+            log_message('error', sprintf(
+                'SelfRegistration::promote - RuntimeException: %s, Trace: %s',
+                $e->getMessage(),
+                $e->getTraceAsString()
+            ));
             return $this->errorResponse($e->getMessage());
         } catch (\Throwable $e) {
-            log_message('error', 'SelfRegistration::promote - ' . $e->getMessage());
-            return $this->errorResponse('Unable to convert registration');
+            log_message('error', sprintf(
+                'SelfRegistration::promote - Throwable: %s, File: %s, Line: %d, Trace: %s',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine(),
+                $e->getTraceAsString()
+            ));
+            
+            // Provide more helpful error message
+            $errorMessage = 'Unable to convert registration';
+            if (strpos($e->getMessage(), 'create student user') !== false || 
+                strpos($e->getMessage(), 'Failed to create') !== false) {
+                $errorMessage = $e->getMessage();
+            } elseif (strpos($e->getMessage(), 'getRowArray()') !== false) {
+                $errorMessage = 'Database error occurred during conversion. Please check the logs.';
+            }
+            
+            return $this->errorResponse($errorMessage);
         }
     }
 
@@ -1834,28 +1861,54 @@ class SelfRegistration extends BaseController
             return false;
         }
 
+        // If no school_id restriction, allow access (super admin or system-level access)
         if ($schoolId <= 0) {
             return true;
         }
 
         $db = Database::connect();
-        $row = $db->table('user')
+        $result = $db->table('user')
             ->select('school_id')
             ->where('user_id', $studentId)
-            ->get()
-            ->getRowArray();
+            ->get();
 
+        // Check if query succeeded and has results
+        if ($result === false || $result->getNumRows() === 0) {
+            log_message('warning', sprintf(
+                'SelfRegistration::canAccessStudent - Student %d not found or query failed',
+                $studentId
+            ));
+            return false;
+        }
+
+        $row = $result->getRowArray();
         if (!$row) {
             return false;
         }
 
         $schoolField = (string) ($row['school_id'] ?? '');
         if ($schoolField === '') {
+            log_message('warning', sprintf(
+                'SelfRegistration::canAccessStudent - Student %d has no school_id',
+                $studentId
+            ));
             return false;
         }
 
+        // Handle comma-separated school_ids
         $schools = array_filter(array_map('trim', explode(',', $schoolField)));
-        return in_array((string) $schoolId, $schools, true);
+        $hasAccess = in_array((string) $schoolId, $schools, true);
+        
+        if (!$hasAccess) {
+            log_message('debug', sprintf(
+                'SelfRegistration::canAccessStudent - Student %d school_ids [%s] does not include requested school_id %d',
+                $studentId,
+                implode(',', $schools),
+                $schoolId
+            ));
+        }
+        
+        return $hasAccess;
     }
 
     private function resolveUserName(int $userId): string

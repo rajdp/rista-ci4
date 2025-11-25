@@ -141,7 +141,9 @@ class Content extends ResourceController
             }
 
             $contentList = $this->contentModel->contentIdList($params);
-            
+
+            log_message('debug', '🔍 [CONTENT DETAIL] Raw batch_id from contentIdList: ' . json_encode($contentList['batch_id'] ?? 'NOT SET'));
+
             if ($contentList) {
                 // Process file paths
                 if (!empty($contentList['file_path']) && $contentList['file_path'] != '[]') {
@@ -197,7 +199,15 @@ class Content extends ResourceController
                 } else {
                     $contentList['subject'] = [];
                 }
-                
+
+                // Process batch_id
+                if (!empty($contentList['batch_id'])) {
+                    $batchIds = explode(',', $contentList['batch_id']);
+                    $contentList['batch_id'] = array_map('strval', array_filter($batchIds));
+                } else {
+                    $contentList['batch_id'] = [];
+                }
+
                 // Get answers for the content
                 log_message('debug', '🔍 [CONTENT DETAIL] Loading answers for content_id: ' . ($params['content_id'] ?? 'NOT SET'));
                 $answers = $this->contentModel->answerList($params);
@@ -2298,10 +2308,89 @@ class Content extends ResourceController
             $result = $builder->update($updateData);
 
             if ($result) {
+                $batchDebug = [];
+
+                // Update classroom_content if batch_id is provided (matching legacy behavior)
+                try {
+                    $batchDebug['isset'] = isset($params['batch_id']) ? 'YES' : 'NO';
+                    $batchDebug['value'] = $params['batch_id'] ?? 'NOT SET';
+                    $batchDebug['is_array'] = is_array($params['batch_id']) ? 'YES' : 'NO';
+
+                    if (isset($params['batch_id']) && $params['batch_id'] != '') {
+                    // Get existing batch_ids
+                    $getBatchId = $this->contentModel->batchDetail($params['content_id'], '');
+                    $existingBatchIds = !empty($getBatchId[0]['batch_id']) ? explode(',', $getBatchId[0]['batch_id']) : [];
+                    log_message('debug', '🔄 [UPDATE CONTENT] Existing batch_ids: ' . json_encode($existingBatchIds));
+
+                    // Handle batch_id - can be array or single value
+                    $newBatchIds = is_array($params['batch_id']) ? $params['batch_id'] : [$params['batch_id']];
+                    $newBatchIds = array_filter($newBatchIds); // Remove empty values
+                    log_message('debug', '🔄 [UPDATE CONTENT] New batch_ids: ' . json_encode($newBatchIds));
+
+                    // Find batches that were removed (set status = 2)
+                    $removedBatches = array_diff($existingBatchIds, $newBatchIds);
+                    log_message('debug', '🔄 [UPDATE CONTENT] Removed batch_ids: ' . json_encode($removedBatches));
+
+                    if (count($removedBatches) > 0) {
+                        foreach ($removedBatches as $batchId) {
+                            $db->table('classroom_content')
+                                ->where('content_id', $params['content_id'])
+                                ->where('batch_id', $batchId)
+                                ->update(['status' => 2]);
+                        }
+                    }
+
+                    // Process new batch_ids
+                    $classroomContent = [];
+                    foreach ($newBatchIds as $batchId) {
+                        if (empty($batchId)) continue;
+
+                        // Check if batch content already exists
+                        $existing = $this->contentModel->checkBatchContent($batchId, $params['content_id']);
+
+                        if (empty($existing)) {
+                            // Insert new record
+                            $classroomContent[] = [
+                                'batch_id' => $batchId,
+                                'school_id' => $params['school_id'] ?? null,
+                                'content_id' => $params['content_id'],
+                                'status' => 1,
+                                'start_time' => '00:00:00',
+                                'end_time' => '23:59:00',
+                                'created_by' => $params['user_id'] ?? null,
+                                'created_date' => date('Y-m-d H:i:s')
+                            ];
+                        } else {
+                            // Reactivate existing record
+                            $db->table('classroom_content')
+                                ->where('content_id', $params['content_id'])
+                                ->where('batch_id', $batchId)
+                                ->update(['status' => 1]);
+                        }
+                    }
+
+                        // Bulk insert new records
+                        if (count($classroomContent) > 0) {
+                            $batchDebug['inserting_count'] = count($classroomContent);
+                            $batchDebug['records'] = $classroomContent;
+                            $insertResult = $db->table('classroom_content')->insertBatch($classroomContent);
+                            $batchDebug['insert_result'] = $insertResult;
+                        } else {
+                            $batchDebug['no_new_records'] = true;
+                        }
+                    } else {
+                        $batchDebug['condition_failed'] = 'batch_id not set or empty';
+                    }
+                } catch (\Exception $e) {
+                    $batchDebug['error'] = $e->getMessage();
+                    $batchDebug['trace'] = $e->getTraceAsString();
+                }
+
                 return $this->respond([
                     'IsSuccess' => true,
                     'ResponseObject' => 'Content updated successfully',
-                    'ErrorObject' => ''
+                    'ErrorObject' => '',
+                    'BatchDebug' => $batchDebug
                 ]);
             } else {
                 return $this->respond([

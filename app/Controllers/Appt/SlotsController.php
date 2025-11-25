@@ -122,10 +122,15 @@ class SlotsController extends ApptController
                             $allSlots[$key] = [
                                 'start' => $slot['start'],
                                 'end' => $slot['end'],
-                                'available_staff' => 0
+                                'available_staff' => 0,
+                                'hosts' => []
                             ];
                         }
                         $allSlots[$key]['available_staff']++;
+                        $allSlots[$key]['hosts'][] = [
+                            'admin_user_id' => $adminUserId,
+                            'host_name' => $host['display_name'] ?? 'Unknown'
+                        ];
                     }
                 } catch (\Throwable $e) {
                     // Skip this staff member if their slots can't be generated

@@ -1,0 +1,1104 @@
+DEBUG - 2025-11-24 20:37:29 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:37:29 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:37:29 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 20:37:29 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:37:29 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:39:27 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:39:27 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:39:27 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 20:39:27 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:39:27 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:39:27 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:39:28 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:39:37 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:39:37 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:39:37 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 20:39:38 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:39:38 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:39:38 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:39:39 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:39:39 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:39:39 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:39:39 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:39:39 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:39:39 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:39:39 --> Class list results count: 1
+DEBUG - 2025-11-24 20:39:39 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:39:39 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:39:39 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:39:39 --> Class list results count: 1
+DEBUG - 2025-11-24 20:39:39 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:39:41 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:39:50 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:39:50 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:39:50 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 20:39:50 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:39:50 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:39:50 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:39:50 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:39:50 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:39:51 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:39:51 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:39:51 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:39:51 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:39:51 --> Class list results count: 1
+DEBUG - 2025-11-24 20:39:51 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:39:51 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:39:51 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:39:51 --> Class list results count: 1
+DEBUG - 2025-11-24 20:39:51 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:39:55 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:39:55 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:39:55 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 20:39:55 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:39:55 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:39:56 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:39:56 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:39:56 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:39:57 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:39:57 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:39:57 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:39:57 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:39:57 --> Class list results count: 1
+DEBUG - 2025-11-24 20:39:57 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:39:57 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:39:57 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:39:57 --> Class list results count: 1
+DEBUG - 2025-11-24 20:39:57 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:40:00 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:40:06 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:40:11 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:48:33 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:48:38 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:48:39 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:48:39 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:48:39 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 20:48:40 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:48:40 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:48:40 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:48:41 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:49:52 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:49:52 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:49:52 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:49:53 --> [AppointmentsPolicy] No stored policy found for school 59
+WARNING - 2025-11-24 20:49:53 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:49:53 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:49:54 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:49:54 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:49:54 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:49:54 --> [AppointmentsPolicy] No stored policy found for school 59
+WARNING - 2025-11-24 20:49:54 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:49:54 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:50:01 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:50:01 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:50:01 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:50:01 --> [AppointmentsPolicy] No stored policy found for school 59
+WARNING - 2025-11-24 20:50:01 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:50:01 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:50:02 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:50:02 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:50:02 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 20:50:02 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:50:02 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:50:02 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:50:05 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:50:05 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:50:05 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 20:50:05 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:50:05 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:50:05 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:50:06 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:50:06 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:50:06 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 20:50:06 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:50:06 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:50:06 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:50:45 --> SelfRegistration::mapCourseSelections - course_id=61, schedule_id=1374 (raw=1374), course_name=English Speaking
+DEBUG - 2025-11-24 20:50:45 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:50:46 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:50:48 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:50:50 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 20:53:22 --> AuthFilter: Route = api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+DEBUG - 2025-11-24 20:53:22 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:53:22 --> AuthFilter: Token validated successfully for route: api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+DEBUG - 2025-11-24 20:53:23 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:53:23 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:53:24 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:53:24 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:53:24 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:53:24 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:53:24 --> Class list results count: 1
+DEBUG - 2025-11-24 20:53:24 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:53:24 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:53:24 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:53:24 --> Class list results count: 1
+DEBUG - 2025-11-24 20:53:24 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:53:24 --> 🔍 PAGINATION - Content::sortMaster received params: page_no=1, records_per_page=10
+DEBUG - 2025-11-24 20:53:24 --> 🔍 PAGINATION - All params: {"platform":"web","role_id":"2","user_id":"2478","school_id":"59","sort_by":"0","content_user_id":"0","type":"list","page_no":1,"records_per_page":10,"library":"0","tags":[],"grade":[],"subject":[],"exact_search":0,"search_name":"","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:53:24 --> 🔍 PAGINATION - Backend applying LIMIT: records=10, offset=0, page=1
+DEBUG - 2025-11-24 20:53:24 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:53:24 --> Class list params: {"platform":"web","type":"5","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:53:24 --> 📦 PAGINATION - Backend returning 6 records
+DEBUG - 2025-11-24 20:53:24 --> Class list results count: 1
+DEBUG - 2025-11-24 20:53:24 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:53:24 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:53:24 --> Class list params: {"platform":"web","type":"5","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:53:24 --> Class list results count: 1
+DEBUG - 2025-11-24 20:53:24 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:53:24 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:53:24 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:53:24 --> AuthFilter: Route = user/getUserDetail/\App\Controllers\User::getUserDetail
+DEBUG - 2025-11-24 20:53:24 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:53:24 --> AuthFilter: Token validated successfully for route: user/getUserDetail/\App\Controllers\User::getUserDetail
+DEBUG - 2025-11-24 20:53:27 --> AuthFilter: Route = availability/admin-view/\App\Controllers\Availability::adminView
+DEBUG - 2025-11-24 20:53:27 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:53:27 --> AuthFilter: Token validated successfully for route: availability/admin-view/\App\Controllers\Availability::adminView
+DEBUG - 2025-11-24 20:54:07 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:54:07 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:54:07 --> AuthFilter: Route = availability/admin-view/\App\Controllers\Availability::adminView
+DEBUG - 2025-11-24 20:54:07 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:54:07 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:54:07 --> AuthFilter: Token validated successfully for route: availability/admin-view/\App\Controllers\Availability::adminView
+WARNING - 2025-11-24 20:54:07 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:54:07 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:54:08 --> AuthFilter: Route = api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+DEBUG - 2025-11-24 20:54:08 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:54:08 --> AuthFilter: Token validated successfully for route: api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+DEBUG - 2025-11-24 20:54:31 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:54:31 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:54:31 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:54:31 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:54:31 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:54:31 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:54:31 --> Class list results count: 1
+DEBUG - 2025-11-24 20:54:31 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:54:31 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:54:31 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:54:31 --> Class list results count: 1
+DEBUG - 2025-11-24 20:54:31 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-04-25","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:54:33 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:54:33 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+WARNING - 2025-11-24 20:54:34 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:54:34 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:54:34 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:54:34 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:54:39 --> AuthFilter: Route = classes/updateClass/\App\Controllers\Classes::updateClass
+DEBUG - 2025-11-24 20:54:39 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:54:39 --> AuthFilter: Token validated successfully for route: classes/updateClass/\App\Controllers\Classes::updateClass
+DEBUG - 2025-11-24 20:54:40 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:54:40 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:54:40 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:54:40 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:54:40 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:54:40 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:54:40 --> Class list results count: 1
+DEBUG - 2025-11-24 20:54:40 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-05-02","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:54:40 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:54:40 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:54:40 --> Class list results count: 1
+DEBUG - 2025-11-24 20:54:40 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-05-02","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:54:42 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+WARNING - 2025-11-24 20:54:42 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:54:42 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 20:54:42 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:54:42 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:54:42 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:54:43 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:54:43 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:54:43 --> 🔍 ClassesModel::getTeacherList query: SELECT DISTINCT u.user_id AS teacher_id, 
+                    CONCAT_WS(' ', up.first_name, up.last_name) AS teacher_name,
+                    up.profile_url
+                    FROM user u
+                    INNER JOIN user_profile up ON u.user_id = up.user_id
+                    WHERE u.role_id = 4 
+                    AND u.school_id = ? 
+                    AND u.status = 1
+                    ORDER BY up.first_name with school_id: 59
+DEBUG - 2025-11-24 20:54:43 --> ✅ ClassesModel::getTeacherList found 1 teachers for school_id: 59
+DEBUG - 2025-11-24 20:54:43 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:54:43 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:54:43 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+AND `c`.`start_date` <= '2025-11-24'
+AND `c`.`end_date` >= '2025-11-24'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 20:54:43 --> Class list params: {"platform":"web","type":"3","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","grade":[],"subject":[],"classroom":"","page_no":1,"records_per_page":"10","search":"","student_search":"","course_id":[],"day_filter":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 20:54:43 --> Class list results count: 1
+DEBUG - 2025-11-24 20:54:43 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-05-02","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:54:43 --> Class list results count: 1
+DEBUG - 2025-11-24 20:54:43 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-05-02","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"3","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 20:57:16 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:57:16 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:57:16 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 20:57:16 --> AuthFilter: Route = admin/self-registration/list/\App\Controllers\Admin\SelfRegistration::list
+DEBUG - 2025-11-24 20:57:16 --> AuthFilter: Route = admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 20:57:16 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:57:16 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 20:57:16 --> AuthFilter: Token validated successfully for route: admin/self-registration/list/\App\Controllers\Admin\SelfRegistration::list
+DEBUG - 2025-11-24 20:57:16 --> AuthFilter: Token validated successfully for route: admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+WARNING - 2025-11-24 20:57:16 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 20:57:16 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 21:42:13 --> SelfRegistration::mapCourseSelections - course_id=61, schedule_id=1374 (raw=1374), course_name=English Speaking
+DEBUG - 2025-11-24 21:42:13 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:42:13 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:42:14 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:42:16 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:42:18 --> [AutoAssign] Received payload: {"topic":"Registration follow-up","location_type":"video","location_details":"","name":"Ravil Tejl","email":"[REDACTED]","mobile":"1231231233","school_id":59,"school_key":"ccls","start_at_iso":"2025-11-25T14:00:00+00:00","end_at_iso":"2025-11-25T14:30:00+00:00","duration_min":30,"created_by":"student","title":"Registration follow-up","note":"Registration follow-up","invitee_email":"ravitel@g.com","invitee_name":"Ravil Tejl","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 21:45:15 --> SelfRegistration::mapCourseSelections - course_id=61, schedule_id=1374 (raw=1374), course_name=English Speaking
+DEBUG - 2025-11-24 21:45:16 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:45:16 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:45:17 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:45:19 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:45:22 --> [AutoAssign] Received payload: {"topic":"Registration follow-up","location_type":"video","location_details":"","name":"Push pa","email":"[REDACTED]","mobile":"12312333","school_id":59,"school_key":"ccls","start_at_iso":"2025-11-25T17:00:00+00:00","end_at_iso":"2025-11-25T17:30:00+00:00","duration_min":30,"created_by":"student","title":"Registration follow-up","note":"Registration follow-up","invitee_email":"pushpa@g.com","invitee_name":"Push pa","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 21:46:59 --> [AutoAssign] Received payload: {"topic":"Registration follow-up","location_type":"video","location_details":"","name":"Push pa","email":"[REDACTED]","mobile":"12312333","school_id":59,"school_key":"ccls","start_at_iso":"2025-11-25T17:00:00+00:00","end_at_iso":"2025-11-25T17:30:00+00:00","duration_min":30,"created_by":"student","title":"Registration follow-up","note":"Registration follow-up","invitee_email":"pushpa@g.com","invitee_name":"Push pa","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 21:52:35 --> [AutoAssign] Received payload keys: ["topic","location_type","location_details","name","email","mobile","school_id","school_key","start_at_iso","end_at_iso","duration_min","created_by","title","note","invitee_email","invitee_name","timezone"]
+DEBUG - 2025-11-24 21:52:35 --> [AutoAssign] school_id: 59, school_key: ccls
+DEBUG - 2025-11-24 21:52:35 --> [AutoAssign] Using school_id from payload: 59
+DEBUG - 2025-11-24 21:52:35 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:54:13 --> AuthFilter: Route = api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+DEBUG - 2025-11-24 21:54:13 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:13 --> AuthFilter: Token timestamp validation failed
+DEBUG - 2025-11-24 21:54:13 --> AuthFilter: Route = api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+DEBUG - 2025-11-24 21:54:13 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:13 --> AuthFilter: Token validated successfully for route: api/dashboard/\App\Controllers\Admin\Dashboard::getDashboard
+WARNING - 2025-11-24 21:54:22 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 21:54:22 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 21:54:22 --> [AppointmentsPolicy] No stored policy found for school 59
+DEBUG - 2025-11-24 21:54:22 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 21:54:22 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:22 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Route = admin/self-registration/list/\App\Controllers\Admin\SelfRegistration::list
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Route = admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token validated successfully for route: admin/self-registration/list/\App\Controllers\Admin\SelfRegistration::list
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token validated successfully for route: admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Route = admin/self-registration/detail/\App\Controllers\Admin\SelfRegistration::detail
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token validated successfully for route: admin/self-registration/detail/\App\Controllers\Admin\SelfRegistration::detail
+DEBUG - 2025-11-24 21:54:33 --> SelfRegistrationModel::getRegistrationWithRelations - registration_id=26, courses_count=1, schedule_ids=["1374"]
+DEBUG - 2025-11-24 21:54:33 --> SelfRegistrationModel::enrichCourseSelections - course_id=61, original_schedule_id=1374, approved_schedule_id=null, selected_schedule_id=1374
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Route = admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token validated successfully for route: admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Route = admin/student-courses/fee-preview/\App\Controllers\Admin\StudentCourses::feePreview
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Route = admin/self-registration/attribute-config/load/\App\Controllers\Admin\SelfRegistrationAttributeConfig::load
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token validated successfully for route: admin/student-courses/fee-preview/\App\Controllers\Admin\StudentCourses::feePreview
+DEBUG - 2025-11-24 21:54:33 --> AuthFilter: Token validated successfully for route: admin/self-registration/attribute-config/load/\App\Controllers\Admin\SelfRegistrationAttributeConfig::load
+DEBUG - 2025-11-24 21:54:33 --> CourseFeePlanModel::getFeeForCourse - course_id=61, school_id=59, fee_term=2, billing_cycle_days=30
+DEBUG - 2025-11-24 21:54:37 --> AuthFilter: Route = admin/self-registration/detail/\App\Controllers\Admin\SelfRegistration::detail
+DEBUG - 2025-11-24 21:54:37 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:37 --> AuthFilter: Token validated successfully for route: admin/self-registration/detail/\App\Controllers\Admin\SelfRegistration::detail
+DEBUG - 2025-11-24 21:54:37 --> SelfRegistrationModel::getRegistrationWithRelations - registration_id=26, courses_count=1, schedule_ids=["1374"]
+DEBUG - 2025-11-24 21:54:37 --> SelfRegistrationModel::enrichCourseSelections - course_id=61, original_schedule_id=1374, approved_schedule_id=null, selected_schedule_id=1374
+DEBUG - 2025-11-24 21:54:37 --> AuthFilter: Route = admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 21:54:37 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:37 --> AuthFilter: Token validated successfully for route: admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 21:54:47 --> AuthFilter: Route = admin/self-registration/course-decisions/\App\Controllers\Admin\SelfRegistration::updateCourseDecisions
+DEBUG - 2025-11-24 21:54:47 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:47 --> AuthFilter: Token validated successfully for route: admin/self-registration/course-decisions/\App\Controllers\Admin\SelfRegistration::updateCourseDecisions
+DEBUG - 2025-11-24 21:54:47 --> SelfRegistrationModel::getRegistrationWithRelations - registration_id=26, courses_count=1, schedule_ids=["1374"]
+DEBUG - 2025-11-24 21:54:47 --> SelfRegistrationModel::enrichCourseSelections - course_id=61, original_schedule_id=1374, approved_schedule_id=null, selected_schedule_id=1374
+DEBUG - 2025-11-24 21:54:47 --> SelfRegistration::updateCourseDecisions registration_id=26 incoming_decisions=[{"registration_course_id":"29","course_id":"61","decision_status":"approved","approved_schedule_id":1374,"approved_fee_amount":500,"decision_notes":null,"approved_schedule_title":null,"approved_schedule_start":null,"approved_schedule_end":null,"start_date":"2025-11-24","fee_term":"1","next_billing_date":null,"deposit":null,"onboarding_fee":null,"registration_fee":null,"prorated_fee":null,"class_id":null}] course_ids=["29"]
+DEBUG - 2025-11-24 21:54:47 --> SelfRegistration::prepareCourseDecisions - available row ids=[29]
+DEBUG - 2025-11-24 21:54:47 --> SelfRegistration::prepareCourseDecisions - evaluating decision={"registration_course_id":"29","course_id":"61","decision_status":"approved","approved_schedule_id":1374,"approved_fee_amount":500,"decision_notes":null,"approved_schedule_title":null,"approved_schedule_start":null,"approved_schedule_end":null,"start_date":"2025-11-24","fee_term":"1","next_billing_date":null,"deposit":null,"onboarding_fee":null,"registration_fee":null,"prorated_fee":null,"class_id":null} resolved_row_id=29
+DEBUG - 2025-11-24 21:54:47 --> SelfRegistrationModel::getRegistrationWithRelations - registration_id=26, courses_count=1, schedule_ids=["1374"]
+DEBUG - 2025-11-24 21:54:47 --> SelfRegistrationModel::enrichCourseSelections - course_id=61, original_schedule_id=1374, approved_schedule_id=1374, selected_schedule_id=1374
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Route = admin/self-registration/promote/\App\Controllers\Admin\SelfRegistration::promote
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token validated successfully for route: admin/self-registration/promote/\App\Controllers\Admin\SelfRegistration::promote
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationModel::getRegistrationWithRelations - registration_id=26, courses_count=1, schedule_ids=["1374"]
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationModel::enrichCourseSelections - course_id=61, original_schedule_id=1374, approved_schedule_id=1374, selected_schedule_id=1374
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistration::prepareCourseDecisions - available row ids=[29]
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistration::prepareCourseDecisions - evaluating decision={"registration_course_id":"29","course_id":"61","decision_status":"approved","approved_schedule_id":1374,"approved_fee_amount":500,"decision_notes":null,"approved_schedule_title":"English Class Nov","approved_schedule_start":"2025-11-23","approved_schedule_end":"2026-05-02","start_date":"2025-11-24","fee_term":"1","next_billing_date":null,"deposit":null,"onboarding_fee":null,"registration_fee":null,"prorated_fee":null,"class_id":null} resolved_row_id=29
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationModel::getRegistrationWithRelations - registration_id=26, courses_count=1, schedule_ids=["1374"]
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::promote - Starting promotion for registration_id=26, actor_id=2478
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::promoteStudent - Searching for existing student email=pushpa@g.com mobile=12312333
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::findStudent - No existing student found
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::promoteStudent - No existing student found, creating new user
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::createStudentUser - Attempting to create user with email=pushpa@g.com, school_id=59, role_id=5
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::createStudentUser - Original insert data: {"email_id":"pushpa@g.com","password":"87bc1b35e66900c30dd0d392628d750a","default_password":"T7Fk4CkG","role_id":5,"school_id":"59","status":1,"mobile":"12312333","created_by":2478,"created_date":"2025-11-24 21:54:49","modified_date":"2025-11-24 21:54:49","login_type":"WEB"}
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::createStudentUser - Filtered insert data: {"email_id":"pushpa@g.com","password":"87bc1b35e66900c30dd0d392628d750a","default_password":"T7Fk4CkG","role_id":5,"school_id":"59","status":1,"mobile":"12312333","created_by":2478,"created_date":"2025-11-24 21:54:49","modified_date":"2025-11-24 21:54:49","login_type":"WEB"}
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::createStudentUser - Insert result: insertID=2488, affectedRows=1
+INFO - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::createStudentUser - Successfully created student user_id=2488, email=pushpa@g.com, school_id=59
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::promoteStudent - Created new student user_id=2488
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::filterColumns - Filtered out columns for table user_profile_details: modified_date, phone
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::syncUserProfileDetails insert user_id=2488 school_id=59 payload={"user_id":2488,"school_id":59,"status":1,"grade_id":0,"doj":"2025-11-24 16:45:15","created_by":2478,"created_date":"2025-11-24 21:54:49"}
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::promote - Student promoted: user_id=2488, created=yes
+DEBUG - 2025-11-24 21:54:49 --> CourseFeePlanModel::getFeeForCourse - course_id=61, school_id=59, fee_term=2, billing_cycle_days=30
+WARNING - 2025-11-24 21:54:49 --> BillingScheduler::seedSchedule - Table t_billing_schedule does not exist. Skipping billing schedule creation.
+WARNING - 2025-11-24 21:54:49 --> Failed to seed billing schedule: Billing schedule table not available
+INFO - 2025-11-24 21:54:49 --> [SelfRegistration] Enrolled student 2488 in course 61 with fee $500.00
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::promote - Marking registration_id=26 as converted with student_user_id=2488
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationPromotionService::promote - Transaction committed successfully. Registration_id=26 converted to student_user_id=2488
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Route = admin/self-registration/detail/\App\Controllers\Admin\SelfRegistration::detail
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Route = admin/self-registration/list/\App\Controllers\Admin\SelfRegistration::list
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token validated successfully for route: admin/self-registration/detail/\App\Controllers\Admin\SelfRegistration::detail
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token validated successfully for route: admin/self-registration/list/\App\Controllers\Admin\SelfRegistration::list
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationModel::getRegistrationWithRelations - registration_id=26, courses_count=1, schedule_ids=["1374"]
+DEBUG - 2025-11-24 21:54:49 --> SelfRegistrationModel::enrichCourseSelections - course_id=61, original_schedule_id=1374, approved_schedule_id=1374, selected_schedule_id=1374
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Route = admin/self-registration/note/\App\Controllers\Admin\SelfRegistration::addNote
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token validated successfully for route: admin/self-registration/note/\App\Controllers\Admin\SelfRegistration::addNote
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Route = admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:49 --> AuthFilter: Token validated successfully for route: admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+WARNING - 2025-11-24 21:54:52 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 21:54:52 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Route = admin/self-registration/timeline/\App\Controllers\Admin\SelfRegistration::timeline
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Token validated successfully for route: admin/self-registration/timeline/\App\Controllers\Admin\SelfRegistration::timeline
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Route = crm/fees/plans/\App\Controllers\Admin\Fees::listPlans
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Token validated successfully for route: crm/fees/plans/\App\Controllers\Admin\Fees::listPlans
+DEBUG - 2025-11-24 21:54:52 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 21:54:52 --> Class list params: {"platform":"web","type":"5","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 21:54:52 --> Class list results count: 1
+DEBUG - 2025-11-24 21:54:52 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-05-02","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"4","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Route = crm/fees/plans/\App\Controllers\Admin\Fees::listPlans
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:52 --> AuthFilter: Token validated successfully for route: crm/fees/plans/\App\Controllers\Admin\Fees::listPlans
+DEBUG - 2025-11-24 21:54:52 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 21:54:52 --> Class list params: {"platform":"web","type":"5","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 21:54:52 --> Class list results count: 1
+DEBUG - 2025-11-24 21:54:52 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-05-02","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"4","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Route = student/studentAllClassList/\App\Controllers\Student::studentAllClassList
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token validated successfully for route: student/studentAllClassList/\App\Controllers\Student::studentAllClassList
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Route = crm/fees/student-overview/\App\Controllers\Admin\Fees::studentOverview
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Route = crm/guardians/list/\App\Controllers\Admin\Guardians::list
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token validated successfully for route: crm/fees/student-overview/\App\Controllers\Admin\Fees::studentOverview
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token validated successfully for route: crm/guardians/list/\App\Controllers\Admin\Guardians::list
+DEBUG - 2025-11-24 21:54:53 --> 📥 Guardians::list - Payload: {"school_id":"59","student_id":"2488","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 21:54:53 --> ✅ Guardians::list - Token validated successfully. Token data: {"user_id":"2478","role_id":"2","school_id":"59","timestamp":1764021253}
+DEBUG - 2025-11-24 21:54:53 --> 📝 Guardians::list - User ID: 2478, School ID: 59, Is Admin: no
+DEBUG - 2025-11-24 21:54:53 --> ✅ Guardians::list - Permission granted for student: 2488
+DEBUG - 2025-11-24 21:54:53 --> 📝 Guardians::list - No guardians found for student: 2488
+DEBUG - 2025-11-24 21:54:53 --> Filtering transactions by school_id=59 for student_id=2488
+DEBUG - 2025-11-24 21:54:53 --> Querying transactions: student_id=2488, school_id=59, filters={"school_id":59}. Total transactions in DB for this student: 0
+DEBUG - 2025-11-24 21:54:53 --> Found 0 transactions for student_id=2488 after filtering
+DEBUG - 2025-11-24 21:54:53 --> Custom Items Calculation - Student: 2488, School: 59, Date: 2025-11-24, Total: 0.00
+INFO - 2025-11-24 21:54:53 --> Balance Calculation (TODAY) - Student: 2488 | Expected Fees (Today): 500.00, Custom Items: 0.00, Total Billing: 500.00, Paid: 0.00, Balance: 500.00
+INFO - 2025-11-24 21:54:53 --> Balance Calculation - Included Assignments: [{"id":"48","start_date":"2025-11-24","end_date":null,"enrollment_date":"2025-11-24","amount":500}] | Total Invoiced: 0.00 (NOT USED), Expected Fees: 500.00, Custom Items: 0.00, Total Billing: 500.00, Paid: 0.00, Balance: 500.00
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Route = student/attendanceDetail/\App\Controllers\Student::attendanceDetail
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token validated successfully for route: student/attendanceDetail/\App\Controllers\Student::attendanceDetail
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Route = admin/student-custom-items/list/\App\Controllers\Admin\StudentCustomItems::list
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 21:54:53 --> AuthFilter: Token validated successfully for route: admin/student-custom-items/list/\App\Controllers\Admin\StudentCustomItems::list
+DEBUG - 2025-11-24 22:19:13 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 22:19:13 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:13 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 22:19:13 --> AuthFilter: Route = common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 22:19:13 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:13 --> AuthFilter: Token validated successfully for route: common/settingList/\App\Controllers\Common::settingList
+DEBUG - 2025-11-24 22:19:13 --> AuthFilter: Route = admin/self-registration/timeline/\App\Controllers\Admin\SelfRegistration::timeline
+DEBUG - 2025-11-24 22:19:13 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:13 --> AuthFilter: Token validated successfully for route: admin/self-registration/timeline/\App\Controllers\Admin\SelfRegistration::timeline
+DEBUG - 2025-11-24 22:19:13 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 22:19:13 --> Class list params: {"platform":"web","type":"5","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 22:19:13 --> Class list results count: 1
+DEBUG - 2025-11-24 22:19:13 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-05-02","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"4","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+DEBUG - 2025-11-24 22:19:13 --> Class list query: SELECT DISTINCT `c`.`class_id`, `c`.`class_name`, `c`.`subject`, `c`.`grade`, `c`.`start_date`, `c`.`end_date`, `c`.`status`, `c`.`class_status`, `c`.`class_type`, `c`.`tags`, `c`.`class_code`, `c`.`batch_id`, `c`.`meeting_link`, `c`.`meeting_id`, `c`.`passcode`, `c`.`announcement_type`, `c`.`course_id`, COALESCE(tc.course_name, "") as course_name, (SELECT GROUP_CONCAT(subject_name) FROM subject WHERE FIND_IN_SET(subject_id, c.subject)) as subject_name, (SELECT GROUP_CONCAT(grade_name) FROM grade WHERE FIND_IN_SET(grade_id, c.grade)) as grade_name, (SELECT COUNT(*) FROM student_class sc 
+                              WHERE sc.class_id = c.class_id AND sc.status = 1) as no_of_students, (SELECT GROUP_CONCAT(DISTINCT teacher_id) FROM class_schedule 
+                              WHERE class_id = c.class_id) as teacher_ids, (SELECT CONCAT_WS(", ", GROUP_CONCAT(DISTINCT CONCAT_WS(" ", `up`.`first_name`, up.last_name)))
+                              FROM class_schedule cs2
+                              LEFT JOIN user_profile up ON FIND_IN_SET(up.user_id, cs2.teacher_id) > 0
+                              WHERE cs2.class_id = c.class_id) as teacher_name
+FROM `class` `c`
+LEFT JOIN `tbl_course` `tc` ON `tc`.`course_id` = `c`.`course_id` AND `tc`.`entity_id` = `c`.`school_id`
+WHERE `c`.`school_id` = '59'
+AND `c`.`status` = '1'
+ORDER BY `c`.`class_id` DESC
+DEBUG - 2025-11-24 22:19:13 --> Class list params: {"platform":"web","type":"5","role_id":"2","user_id":"2478","school_id":"59","teacher_id":"0","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 22:19:13 --> Class list results count: 1
+DEBUG - 2025-11-24 22:19:13 --> First class: {"class_id":"1374","class_name":"English Class Nov","subject":"400","grade":"603","start_date":"2025-11-23","end_date":"2026-05-02","status":"1","class_status":"0","class_type":"2","tags":"","class_code":"770666EC","batch_id":"","meeting_link":"","meeting_id":"","passcode":"","announcement_type":"3","course_id":"61","course_name":"English Speaking","subject_name":"English","grade_name":"Intermediate","no_of_students":"4","teacher_ids":"2479","teacher_name":"English 1Teacher"}
+WARNING - 2025-11-24 22:19:13 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 22:19:13 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Route = admin/self-registration/list/\App\Controllers\Admin\SelfRegistration::list
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token validated successfully for route: admin/self-registration/list/\App\Controllers\Admin\SelfRegistration::list
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Route = admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token validated successfully for route: admin/self-registration/assignees/\App\Controllers\Admin\SelfRegistration::assignees
+WARNING - 2025-11-24 22:19:14 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$allowedRoutes is deprecated in APPPATH/Controllers/School.php on line 95.
+ 1 APPPATH/Controllers/School.php(39): App\Controllers\School->verifyAuthUrl()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+WARNING - 2025-11-24 22:19:14 --> [DEPRECATED] Creation of dynamic property App\Controllers\School::$excludeRoutes is deprecated in APPPATH/Controllers/School.php on line 153.
+ 1 APPPATH/Controllers/School.php(42): App\Controllers\School->excludefunction()
+ 2 SYSTEMPATH/CodeIgniter.php(904): App\Controllers\School->initController(Object(CodeIgniter\HTTP\IncomingRequest), Object(CodeIgniter\HTTP\Response), Object(CodeIgniter\Log\Logger))
+ 3 SYSTEMPATH/CodeIgniter.php(498): CodeIgniter\CodeIgniter->createController()
+ 4 SYSTEMPATH/CodeIgniter.php(354): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
+ 6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Route = crm/fees/plans/\App\Controllers\Admin\Fees::listPlans
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token validated successfully for route: crm/fees/plans/\App\Controllers\Admin\Fees::listPlans
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Route = crm/fees/plans/\App\Controllers\Admin\Fees::listPlans
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token validated successfully for route: crm/fees/plans/\App\Controllers\Admin\Fees::listPlans
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Route = crm/guardians/list/\App\Controllers\Admin\Guardians::list
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Route = student/studentAllClassList/\App\Controllers\Student::studentAllClassList
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token validated successfully for route: student/studentAllClassList/\App\Controllers\Student::studentAllClassList
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token validated successfully for route: crm/guardians/list/\App\Controllers\Admin\Guardians::list
+DEBUG - 2025-11-24 22:19:14 --> 📥 Guardians::list - Payload: {"school_id":"59","student_id":"2488","timezone":"America\/New_York"}
+DEBUG - 2025-11-24 22:19:14 --> ✅ Guardians::list - Token validated successfully. Token data: {"user_id":"2478","role_id":"2","school_id":"59","timestamp":1764021253}
+DEBUG - 2025-11-24 22:19:14 --> 📝 Guardians::list - User ID: 2478, School ID: 59, Is Admin: no
+DEBUG - 2025-11-24 22:19:14 --> ✅ Guardians::list - Permission granted for student: 2488
+DEBUG - 2025-11-24 22:19:14 --> 📝 Guardians::list - No guardians found for student: 2488
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Route = crm/fees/student-overview/\App\Controllers\Admin\Fees::studentOverview
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token validated successfully for route: crm/fees/student-overview/\App\Controllers\Admin\Fees::studentOverview
+DEBUG - 2025-11-24 22:19:14 --> Filtering transactions by school_id=59 for student_id=2488
+DEBUG - 2025-11-24 22:19:14 --> Querying transactions: student_id=2488, school_id=59, filters={"school_id":59}. Total transactions in DB for this student: 0
+DEBUG - 2025-11-24 22:19:14 --> Found 0 transactions for student_id=2488 after filtering
+DEBUG - 2025-11-24 22:19:14 --> Custom Items Calculation - Student: 2488, School: 59, Date: 2025-11-24, Total: 0.00
+INFO - 2025-11-24 22:19:14 --> Balance Calculation (TODAY) - Student: 2488 | Expected Fees (Today): 500.00, Custom Items: 0.00, Total Billing: 500.00, Paid: 0.00, Balance: 500.00
+INFO - 2025-11-24 22:19:14 --> Balance Calculation - Included Assignments: [{"id":"48","start_date":"2025-11-24","end_date":null,"enrollment_date":"2025-11-24","amount":500}] | Total Invoiced: 0.00 (NOT USED), Expected Fees: 500.00, Custom Items: 0.00, Total Billing: 500.00, Paid: 0.00, Balance: 500.00
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Route = student/attendanceDetail/\App\Controllers\Student::attendanceDetail
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token validated successfully for route: student/attendanceDetail/\App\Controllers\Student::attendanceDetail
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Route = admin/student-custom-items/list/\App\Controllers\Admin\StudentCustomItems::list
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token = eyJ0eXAiOiJKV1QiLCJh...
+DEBUG - 2025-11-24 22:19:14 --> AuthFilter: Token validated successfully for route: admin/student-custom-items/list/\App\Controllers\Admin\StudentCustomItems::list

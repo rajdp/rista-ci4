@@ -256,6 +256,143 @@ class Batch extends BaseController
     }
 
     /**
+     * Edit batch/folder
+     */
+    public function edit($id = null): ResponseInterface
+    {
+        try {
+            // Try to get data from JSON body first (most common for Angular apps)
+            $params = $this->request->getJSON(true) ?? [];
+            
+            // Fallback to POST data if JSON is empty
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+            
+            // Fallback to getJSON if both are empty
+            if (empty($params)) {
+                $params = json_decode(file_get_contents('php://input'), true) ?? [];
+            }
+            
+            // Log incoming data for debugging
+            log_message('debug', '🔍 [BATCH EDIT] Received params: ' . json_encode($params));
+
+            // Validation
+            if (empty($params['platform'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Platform should not be empty'
+                ]);
+            }
+
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Role Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['school_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'School Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['batch_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Batch Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['batch_name'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Batch name should not be empty'
+                ]);
+            }
+
+            // Check if batch exists
+            $db = \Config\Database::connect();
+            $builder = $db->table('batch');
+            $existingBatch = $builder->where('batch_id', $params['batch_id'])
+                ->where('school_id', $params['school_id'])
+                ->get()
+                ->getRowArray();
+
+            if (empty($existingBatch)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Batch not found'
+                ]);
+            }
+
+            // Check if batch name already exists (excluding current batch)
+            $checkBatch = $this->batchModel->checkBatch($params, 'edit');
+            if (!empty($checkBatch)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => [],
+                    'ErrorObject' => 'Batch name already exists'
+                ]);
+            }
+
+            // Update batch
+            $updateData = [
+                'batch_name' => $params['batch_name']
+            ];
+
+            // Update status if provided
+            if (isset($params['status'])) {
+                $updateData['status'] = $params['status'];
+            }
+
+            $builder = $db->table('batch');
+            $builder->where('batch_id', $params['batch_id']);
+            $builder->where('school_id', $params['school_id']);
+            $updated = $builder->update($updateData);
+
+            if (!$updated) {
+                throw new \Exception('Failed to update batch');
+            }
+
+            log_message('debug', '🔍 [BATCH EDIT] Update successful, batch_id: ' . $params['batch_id']);
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => [
+                    'batch_id' => $params['batch_id'],
+                    'batch_name' => $params['batch_name']
+                ],
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '❌ [BATCH EDIT] Error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => [],
+                'ErrorObject' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Helper function to form batch list
      */
     private function formBatchList($parent_key, $params)

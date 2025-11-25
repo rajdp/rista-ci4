@@ -65,7 +65,7 @@ class SelfRegistrationModel extends Model
             s.portal_contact_phone
         ");
         $builder->join('school_portal_settings ps', 'ps.school_id = s.school_id', 'left');
-        $builder->where('s.status', 1);
+        $builder->whereIn('s.status', [1, 2]); // Allow both active (1) and secondary status (2)
         $builder->groupStart()
             ->where('LOWER(s.school_key)', $identifier)
             ->orWhere('LOWER(s.portal_domain)', $identifier);
@@ -105,11 +105,13 @@ class SelfRegistrationModel extends Model
             COALESCE(c.short_description, '') AS short_description,
             COALESCE(c.description, '') AS description,
             COALESCE(c.fees, '') AS fees,
+            c.fee_amount,
             COALESCE(c.multiple_schedule, 0) AS multiple_schedule,
             COALESCE(c.schedule, 0) AS schedule,
             COALESCE(c.path, '') AS image_url,
             COALESCE(c.button_name, '') AS button_label,
-            COALESCE(c.contact_info, '') AS contact_info
+            COALESCE(c.contact_info, '') AS contact_info,
+            COALESCE(c.documentation_requirements, '') AS documentation_requirements
         ");
         $builder->where('c.status', 'A');
         $builder->where('c.entity_id', $schoolId);
@@ -230,6 +232,7 @@ class SelfRegistrationModel extends Model
 
         foreach ($courses as &$course) {
             $course['fees'] = $course['fees'] !== '' ? (float) $course['fees'] : null;
+            $course['fee_amount'] = $course['fee_amount'] !== null && $course['fee_amount'] !== '' ? (float) $course['fee_amount'] : null;
             $courseId = (int) $course['course_id'];
             $course['schedules'] = $schedulesByCourse[$courseId] ?? [];
         }
@@ -901,7 +904,8 @@ class SelfRegistrationModel extends Model
      */
     public function getAssignableUsers(?int $schoolId = null): array
     {
-        $eligibleRoles = [2, 4, 6, 7];
+        // Only show users with role_id = 2 or 8
+        $eligibleRoles = [2, 8];
 
         $builder = $this->db->table('user u');
         $builder->select("
@@ -915,28 +919,6 @@ class SelfRegistrationModel extends Model
         $builder->join('user_profile up', 'up.user_id = u.user_id', 'left');
         $builder->whereIn('u.role_id', $eligibleRoles);
         $builder->where('u.status', 1);
-        
-        // Filter by school_id - require school context to prevent showing users from all schools
-        $schoolIdInt = (int) ($schoolId ?? 0);
-        if ($schoolIdInt <= 0) {
-            // If no school_id provided, return empty array to prevent showing all users
-            return [];
-        }
-        
-        // Include users where:
-        // 1. Corporate admins (role_id = 6) - can be assigned to any school
-        // 2. Users whose school_id contains the current school_id (comma-separated list)
-        $builder->groupStart();
-        $builder->where('u.role_id', 6); // Corporate admins
-        $builder->orGroupStart();
-        $builder->where('u.role_id !=', 6); // Non-corporate admins
-        // Check if school_id field contains the current school_id
-        // Using FIND_IN_SET for MySQL (handles comma-separated values)
-        $escapedSchoolId = $this->db->escape($schoolIdInt);
-        $builder->whereRaw("(FIND_IN_SET({$escapedSchoolId}, u.school_id) > 0 OR u.school_id = {$escapedSchoolId})");
-        $builder->groupEnd();
-        $builder->groupEnd();
-        
         $builder->orderBy('up.first_name', 'ASC');
         $builder->orderBy('up.last_name', 'ASC');
         $builder->orderBy('u.email_id', 'ASC');
@@ -946,6 +928,23 @@ class SelfRegistrationModel extends Model
         if (empty($users)) {
             return [];
         }
+
+        $schoolId = (int) ($schoolId ?? 0);
+
+        // Filter by school_id - all roles must match the specific school_id
+        $filtered = array_filter($users, static function (array $user) use ($schoolId): bool {
+            if ($schoolId <= 0) {
+                return true;
+            }
+
+            $schoolField = (string) ($user['school_id'] ?? '');
+            if ($schoolField === '') {
+                return false;
+            }
+
+            $schools = array_filter(array_map('trim', explode(',', $schoolField)));
+            return in_array((string) $schoolId, $schools, true);
+        });
 
         return array_values(array_map(static function (array $user): array {
             $firstName = trim((string) ($user['first_name'] ?? ''));
@@ -961,8 +960,9 @@ class SelfRegistrationModel extends Model
                 'role_id' => (int) $user['role_id'],
                 'name' => $name,
                 'email' => $user['email_id'] ?? null,
+                'school_id' => $user['school_id'] ?? null,
             ];
-        }, $users));
+        }, $filtered));
     }
 
     public function logCommunication(array $data): int

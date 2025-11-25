@@ -4,6 +4,11 @@
 # Redirect all requests to public folder
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Allow direct access to uploads folder (don't redirect to public)
+    RewriteCond %{REQUEST_URI} !^/uploads/
+
+    # Redirect everything else to public folder
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
 
