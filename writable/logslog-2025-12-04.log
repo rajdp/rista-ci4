@@ -6650,3 +6650,60 @@ WARNING - 2025-12-04 03:40:10 --> [DEPRECATED] Creation of dynamic property App\
  5 SYSTEMPATH/Boot.php(334): CodeIgniter\CodeIgniter->run()
  6 SYSTEMPATH/Boot.php(67): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
  7 FCPATH/index.php(63): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] ========== addStudentAnswer called ==========
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Request params: {
+    "platform": "web",
+    "role_id": "5",
+    "user_id": "2488",
+    "student_id": "2488",
+    "content_id": "3",
+    "content_format": "1",
+    "student_content_id": 6,
+    "class_id": "1374",
+    "overall_student_feedback": "good",
+    "status": "2",
+    "upload_answer": [],
+    "answers": [],
+    "timezone": "America\/New_York"
+}
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] content_format: 1
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] status in request: 2
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] student_content_id: 6
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] has answers: YES (0)
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] has questions: NO
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Status determination - Requested status: 2
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Current student_content record: {
+    "status": "4",
+    "redo_test": "0"
+}
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Current status: 4, redo_test: 0, requested status: 2
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Status change blocked - keeping current status: 4
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Final status to be saved: 4
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Updating student_content table
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] student_content_id: 6
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Update data: {
+    "status": "4",
+    "student_feedback": "good",
+    "upload_answer": "",
+    "answer_completed_date": "2025-12-04 03:44:41",
+    "platform": 1,
+    "laq_id": 0,
+    "content_time_taken": 0
+}
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] UPDATE SQL: UPDATE student_content SET status = '4', student_feedback = 'good', upload_answer = '', answer_completed_date = '2025-12-04 03:44:41', platform = 1, laq_id = 0, content_time_taken = 0 WHERE id = 6
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Update result: SUCCESS (rows affected: 1)
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SUBMIT] Verification query result: {
+    "status": "4",
+    "answer_completed_date": "2025-12-04 03:44:41",
+    "content_time_taken": "0",
+    "platform": "1"
+}
+DEBUG - 2025-12-04 03:44:41 --> ✅ [SUBMIT] Status verified - matches expected: 4
+DEBUG - 2025-12-04 03:44:41 --> 🔍 [SAVE ANSWER] Total score query: 
+                        SELECT COALESCE(SUM(earned_points), 0) as earned_points,
+                               COALESCE(SUM(actual_points), 0) as points
+                        FROM student_answers
+                        WHERE student_content_id = 6
+                    
+DEBUG - 2025-12-04 03:44:41 --> ✅ [SUBMIT] Returning success response: Answers Submitted Successfully
+DEBUG - 2025-12-04 03:44:41 --> ✅ [SUBMIT] Final status in response: 4
