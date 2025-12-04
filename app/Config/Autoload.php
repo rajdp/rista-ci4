@@ -60,7 +60,13 @@ class Autoload extends AutoloadConfig
      *
      * @var array<string, string>
      */
-    public $classmap = [];
+    public $classmap = [
+        'REST_Controller' => APPPATH . 'Libraries/REST_Controller.php',
+        'LegacyLoader' => APPPATH . 'Libraries/REST_Controller.php',
+        'LegacyInput' => APPPATH . 'Libraries/REST_Controller.php',
+        'LegacyOutput' => APPPATH . 'Libraries/REST_Controller.php',
+        'LegacyBenchmark' => APPPATH . 'Libraries/REST_Controller.php',
+    ];
 
     /**
      * -------------------------------------------------------------------

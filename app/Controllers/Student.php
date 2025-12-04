@@ -1923,55 +1923,191 @@ class Student extends ResourceController
 
             $db = \Config\Database::connect();
 
-            // Get student's resources (content_type = 1 for resources)
-            $builder = $db->table('student_content sc');
-            $builder->select('sc.*, sc.class_content_id, sc.content_id, sc.class_id,
-                             c.name as content_name, c.content_type, c.content_format, c.file_path,
-                             c.links, c.annotation,
-                             cc.start_date, cc.end_date, cc.notes, cc.downloadable,
-                             cl.class_name, cl.subject, cl.grade,
-                             s.subject_name, g.grade_name,
-                             DATEDIFF(cc.end_date, CURDATE()) as overdue,
-                             (CASE 
-                                WHEN cc.start_date > CURDATE() THEN "1"
-                                WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN "2"
-                                WHEN cc.end_date < CURDATE() THEN "3"
-                                ELSE "2"
-                             END) AS content_date_status');
-            $builder->join('content c', 'sc.content_id = c.content_id', 'left');
-            $builder->join('class_content cc', 'sc.class_content_id = cc.id', 'left');
-            $builder->join('class cl', 'sc.class_id = cl.class_id', 'left');
-            $builder->join('subject s', 'cl.subject = s.subject_id', 'left');
-            $builder->join('grade g', 'cl.grade = g.grade_id', 'left');
-            $builder->where('sc.student_id', $params['user_id']);
-            $builder->where('c.content_type', '1'); // 1 = resource
-            $builder->where('sc.draft_status', '1');
-            $builder->where('cc.status', '1');
+            // Get filter type (1 = All, 2 = Upcoming, 3 = In progress, 4 = Completed)
+            $filterType = isset($params['type']) ? $params['type'] : '1';
+            $isAllFilter = ($filterType == '1' || $filterType == 1);
+            
+            // Build date condition for class-wide content
+            // For "All" filter: show all class-wide content (no date restriction)
+            // For other filters: only show in-progress and future (end_date >= CURDATE())
+            $classWideDateCondition = $isAllFilter ? '1=1' : 'cc.end_date >= CURDATE()';
 
+            // Log input parameters
+            log_message('debug', '📋 [RESOURCES LIST] Input parameters: ' . json_encode($params));
+            log_message('debug', '📋 [RESOURCES LIST] Filter type: ' . $filterType . ', isAllFilter: ' . ($isAllFilter ? 'true' : 'false'));
+            log_message('debug', '📋 [RESOURCES LIST] Class-wide date condition: ' . $classWideDateCondition);
+
+            // Get student's resources (content_type = 1 for resources)
+            // This query handles both class-wide and student-specific resources
+            $sql = "
+                SELECT DISTINCT
+                    COALESCE(sc.id, 0) as student_content_id,
+                    COALESCE(sc.class_content_id, cc.id) as class_content_id,
+                    cc.content_id,
+                    cc.class_id,
+                    cc.all_student,
+                    c.name as content_name,
+                    c.content_type,
+                    c.content_format,
+                    c.file_path,
+                    c.links,
+                    COALESCE(sc.annotation, c.annotation, '') as annotation,
+                    cc.start_date,
+                    cc.end_date,
+                    cc.notes,
+                    cc.downloadable,
+                    cl.class_name,
+                    cl.subject,
+                    cl.grade,
+                    s.subject_name,
+                    g.grade_name,
+                    sc.student_id as student_content_student_id,
+                    scs.student_id as student_class_student_id,
+                    DATEDIFF(cc.end_date, CURDATE()) as overdue,
+                    (CASE 
+                        WHEN cc.start_date > CURDATE() THEN '1'
+                        WHEN cc.start_date <= CURDATE() AND cc.end_date >= CURDATE() THEN '2'
+                        WHEN cc.end_date < CURDATE() THEN '3'
+                        ELSE '2'
+                    END) AS content_date_status
+                FROM class_content cc
+                INNER JOIN content c ON cc.content_id = c.content_id
+                INNER JOIN class cl ON cc.class_id = cl.class_id
+                LEFT JOIN subject s ON cl.subject = s.subject_id
+                LEFT JOIN grade g ON cl.grade = g.grade_id
+                LEFT JOIN student_class scs ON cc.class_id = scs.class_id AND scs.student_id = ?
+                LEFT JOIN student_content sc ON sc.class_content_id = cc.id 
+                    AND sc.student_id = ?
+                WHERE scs.student_id IS NOT NULL
+                AND cc.status = 1
+                AND c.content_type = 1
+                AND (
+                    -- Content assigned to all students in the class
+                    -- Show if date condition is met
+                    (cc.all_student = 1 AND ({$classWideDateCondition}))
+                    OR
+                    -- Content assigned to specific students
+                    -- Must match student_content.student_id to the logged-in student
+                    (cc.all_student = 0 AND sc.student_id = ? AND sc.id IS NOT NULL)
+                )
+            ";
+            
             // Apply grade filter if provided
             if (isset($params['grade_id']) && !empty($params['grade_id'])) {
-                $builder->where('cl.grade', $params['grade_id']);
+                $sql .= " AND cl.grade = " . (int)$params['grade_id'];
             }
-
-            // Apply type filter if provided
-            if (isset($params['type']) && $params['type'] != '') {
-                // Type 2: Upcoming
-                if ($params['type'] == '2') {
-                    $builder->where('cc.start_date >', date('Y-m-d'));
-                }
-                // Type 3: In progress
-                elseif ($params['type'] == '3') {
-                    $builder->where('cc.start_date <=', date('Y-m-d'));
-                    $builder->where('cc.end_date >=', date('Y-m-d'));
-                }
-                // Type 4: Completed
-                elseif ($params['type'] == '4') {
-                    $builder->where('cc.end_date <', date('Y-m-d'));
+            
+            $sql .= " ORDER BY cc.end_date ASC";
+            
+            // Log the SQL query with placeholders
+            log_message('debug', '📋 [RESOURCES LIST] SQL Query: ' . $sql);
+            
+            $queryParams = [
+                $params['user_id'],  // For student_class JOIN
+                $params['user_id'],  // For student_content JOIN (student_id filter)
+                $params['user_id']   // For student-specific content WHERE clause (explicit match)
+            ];
+            
+            log_message('debug', '📋 [RESOURCES LIST] Query Parameters: ' . json_encode($queryParams));
+            
+            $query = $db->query($sql, $queryParams);
+            
+            // Log the compiled query
+            $compiledQuery = $db->query($sql, $queryParams);
+            log_message('debug', '📋 [RESOURCES LIST] Executed query with user_id: ' . $params['user_id']);
+            
+            $resources = $query->getResultArray();
+            
+            // Log results
+            log_message('debug', '📋 [RESOURCES LIST] Total resources found: ' . count($resources));
+            
+            // Log details about each resource
+            foreach ($resources as $index => $resource) {
+                log_message('debug', "📋 [RESOURCES LIST] Resource #{$index}: " . json_encode([
+                    'content_id' => $resource['content_id'] ?? 'N/A',
+                    'content_name' => $resource['content_name'] ?? 'N/A',
+                    'class_id' => $resource['class_id'] ?? 'N/A',
+                    'all_student' => $resource['all_student'] ?? 'N/A',
+                    'student_content_id' => $resource['student_content_id'] ?? 'N/A',
+                    'student_content_student_id' => $resource['student_content_student_id'] ?? 'N/A',
+                    'student_class_student_id' => $resource['student_class_student_id'] ?? 'N/A',
+                    'class_name' => $resource['class_name'] ?? 'N/A'
+                ]));
+            }
+            
+            // Also check what student_content records exist for this student
+            $studentContentCheck = $db->table('student_content sc')
+                ->select('sc.id, sc.student_id, sc.content_id, sc.class_content_id, sc.class_id, sc.draft_status, cc.all_student, c.content_type, c.name as content_name')
+                ->join('class_content cc', 'sc.class_content_id = cc.id', 'left')
+                ->join('content c', 'cc.content_id = c.content_id', 'left')
+                ->where('sc.student_id', $params['user_id'])
+                ->where('c.content_type', 1)
+                ->get()
+                ->getResultArray();
+            
+            log_message('debug', '📋 [RESOURCES LIST] Student-specific student_content records found: ' . count($studentContentCheck));
+            foreach ($studentContentCheck as $index => $scRecord) {
+                log_message('debug', "📋 [RESOURCES LIST] Student Content Record #{$index}: " . json_encode([
+                    'id' => $scRecord['id'] ?? 'N/A',
+                    'student_id' => $scRecord['student_id'] ?? 'N/A',
+                    'content_id' => $scRecord['content_id'] ?? 'N/A',
+                    'class_content_id' => $scRecord['class_content_id'] ?? 'N/A',
+                    'class_id' => $scRecord['class_id'] ?? 'N/A',
+                    'draft_status' => $scRecord['draft_status'] ?? 'N/A',
+                    'all_student' => $scRecord['all_student'] ?? 'N/A',
+                    'content_name' => $scRecord['content_name'] ?? 'N/A'
+                ]));
+            }
+            
+            // Check class_content records for this student's classes
+            $studentClasses = $db->table('student_class')
+                ->where('student_id', $params['user_id'])
+                ->where('status', 1)
+                ->get()
+                ->getResultArray();
+            
+            $classIds = array_column($studentClasses, 'class_id');
+            log_message('debug', '📋 [RESOURCES LIST] Student is in classes: ' . json_encode($classIds));
+            
+            if (!empty($classIds)) {
+                $classContentCheck = $db->table('class_content cc')
+                    ->select('cc.id, cc.content_id, cc.class_id, cc.all_student, cc.status, c.content_type, c.name as content_name')
+                    ->join('content c', 'cc.content_id = c.content_id', 'left')
+                    ->whereIn('cc.class_id', $classIds)
+                    ->where('cc.status', 1)
+                    ->where('c.content_type', 1)
+                    ->get()
+                    ->getResultArray();
+                
+                log_message('debug', '📋 [RESOURCES LIST] Class content records in student classes: ' . count($classContentCheck));
+                foreach ($classContentCheck as $index => $ccRecord) {
+                    log_message('debug', "📋 [RESOURCES LIST] Class Content Record #{$index}: " . json_encode([
+                        'id' => $ccRecord['id'] ?? 'N/A',
+                        'content_id' => $ccRecord['content_id'] ?? 'N/A',
+                        'class_id' => $ccRecord['class_id'] ?? 'N/A',
+                        'all_student' => $ccRecord['all_student'] ?? 'N/A',
+                        'status' => $ccRecord['status'] ?? 'N/A',
+                        'content_name' => $ccRecord['content_name'] ?? 'N/A'
+                    ]));
                 }
             }
-
-            $builder->orderBy('cc.end_date', 'ASC');
-            $resources = $builder->get()->getResultArray();
+            
+            // Apply type filter if provided (for client-side filtering of already-fetched data)
+            // Skip filtering when type = 1 (All) since we already fetched all data
+            if (isset($params['type']) && $params['type'] != '' && $params['type'] != '1') {
+                $today = date('Y-m-d');
+                $resources = array_filter($resources, function($item) use ($params, $today) {
+                    if ($params['type'] == '2') { // Upcoming
+                        return $item['start_date'] > $today;
+                    } elseif ($params['type'] == '3') { // In progress
+                        return $item['start_date'] <= $today && $item['end_date'] >= $today;
+                    } elseif ($params['type'] == '4') { // Completed
+                        return $item['end_date'] < $today;
+                    }
+                    return true;
+                });
+                $resources = array_values($resources); // Re-index array
+            }
 
             // Process file paths, links, and annotations
             foreach ($resources as &$item) {
@@ -3174,6 +3310,436 @@ class Student extends ResourceController
             
         } catch (\Exception $e) {
             log_message('error', 'makeUpClass error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get OpenAI Feedback for student essay
+     * Migrated from pre-migration code
+     */
+    public function getOpenAiFeedback(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validation
+            if (empty($params['platform'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty'
+                ]);
+            }
+            
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role Id should not be empty'
+                ]);
+            }
+            
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+            
+            if (empty($params['question_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Question Id should not be empty'
+                ]);
+            }
+            
+            if (empty($params['question'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Question should not be empty'
+                ]);
+            }
+            
+            if (empty($params['student_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student Id should not be empty'
+                ]);
+            }
+            
+            if (empty($params['student_answer'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student Answer should not be empty'
+                ]);
+            }
+
+            // Call newAiFeedback method
+            $feedback = $this->newAiFeedback($params);
+            
+            return $this->respond($feedback);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getOpenAiFeedback error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * New AI Feedback method
+     * Migrated from pre-migration code
+     */
+    private function newAiFeedback($params)
+    {
+        $jsonarr = ['IsSuccess' => false, 'ResponseObject' => null, 'ErrorObject' => ''];
+        
+        // Get API key
+        $api_key = env('openai.apiKey', '');
+        if (empty($api_key)) {
+            // Try to read from properties.ini if it exists
+            $propertiesPath = ROOTPATH . '../properties.ini';
+            if (file_exists($propertiesPath)) {
+                $prop = parse_ini_file($propertiesPath, true, INI_SCANNER_RAW);
+                $api_key = $prop['api_key'] ?? '';
+            }
+        }
+        
+        if (!$api_key) {
+            $jsonarr['IsSuccess'] = false;
+            $jsonarr['ErrorObject'] = "OPENAI_API_KEY environment variable not set.";
+            return $jsonarr;
+        }
+
+        $db = \Config\Database::connect();
+        
+        // Get previous essay and feedback
+        $essay_old = '';
+        $essay_old_feedback = '';
+        $builder = $db->table('student_essays');
+        $builder->where('status', 1);
+        $builder->where('student_content_id', $params['student_content_id']);
+        $builder->where('question_id', $params['question_id']);
+        $builder->orderBy('student_essay_id', 'DESC');
+        $getStudentEssay = $builder->get()->getResultArray();
+        
+        $params['version'] = count($getStudentEssay) + 1;
+        if (count($getStudentEssay) > 0) {
+            $essay_old = $getStudentEssay[0]["student_answer"];
+            $essay_old_feedback = $getStudentEssay[0]["feedback"];
+        }
+
+        // Get question details
+        $params['content_format'] = 3;
+        $questionBuilder = $db->table('question q');
+        $questionBuilder->select('q.question, q.scoring_instruction');
+        $questionBuilder->where('q.question_id', $params['question_id']);
+        $getQuestion = $questionBuilder->get()->getRowArray();
+        
+        if ($getQuestion && !empty($getQuestion['scoring_instruction'])) {
+            $essay_prompt = $getQuestion['question'] . ' ' . $getQuestion['scoring_instruction'];
+        } else {
+            $essay_prompt = $getQuestion['question'] ?? '';
+        }
+
+        $essay_new = $params['student_answer'];
+
+        $trait_instructions = [
+            "ideas" => "Clear thesis; relevant, sufficient reasons; specific details/examples from stimulus.",
+            "organization" => "Letter format; focused intro; ordered body paragraphs with transitions; purposeful conclusion.",
+            "voice" => "Respectful, persuasive, audience-aware (superintendent); confident and engaged, not slangy.",
+            "word_choice" => "Precise, varied, school-appropriate vocabulary; avoid vague/exaggerated/cliché words.",
+            "sentence_fluency" => "Varied sentence beginnings/lengths; smooth flow; no run-ons/fragments.",
+            "conventions" => "Correct grammar, usage, punctuation, capitalization, spelling.",
+            "presentation" => "Proper letter parts, paragraphing, headings, neatness/readability."
+        ];
+        
+        // Get class grade
+        $classGradeBuilder = $db->table('student_content sc');
+        $classGradeBuilder->select('sc.grade, sc.student_id, sc.content_id');
+        $classGradeBuilder->where('sc.id', $params['student_content_id']);
+        $getClassGrade = $classGradeBuilder->get()->getResultArray();
+        
+        if (empty($getClassGrade)) {
+            $jsonarr['IsSuccess'] = false;
+            $jsonarr['ErrorObject'] = "Class Grade and Student Grade are empty.";
+            return $jsonarr;
+        }
+        
+        $grade = explode(',', $getClassGrade[0]['grade']);
+        
+        // If class grade is empty, get student grade from user table
+        if (empty($grade[0])) {
+            $studentGradeBuilder = $db->table('user_profile_details upd');
+            $studentGradeBuilder->select('upd.grade_id');
+            $studentGradeBuilder->where('upd.user_id', $params['student_id']);
+            $studentGradeBuilder->where('upd.school_id', $params['school_id']);
+            $studentGrade = $studentGradeBuilder->get()->getResultArray();
+            $grade[0] = count($studentGrade) > 0 ? $studentGrade[0]['grade_id'] : '';
+        }
+        
+        if (!empty($grade[0]) && $grade[0] != 0) {
+            $gradeBuilder = $db->table('grade');
+            $gradeBuilder->select('grade_id, grade_name');
+            $gradeBuilder->where('grade_id', $grade[0]);
+            $getGradeList = $gradeBuilder->get()->getResultArray();
+            
+            if (!empty($getGradeList)) {
+                $params['grade_id'] = $getGradeList[0]['grade_name'];
+                
+                if (($params['grade_id'] >= 1 && $params['grade_id'] <= 12) || $params['grade_id'] == 'College' || $params['grade_id'] == 'PKG' || $params['grade_id'] == 'KG') {
+                    $student_grade = $params['grade_id'];
+                    
+                    // Load libraries
+                    $modelConfig = new \App\Libraries\ModelConfig("gpt-5-mini", "gpt-5-mini-2025-08-07", 0.50, 0.25, 2.00);
+                    $modelConfigGpt4o = new \App\Libraries\ModelConfig("gpt-4o", "gpt-4o-2024-08-06", 2.50, 1.25, 10.00);
+                    $modelConfigGpt4oMini = new \App\Libraries\ModelConfig("gpt-4o-mini", "gpt-4o-mini-2024-07-18", 0.15, 0.075, 0.60);
+                    $modelConfigO1 = new \App\Libraries\ModelConfig("o1", "o1-2024-12-17", 15.00, 7.50, 60.00);
+                    $modelConfigO3Mini = new \App\Libraries\ModelConfig("o3-mini", "o3-mini-2025-01-31", 1.10, 0.55, 4.40);
+                    $modelConfigO1Mini = new \App\Libraries\ModelConfig("o1-mini", "o1-mini-2024-09-12", 1.10, 0.55, 4.40);
+                    
+                    $MODELS = [
+                        "gpt5-mini" => $modelConfig,
+                        "gpt4o" => $modelConfigGpt4o,
+                        "gpt4o-mini" => $modelConfigGpt4oMini,
+                        "o1" => $modelConfigO1,
+                        "o3-mini" => $modelConfigO3Mini,
+                        "o1-mini" => $modelConfigO1Mini
+                    ];
+                    
+                    $requestData = [
+                        'student_id' => $getClassGrade[0]['student_id'],
+                        'content_id' => $getClassGrade[0]['content_id']
+                    ];
+                    
+                    $CHOSEN_MODEL = "gpt5-mini";
+                    
+                    $grader = new \App\Libraries\EssayGrader(
+                        $MODELS[$CHOSEN_MODEL],
+                        $essay_prompt,
+                        $essay_old,
+                        $essay_new,
+                        $essay_old_feedback,
+                        $trait_instructions,
+                        $student_grade,
+                        $MODELS["gpt4o-mini"],
+                        $requestData
+                    );
+                    
+                    $essayFeedback = $grader->run($params);
+                    
+                    if (!empty($essayFeedback['combined_results'])) {
+                        // Insert teacher overall feedback
+                        $feedbackData = [
+                            'student_content_id' => $params['student_content_id'],
+                            'feedback' => isset($essayFeedback['combined_results']['overall']['summary']) ? $essayFeedback['combined_results']['overall']['summary'] : '',
+                            'feedback_type' => 'A',
+                            'version' => !empty($params['version']) ? $params['version'] : NULL,
+                            'status' => 1,
+                            'created_by' => $params['user_id'],
+                            'created_date' => date('Y-m-d H:i:s')
+                        ];
+                        $db->table('teacher_overall_feedback')->insert($feedbackData);
+                        
+                        // Insert student essay
+                        $addStudentEssay = [
+                            'student_content_id' => $params['student_content_id'],
+                            'question_id' => $params['question_id'],
+                            'question' => $params['question'],
+                            'student_answer' => $params['student_answer'],
+                            'student_score' => $essayFeedback['overall_total'],
+                            'total_score' => $essayFeedback['overall_possible'],
+                            'prompt_token' => $essayFeedback['prompt_token'],
+                            'completion_token' => $essayFeedback['completion_token'],
+                            'total_token' => $essayFeedback['total_token'],
+                            'total_cost' => $essayFeedback['total_cost'],
+                            'feedback' => json_encode($essayFeedback['combined_results']),
+                            'feedback_received' => date('Y-m-d H:i:s'),
+                            'time_taken' => $params['time_taken'] ?? 0,
+                            'status' => 1,
+                            'essay_embedding' => '',
+                            'created_by' => $params['user_id'],
+                            'created_date' => date('Y-m-d H:i:s')
+                        ];
+                        $db->table('student_essays')->insert($addStudentEssay);
+                        $studentEssayId = $db->insertID();
+                        
+                        if ($studentEssayId > 0) {
+                            $strengths = $top_opportunities = $next_edit_plan = [];
+                            $essayBuilder = $db->table('student_essays');
+                            $essayBuilder->where('student_essay_id', $studentEssayId);
+                            $getStudentEssay = $essayBuilder->get()->getResultArray();
+                            
+                            if (!empty($getStudentEssay)) {
+                                $feedback = json_decode($getStudentEssay[0]['feedback'], true);
+                                
+                                if (isset($feedback['overall']['strengths']) && !empty($feedback['overall']['strengths'])) {
+                                    $strengths = $feedback['overall']['strengths'];
+                                }
+                                if (isset($feedback['overall']['top_opportunities']) && !empty($feedback['overall']['top_opportunities'])) {
+                                    $top_opportunities = $feedback['overall']['top_opportunities'];
+                                }
+                                if (isset($feedback['next_edit_plan']) && !empty($feedback['next_edit_plan'])) {
+                                    $next_edit_plan = $feedback['next_edit_plan'];
+                                }
+                                if (isset($feedback['trait_scores']) && !empty($feedback['trait_scores'])) {
+                                    $feedback = $feedback['trait_scores'];
+                                }
+                                if (isset($feedback['traits']) && !empty($feedback['traits'])) {
+                                    $feedback = $feedback['traits'];
+                                }
+                                
+                                if (is_null($feedback)) {
+                                    $getStudentEssay[0]['version'] = "V1";
+                                } else {
+                                    $getStudentEssay[0]['version'] = "V2";
+                                    $getStudentEssay[0]['feedback'] = $feedback;
+                                    $getStudentEssay[0]['strengths'] = $strengths;
+                                    $getStudentEssay[0]['top_opportunities'] = $top_opportunities;
+                                    $getStudentEssay[0]['next_edit_plan'] = $next_edit_plan;
+                                }
+                            }
+                            
+                            $jsonarr["IsSuccess"] = true;
+                            $jsonarr["ResponseObject"] = $getStudentEssay;
+                        } else {
+                            $jsonarr['IsSuccess'] = false;
+                            $jsonarr['ErrorObject'] = "Feedback Not Updated";
+                        }
+                    } else {
+                        $jsonarr['IsSuccess'] = false;
+                        $jsonarr['ErrorObject'] = "Your essay has been saved successfully. However feedback couldn't be generated at this moment. Please try again after sometime.";
+                    }
+                } else {
+                    $jsonarr['IsSuccess'] = false;
+                    $jsonarr['ErrorObject'] = "Invalid Grade";
+                }
+            } else {
+                $jsonarr['IsSuccess'] = false;
+                $jsonarr['ErrorObject'] = "Invalid Grade";
+            }
+        } else {
+            $jsonarr['IsSuccess'] = false;
+            $jsonarr['ErrorObject'] = "Class Grade and Student Grade are empty.";
+        }
+        
+        return $jsonarr;
+    }
+
+    /**
+     * Get OpenAI Feedback Count
+     * Migrated from pre-migration code
+     */
+    public function getOpenAiFeedbackCount(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            // Validation
+            if (empty($params['platform']) || ($params['platform'] != "web" && $params['platform'] != "ios")) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty'
+                ]);
+            }
+            
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role Id should not be empty'
+                ]);
+            }
+            
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ]);
+            }
+            
+            if (empty($params['student_content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student Content Id should not be empty'
+                ]);
+            }
+
+            if (empty($params['question_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Question Id should not be empty'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            
+            $builder = $db->table('student_essays');
+            $builder->select('student_essay_id, student_content_id, question_id, question, student_answer, feedback, student_score, total_score, time_taken, essay_embedding, created_date');
+            $builder->where('status', 1);
+            $builder->where('student_content_id', $params['student_content_id']);
+            $builder->where('question_id', $params['question_id']);
+            $builder->orderBy('student_essay_id', 'DESC');
+            $getStudentEssay = $builder->get()->getResultArray();
+            
+            foreach($getStudentEssay as $key => $value){
+                $getStudentEssay[$key]['feedback'] = json_decode($value['feedback'], true);
+                if(isset($getStudentEssay[$key]['feedback']['overall']['strengths']) && !empty($getStudentEssay[$key]['feedback']['overall']['strengths'])){
+                    $getStudentEssay[$key]['strengths'] = $getStudentEssay[$key]['feedback']['overall']['strengths'];
+                }
+                if(isset($getStudentEssay[$key]['feedback']['overall']['top_opportunities']) && !empty($getStudentEssay[$key]['feedback']['overall']['top_opportunities'])){
+                    $getStudentEssay[$key]['top_opportunities'] = $getStudentEssay[$key]['feedback']['overall']['top_opportunities'];
+                }
+                if(isset($getStudentEssay[$key]['feedback']['next_edit_plan']) && !empty($getStudentEssay[$key]['feedback']['next_edit_plan'])){
+                    $getStudentEssay[$key]['next_edit_plan'] = $getStudentEssay[$key]['feedback']['next_edit_plan'];
+                }                 
+                if(isset($getStudentEssay[$key]['feedback']['trait_scores']) && !empty($getStudentEssay[$key]['feedback']['trait_scores'])){
+                    $getStudentEssay[$key]['feedback'] = $getStudentEssay[$key]['feedback']['trait_scores'];
+                }
+                if(isset($getStudentEssay[$key]['feedback']['traits']) && !empty($getStudentEssay[$key]['feedback']['traits'])){
+                    $getStudentEssay[$key]['feedback'] = $getStudentEssay[$key]['feedback']['traits'];
+                }
+                $getStudentEssay[$key]['version'] = 'V2';
+                if(is_null($getStudentEssay[$key]['feedback'])){
+                    $getStudentEssay[$key]['feedback'] = $value['feedback'];
+                    $getStudentEssay[$key]['version'] = 'V1';
+                }
+            }
+            
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $getStudentEssay,
+                'count' => count($getStudentEssay),
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getOpenAiFeedbackCount error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
             return $this->respond([
                 'IsSuccess' => false,
                 'ResponseObject' => null,

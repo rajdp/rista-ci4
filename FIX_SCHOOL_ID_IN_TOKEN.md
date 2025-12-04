@@ -91,3 +91,8 @@ This should work even if the token doesn't have `school_id`.
 
 **Try Solution 2 first (pass school_id in payload) - it should work immediately!**
 
+
+
+
+
+

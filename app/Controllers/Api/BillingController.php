@@ -8,6 +8,10 @@ use App\Services\InvoiceBuilder;
 use App\Services\BillingRunService;
 use App\Models\BillingScheduleModel;
 use App\Models\BillingRunModel;
+use App\Services\Billing\SubscriptionService;
+use App\Services\Billing\InvoiceService;
+use App\Services\Billing\PolicyService;
+use App\Services\Billing\ReportService;
 
 class BillingController extends ResourceController
 {
@@ -17,6 +21,10 @@ class BillingController extends ResourceController
     protected BillingRunService $billingRunService;
     protected BillingScheduleModel $scheduleModel;
     protected BillingRunModel $runModel;
+    protected $subscriptionService;
+    protected $invoiceService;
+    protected $policyService;
+    protected $reportService;
 
     public function __construct()
     {
@@ -25,6 +33,10 @@ class BillingController extends ResourceController
         $this->billingRunService = new BillingRunService();
         $this->scheduleModel = new BillingScheduleModel();
         $this->runModel = new BillingRunModel();
+        $this->subscriptionService = new SubscriptionService();
+        $this->invoiceService = new InvoiceService();
+        $this->policyService = new PolicyService();
+        $this->reportService = new ReportService();
     }
 
     /**
@@ -261,6 +273,354 @@ class BillingController extends ResourceController
         return $this->respond([
             'success' => true,
             'data' => $schedules
+        ]);
+    }
+
+    // ==================== NEW SUBSCRIPTION API ====================
+
+    /**
+     * Create subscription
+     * POST /api/billing/subscriptions
+     */
+    public function createSubscription()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $data = $this->request->getJSON(true);
+        $data['school_id'] = $schoolId;
+
+        $result = $this->subscriptionService->createSubscription($data);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ], $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * List subscriptions
+     * GET /api/billing/subscriptions
+     */
+    public function listSubscriptions()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $filters = array_filter([
+            'student_id' => $this->request->getGet('student_id'),
+            'course_id' => $this->request->getGet('course_id'),
+            'status' => $this->request->getGet('status'),
+            'term' => $this->request->getGet('term'),
+        ]);
+
+        $result = $this->subscriptionService->getSubscriptions($schoolId, $filters);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ]);
+    }
+
+    /**
+     * Update subscription
+     * PATCH /api/billing/subscriptions/{id}
+     */
+    public function updateSubscription($id)
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $data = $this->request->getJSON(true);
+        $result = $this->subscriptionService->updateSubscription($id, $data);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ], $result['success'] ? 200 : 400);
+    }
+
+    // ==================== NEW INVOICE API ====================
+
+    /**
+     * Generate invoice
+     * POST /api/billing/invoices/generate
+     */
+    public function generateInvoice()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $data = $this->request->getJSON(true);
+
+        if (!empty($data['subscription_id'])) {
+            $result = $this->invoiceService->generateFromSubscription(
+                $data['subscription_id'],
+                $data['issue_date'] ?? null,
+                $data['due_date'] ?? null
+            );
+        } else {
+            $data['school_id'] = $schoolId;
+            $items = $data['items'] ?? [];
+            unset($data['items']);
+            $result = $this->invoiceService->createManualInvoice($data, $items);
+        }
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ], $result['success'] ? 201 : 400);
+    }
+
+    /**
+     * List invoices
+     * GET /api/billing/invoices
+     */
+    public function listInvoices()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $filters = array_filter([
+            'status' => $this->request->getGet('status'),
+            'student_id' => $this->request->getGet('student_id'),
+            'subscription_id' => $this->request->getGet('subscription_id'),
+            'due_from' => $this->request->getGet('due_from'),
+            'due_to' => $this->request->getGet('due_to'),
+            'search' => $this->request->getGet('search'),
+        ]);
+
+        $page = (int) ($this->request->getGet('page') ?? 1);
+        $limit = (int) ($this->request->getGet('limit') ?? 50);
+
+        $result = $this->invoiceService->getInvoices($schoolId, $filters, $page, $limit);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ]);
+    }
+
+    /**
+     * Get invoice details
+     * GET /api/billing/invoices/{id}
+     */
+    public function getInvoice($id)
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $result = $this->invoiceService->getInvoiceDetails($id);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ], $result['success'] ? 200 : 404);
+    }
+
+    /**
+     * Void invoice
+     * POST /api/billing/invoices/{id}/void
+     */
+    public function voidInvoice($id)
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $data = $this->request->getJSON(true);
+        $reason = $data['reason'] ?? 'No reason provided';
+
+        $result = $this->invoiceService->voidInvoice($id, $reason);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ], $result['success'] ? 200 : 400);
+    }
+
+    // ==================== POLICIES API ====================
+
+    /**
+     * Get late fee policy
+     * GET /api/billing/policies/late_fee
+     */
+    public function getLateFeePolicy()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $result = $this->policyService->getLateFeePolicy($schoolId);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ]);
+    }
+
+    /**
+     * Update late fee policy
+     * PUT /api/billing/policies/late_fee
+     */
+    public function updateLateFeePolicy()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $data = $this->request->getJSON(true);
+        $result = $this->policyService->updateLateFeePolicy($schoolId, $data);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ], $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Get dunning policy
+     * GET /api/billing/policies/dunning
+     */
+    public function getDunningPolicy()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $result = $this->policyService->getDunningSteps($schoolId);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ]);
+    }
+
+    /**
+     * Update dunning policy
+     * PUT /api/billing/policies/dunning
+     */
+    public function updateDunningPolicy()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $data = $this->request->getJSON(true);
+        $steps = $data['steps'] ?? [];
+
+        $result = $this->policyService->updateDunningSteps($schoolId, $steps);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ], $result['success'] ? 200 : 400);
+    }
+
+    // ==================== REPORTS API ====================
+
+    /**
+     * Pending payments report
+     * GET /api/billing/reports/pending
+     */
+    public function pendingPaymentsReport()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $filters = array_filter([
+            'status' => $this->request->getGet('status'),
+            'due_from' => $this->request->getGet('due_from'),
+            'due_to' => $this->request->getGet('due_to'),
+            'course_id' => $this->request->getGet('course_id'),
+        ]);
+
+        $result = $this->reportService->getPendingPaymentsReport($schoolId, $filters);
+
+        $format = $this->request->getGet('format');
+        if ($format === 'csv') {
+            $csv = $this->reportService->exportToCSV($result['data']['invoices'] ?? [], 'pending_payments.csv');
+            return $this->response->download('pending_payments.csv', $csv);
+        }
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ]);
+    }
+
+    /**
+     * Aging report
+     * GET /api/billing/reports/aging
+     */
+    public function agingReport()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $asOfDate = $this->request->getGet('as_of_date');
+        $result = $this->reportService->getAgingReport($schoolId, $asOfDate);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
+        ]);
+    }
+
+    /**
+     * KPI metrics
+     * GET /api/billing/reports/kpis
+     */
+    public function kpisReport()
+    {
+        $schoolId = $this->getSchoolId();
+        if (!$schoolId) {
+            return $this->respond(['IsSuccess' => false, 'ErrorObject' => 'X-School-Id required'], 400);
+        }
+
+        $fromDate = $this->request->getGet('from_date') ?? date('Y-m-01');
+        $toDate = $this->request->getGet('to_date') ?? date('Y-m-t');
+
+        $result = $this->reportService->getKPIs($schoolId, $fromDate, $toDate);
+
+        return $this->respond([
+            'IsSuccess' => $result['success'],
+            'ResponseObject' => $result['data'],
+            'ErrorObject' => $result['error'] ?? ''
         ]);
     }
 }

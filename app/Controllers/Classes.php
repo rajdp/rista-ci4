@@ -2753,4 +2753,196 @@ class Classes extends BaseController
             ], 500);
         }
     }
+
+    /**
+     * Edit class content details (dates, times, settings)
+     */
+    public function editClassContent(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📥 Classes::editClassContent params: ' . json_encode($params));
+
+            // Validation
+            if (empty($params['platform']) || !in_array($params['platform'], ['web', 'ios'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role_Id should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['class_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class Id should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Content Id should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['class_content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Class Content Id should not be empty'
+                ], 400);
+            }
+
+            $db = \Config\Database::connect();
+
+            // Prepare update data
+            $updateData = [
+                'start_date' => $params['start_date'] ?? null,
+                'end_date' => $params['end_date'] ?? null,
+                'auto_review' => isset($params['auto_review']) ? (int)$params['auto_review'] : 0,
+                'modified_by' => $params['user_id'],
+                'modified_date' => date('Y-m-d H:i:s')
+            ];
+
+            // Handle time conversion if provided as object
+            if (isset($params['start_time']) && !empty($params['start_time'])) {
+                if (is_array($params['start_time']) && isset($params['start_time']['hour'])) {
+                    $updateData['start_time'] = sprintf('%02d:%02d:%02d', 
+                        $params['start_time']['hour'] ?? 0,
+                        $params['start_time']['minute'] ?? 0,
+                        $params['start_time']['second'] ?? 0
+                    );
+                } else {
+                    $updateData['start_time'] = $params['start_time'];
+                }
+            } else {
+                $updateData['start_time'] = '';
+            }
+
+            if (isset($params['end_time']) && !empty($params['end_time'])) {
+                if (is_array($params['end_time']) && isset($params['end_time']['hour'])) {
+                    $updateData['end_time'] = sprintf('%02d:%02d:%02d',
+                        $params['end_time']['hour'] ?? 0,
+                        $params['end_time']['minute'] ?? 0,
+                        $params['end_time']['second'] ?? 0
+                    );
+                } else {
+                    $updateData['end_time'] = $params['end_time'];
+                }
+            } else {
+                $updateData['end_time'] = '';
+            }
+
+            // Optional fields
+            if (isset($params['is_accessible']) && $params['is_accessible'] !== '') {
+                $updateData['is_accessible'] = (int)$params['is_accessible'];
+            }
+            if (isset($params['allow_workspace']) && $params['allow_workspace'] !== '') {
+                $updateData['allow_workspace'] = (int)$params['allow_workspace'];
+            }
+            if (isset($params['allow_feedback']) && $params['allow_feedback'] !== '') {
+                $updateData['allow_feedback'] = (int)$params['allow_feedback'];
+            }
+            if (isset($params['show_timer']) && $params['show_timer'] !== '') {
+                $updateData['show_timer'] = (int)$params['show_timer'];
+            }
+
+            // Remove null values except for required fields
+            $updateData = array_filter($updateData, function($value, $key) {
+                return $value !== null || in_array($key, ['start_time', 'end_time']);
+            }, ARRAY_FILTER_USE_BOTH);
+
+            // Update class_content
+            $builder = $db->table('class_content');
+            $builder->where('id', $params['class_content_id']);
+            $updateSuccess = $builder->update($updateData);
+
+            if ($updateSuccess === false) {
+                log_message('error', '❌ Classes::editClassContent failed to update class_content');
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update content details'
+                ], 500);
+            }
+
+            // Create log entry
+            try {
+                // Get current class_content details for logging
+                $classContentDetails = $db->table('class_content')
+                    ->where('id', $params['class_content_id'])
+                    ->get()
+                    ->getRowArray();
+
+                if (!empty($classContentDetails) && $db->tableExists('class_content_log')) {
+                    // Prepare log data
+                    $logData = [
+                        'class_id' => $classContentDetails['class_id'],
+                        'content_id' => $classContentDetails['content_id'],
+                        'school_id' => $classContentDetails['school_id'] ?? $params['school_id'] ?? null,
+                        'status' => $classContentDetails['status'],
+                        'all_student' => $classContentDetails['all_student'],
+                        'release_score' => $classContentDetails['release_score'],
+                        'auto_review' => $classContentDetails['auto_review'],
+                        'start_date' => $classContentDetails['start_date'],
+                        'end_date' => $classContentDetails['end_date'],
+                        'start_time' => $classContentDetails['start_time'],
+                        'end_time' => $classContentDetails['end_time'],
+                        'downloadable' => $classContentDetails['downloadable'],
+                        'topic_id' => $classContentDetails['topic_id'],
+                        'is_accessible' => $classContentDetails['is_accessible'],
+                        'created_by' => $params['user_id'],
+                        'modified_by' => $params['user_id'],
+                        'created_date' => date('Y-m-d H:i:s'),
+                        'modified_date' => date('Y-m-d H:i:s')
+                    ];
+
+                    $logTable = $db->table('class_content_log');
+                    $logTable->insert($logData);
+                }
+            } catch (\Exception $e) {
+                // Log the error but don't fail the request
+                log_message('warning', 'Failed to create class_content_log: ' . $e->getMessage());
+            }
+
+            log_message('debug', '✅ Classes::editClassContent successfully updated');
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => 'Content details has been updated',
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '❌ Classes::editClassContent error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => 'Failed to update: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

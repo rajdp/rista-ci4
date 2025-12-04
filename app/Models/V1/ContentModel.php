@@ -1000,4 +1000,401 @@ class ContentModel extends BaseModel
         
         return $db->query($sql, [$classId])->getResultArray();
     }
+
+    /**
+     * ========================================
+     * UNIFIED CONTENT CREATOR METHODS
+     * ========================================
+     */
+
+    /**
+     * Add content via unified creator
+     */
+    public function addContentUnified($data)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('content');
+
+        $builder->insert($data);
+        return $db->insertID();
+    }
+
+    /**
+     * Update content via unified creator
+     */
+    public function updateContentUnified($contentId, $data)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('content');
+
+        $builder->where('content_id', $contentId);
+        return $builder->update($data);
+    }
+
+    /**
+     * Add question via unified creator
+     */
+    public function addQuestionUnified($questionData)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('text_questions');
+
+        // Map frontend data to database structure
+        $dbData = [
+            'content_id' => $questionData['content_id'],
+            'question_type_id' => $questionData['question_type_id'] ?? $questionData['questionTypeId'],
+            'sub_question_type_id' => 0,
+            'editor_type' => 2, // 2 = Text editor
+            'question_no' => $questionData['order'] ?? 0,
+            'sub_question_no' => '0',
+            'has_sub_question' => 0,
+            'question' => $questionData['question_text'] ?? $questionData['questionText'],
+            'answer_instructions' => null,
+            'editor_answer' => null,
+
+            // Options and answers (stored as JSON in database)
+            'options' => $this->formatOptionsForDatabase($questionData),
+            'answer' => $this->formatAnswerForDatabase($questionData),
+
+            // Level: convert string to int (1=easy, 2=medium, 3=hard)
+            'level' => $this->convertLevelToInt($questionData['level'] ?? 'medium'),
+
+            'heading_option' => '',
+            'multiple_response' => $questionData['multiple_response'] ?? $questionData['multipleResponse'] ?? 0,
+            'audo_grade' => $questionData['auto_grade'] ?? $questionData['autoGrade'] ?? 0,
+            'points' => $questionData['points'] ?? 1,
+            'exact_match' => $questionData['exact_match'] ?? $questionData['exactMatch'] ?? 0,
+            'hint' => $questionData['hint'] ?? $questionData['hintText'] ?? $questionData['hint_text'] ?? '',
+            'explanation' => $questionData['explanation'] ?? $questionData['feedbackText'] ?? $questionData['feedback_text'] ?? '',
+            'word_limit' => $questionData['word_limit'] ?? $questionData['maxWords'] ?? 0,
+            'scoring_instruction' => isset($questionData['rubric']) ? json_encode($questionData['rubric']) : '',
+            'passage_id' => 0,
+            'subject_id' => 0,
+            'question_topic_id' => 0,
+            'question_sub_topic_id' => 0,
+            'question_standard' => 0,
+            'predicted_solving_time' => $questionData['predicted_solving_time'] ?? $questionData['predictedSolvingTime'] ?? '02:00',
+            'created_by' => $questionData['created_by'] ?? 0,
+            'created_date' => date('Y-m-d H:i:s'),
+            'modified_by' => 0,
+            'modified_date' => date('Y-m-d H:i:s')
+        ];
+
+        $builder->insert($dbData);
+        return $db->insertID();
+    }
+
+    /**
+     * Format options data for database storage
+     * Transforms frontend option format to database format
+     */
+    private function formatOptionsForDatabase($questionData)
+    {
+        $questionTypeId = $questionData['question_type_id'] ?? $questionData['questionTypeId'];
+
+        // MCQ - convert {optionText, isCorrect, order} to {options: "text"}
+        if ($questionTypeId == '1' || $questionTypeId == '2') {
+            $options = $questionData['options'] ?? [];
+            return json_encode(array_map(function($option) {
+                return ['options' => $option['optionText'] ?? ''];
+            }, $options));
+        }
+
+        // File Upload - store file upload settings in options JSON
+        if ($questionTypeId == '50') {
+            $fileUploadData = [
+                'allowedFileTypes' => $questionData['allowedFileTypes'] ?? $questionData['allowed_file_types'] ?? [],
+                'maxFileSize' => $questionData['maxFileSize'] ?? $questionData['max_file_size'] ?? null,
+                'maxFiles' => $questionData['maxFiles'] ?? $questionData['max_files'] ?? null
+            ];
+            return json_encode($fileUploadData);
+        }
+
+        // For other question types, return empty array
+        return '[]';
+    }
+
+    /**
+     * Format answer data for database storage
+     * The answer array indicates which options are correct
+     */
+    private function formatAnswerForDatabase($questionData)
+    {
+        $questionTypeId = $questionData['question_type_id'] ?? $questionData['questionTypeId'];
+
+        // True/False
+        if ($questionTypeId == '3') {
+            $correctAnswer = $questionData['correctAnswer'] ?? false;
+            return json_encode([['correctAnswer' => $correctAnswer ? 'true' : 'false', 'correctActive' => 1]]);
+        }
+
+        // Fill in Blank
+        if ($questionTypeId == '4') {
+            $correctAnswers = $questionData['correctAnswers'] ?? [];
+            return json_encode(array_map(function($answer) {
+                return ['correctAnswer' => $answer, 'correctActive' => 1];
+            }, $correctAnswers));
+        }
+
+        // MCQ - create answer array with correctActive for each option
+        // Format: [{correctActive: 1}, {correctActive: 0}, ...] where 1=correct, 0=incorrect
+        if ($questionTypeId == '1' || $questionTypeId == '2') {
+            $options = $questionData['options'] ?? [];
+            $answers = [];
+            foreach ($options as $option) {
+                $answers[] = ['correctActive' => ($option['isCorrect'] ?? false) ? 1 : 0];
+            }
+            return json_encode($answers);
+        }
+
+        // Default empty array
+        return json_encode([]);
+    }
+
+    /**
+     * Convert level string to int
+     */
+    private function convertLevelToInt($level)
+    {
+        $levelMap = [
+            'easy' => 1,
+            'medium' => 2,
+            'hard' => 3
+        ];
+        return $levelMap[strtolower($level)] ?? 2;
+    }
+
+    /**
+     * Delete questions for content
+     */
+    public function deleteQuestionsForContent($contentId)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('text_questions');
+
+        $builder->where('content_id', $contentId);
+        return $builder->delete();
+    }
+
+    /**
+     * Get content by ID
+     */
+    public function getContentById($contentId)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('content');
+
+        $builder->where('content_id', $contentId);
+        return $builder->get()->getRowArray();
+    }
+
+    /**
+     * Get questions for content
+     */
+    public function getQuestionsByContentId($contentId)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('text_questions');
+
+        $builder->where('content_id', $contentId);
+        $builder->orderBy('question_no', 'ASC');
+
+        $questions = $builder->get()->getResultArray();
+
+        log_message('debug', '📋 getQuestionsByContentId - Content ID: ' . $contentId);
+        log_message('debug', '📋 Found ' . count($questions) . ' questions');
+
+        // Map database fields to frontend format
+        return array_map(function($q) {
+            $questionData = [
+                'questionId' => $q['question_id'],
+                'questionTypeId' => $q['question_type_id'],
+                'questionText' => $q['question'],
+                'order' => $q['question_no'],
+                'points' => $q['points'],
+                'autoGrade' => $q['audo_grade'],
+                'predictedSolvingTime' => $q['predicted_solving_time'],
+                'level' => $this->convertLevelToString($q['level']),
+                'hintText' => $q['hint'],
+                'feedbackText' => $q['explanation'],
+                'options' => $this->extractMcqOptions($q),
+                'correctAnswer' => $this->extractCorrectAnswer($q),
+                'correctAnswers' => $this->extractCorrectAnswers($q),
+                'rubric' => !empty($q['scoring_instruction']) ? json_decode($q['scoring_instruction'], true) : [],
+                'multipleResponse' => $q['multiple_response'],
+                'exactMatch' => $q['exact_match'],
+                'maxWords' => $q['word_limit'],
+                'shuffleOptions' => $q['shuffle_options'] ?? false
+            ];
+
+            // Extract file upload specific fields from options JSON
+            if ($q['question_type_id'] == '50') {
+                $fileUploadData = json_decode($q['options'], true) ?? [];
+                $questionData['allowedFileTypes'] = $fileUploadData['allowedFileTypes'] ?? [];
+                $questionData['maxFileSize'] = $fileUploadData['maxFileSize'] ?? null;
+                $questionData['maxFiles'] = $fileUploadData['maxFiles'] ?? null;
+            }
+
+            return $questionData;
+        }, $questions);
+    }
+
+    /**
+     * Convert level int to string
+     */
+    private function convertLevelToString($level)
+    {
+        $levelMap = [1 => 'easy', 2 => 'medium', 3 => 'hard'];
+        return $levelMap[$level] ?? 'medium';
+    }
+
+    /**
+     * Extract MCQ options for frontend
+     * Combines options JSON and answer JSON to create proper option objects
+     */
+    private function extractMcqOptions($question)
+    {
+        // Only for MCQ question types
+        if ($question['question_type_id'] != '1' && $question['question_type_id'] != '2') {
+            return [];
+        }
+
+        $options = json_decode($question['options'], true) ?? [];
+        $answers = json_decode($question['answer'], true) ?? [];
+
+        log_message('debug', '🔍 extractMcqOptions - Question ID: ' . ($question['question_id'] ?? 'unknown'));
+        log_message('debug', '🔍 Raw options JSON: ' . $question['options']);
+        log_message('debug', '🔍 Raw answer JSON: ' . $question['answer']);
+        log_message('debug', '🔍 Decoded options: ' . json_encode($options));
+        log_message('debug', '🔍 Decoded answers: ' . json_encode($answers));
+
+        // Transform database format to frontend format
+        $transformedOptions = [];
+        foreach ($options as $index => $option) {
+            $transformedOptions[] = [
+                'optionText' => $option['options'] ?? '',
+                'isCorrect' => isset($answers[$index]) && ($answers[$index]['correctActive'] ?? 0) === 1,
+                'order' => $index,
+                'feedback' => ''  // Feedback not stored in current database schema
+            ];
+        }
+
+        log_message('debug', '🔍 Transformed options: ' . json_encode($transformedOptions));
+
+        return $transformedOptions;
+    }
+
+    /**
+     * Extract correct answer for True/False questions
+     */
+    private function extractCorrectAnswer($question)
+    {
+        if ($question['question_type_id'] == '3') {
+            $answer = json_decode($question['answer'], true);
+            if (!empty($answer) && isset($answer[0]['correctAnswer'])) {
+                return $answer[0]['correctAnswer'] === 'true';
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract correct answers array for Fill in Blank
+     */
+    private function extractCorrectAnswers($question)
+    {
+        if ($question['question_type_id'] == '4') {
+            $answers = json_decode($question['answer'], true);
+            return array_map(function($a) {
+                return $a['correctAnswer'];
+            }, $answers ?? []);
+        }
+        return [];
+    }
+
+    /**
+     * Save draft
+     */
+    public function saveDraft($data)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('content_drafts');
+
+        // Check if draft exists
+        if (!empty($data['draft_id'])) {
+            $builder->where('draft_id', $data['draft_id']);
+            $builder->update($data);
+            return $data['draft_id'];
+        } else {
+            $builder->insert($data);
+            return $db->insertID();
+        }
+    }
+
+    /**
+     * Get draft by ID
+     */
+    public function getDraft($draftId)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('content_drafts');
+
+        $builder->where('draft_id', $draftId);
+        $draft = $builder->get()->getRowArray();
+
+        if ($draft && !empty($draft['state_data'])) {
+            $draft['state_data'] = json_decode($draft['state_data'], true);
+        }
+
+        return $draft;
+    }
+
+    /**
+     * Get batches/folders for content organization
+     * Batches are used as folder structure in the unified content creator
+     */
+    public function getBatches($schoolId)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('batch b');
+
+        $builder->select('b.batch_id as id, b.batch_name as name, b.parent_batch_id as parent');
+        $builder->where('b.school_id', $schoolId);
+        $builder->where('b.status', 1); // Only active batches
+        $builder->orderBy('b.batch_name', 'ASC');
+
+        return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Get all subjects
+     */
+    public function getSubjects($schoolId = null)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('subject s');
+
+        $builder->select('s.subject_id as id, s.subject_name as name');
+
+        // If school_id is provided, filter by school (if there's a school-subject relationship)
+        // For now, get all subjects
+        $builder->where('s.status', 1); // Only active subjects
+        $builder->orderBy('s.subject_name', 'ASC');
+
+        return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Get all grades
+     */
+    public function getGrades()
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table('grade g');
+
+        $builder->select('g.grade_id as id, g.grade_name as name');
+        $builder->orderBy('g.grade_id', 'ASC');
+
+        return $builder->get()->getResultArray();
+    }
 }

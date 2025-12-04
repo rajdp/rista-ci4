@@ -1,12 +1,46 @@
 <?php
-defined('BASEPATH') or exit('No direct script access allowed');
+
+namespace App\Controllers;
+
+// CI3/CI4 compatible security check
+// Allow access through framework routing - only block true direct file access
+// CI4 routes should define SYSTEMPATH or have the framework loaded
+if (php_sapi_name() !== 'cli' && !defined('BASEPATH') && !defined('SYSTEMPATH')) {
+    // Check if this is truly a direct file access (not routed)
+    $scriptFile = basename($_SERVER['PHP_SELF'] ?? $_SERVER['SCRIPT_NAME'] ?? '');
+    $isDirectAccess = (
+        $scriptFile === 'Mailbox.php' && 
+        empty($_SERVER['PATH_INFO']) &&
+        !class_exists('\CodeIgniter\CodeIgniter', false)
+    );
+    
+    // Only block if it's clearly a direct file access attempt
+    if ($isDirectAccess) {
+        exit('No direct script access allowed');
+    }
+    // Otherwise, allow it through (likely being accessed via CI4 routing)
+}
+
 header('Access-Control-Allow-Origin: *');
 header("Access-Control-Allow-Headers: AccessToken");
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 
-require APPPATH . '/libraries/REST_Controller.php';
+// Only require REST_Controller if not already loaded (CI3/CI4 compatibility)
+if (!class_exists('REST_Controller')) {
+    // Try CI4 path first
+    $restControllerPath = __DIR__ . '/../Libraries/REST_Controller.php';
+    if (file_exists($restControllerPath)) {
+        require $restControllerPath;
+    } elseif (defined('APPPATH')) {
+        // Try CI3 path
+        $ci3Path = rtrim(APPPATH, '/') . '/libraries/REST_Controller.php';
+        if (file_exists($ci3Path)) {
+            require $ci3Path;
+        }
+    }
+}
 
-class Mailbox extends REST_Controller
+class Mailbox extends \REST_Controller
 {
     protected $jsonarr = array();
     protected $headers;
@@ -20,7 +54,8 @@ class Mailbox extends REST_Controller
         $this->load->model("common_model");
 
         header("Access-Control-Allow-Origin: *");
-        $this->controller = uri_string();
+        // CI4 compatible uri_string() function
+        $this->controller = $this->uri_string();
         $urlAuth = $this->verifyAuthUrl();
         $headers = $this->input->request_headers();
         if ($urlAuth) {
@@ -249,7 +284,7 @@ class Mailbox extends REST_Controller
         exit;
     }
 
-    private function setCorsHeaders()
+    protected function setCorsHeaders()
     {
         // Get origin from request if available
         $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
@@ -586,7 +621,7 @@ class Mailbox extends REST_Controller
     }
 
 
-    private function printjson($jsonarr)
+    protected function printjson($jsonarr)
     {
         // Set CORS headers using the same logic as setCorsHeaders
         $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';

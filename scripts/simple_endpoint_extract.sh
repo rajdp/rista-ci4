@@ -52,3 +52,8 @@ echo ""
 echo "Missing endpoints:"
 cat "$OUTPUT_DIR/missing.txt"
 
+
+
+
+
+

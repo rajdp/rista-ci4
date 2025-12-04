@@ -257,3 +257,8 @@ php spark env                   # Check environment
 
 **Most Common Issue:** Not being in the correct directory. Always `cd` to `rista_ci4/` root first!
 
+
+
+
+
+

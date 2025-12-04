@@ -14,7 +14,7 @@ class CorsFilter implements FilterInterface
         
         $allowedOriginsEnv = env('cors.allowedOrigins', 'http://localhost:8211,http://localhost:4211');
         $allowedOrigins = $this->explodeAndTrim($allowedOriginsEnv);
-        $allowedDomainSuffixesEnv = env('cors.allowedDomainSuffixes', '.edquill.com,.edquill.test');
+        $allowedDomainSuffixesEnv = env('cors.allowedDomainSuffixes', '.edquill.com,.edquill.test,.edquillcrm.com');
         $allowedDomainSuffixes = $this->explodeAndTrim($allowedDomainSuffixesEnv);
 
         $origin = $request->getHeaderLine('Origin');

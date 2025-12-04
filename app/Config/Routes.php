@@ -165,6 +165,10 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->post('student/completedCfsContent', 'Student::completedCfsContent'); // Completed content folder content
     $routes->post('student/cfsReport', 'Student::cfsReport'); // Content folder report
     $routes->post('student/updateContentStartTime', 'Student::updateContentStartTime'); // Update content start time
+    $routes->post('student/getOpenAiFeedbackCount', 'Student::getOpenAiFeedbackCount'); // Get OpenAI feedback count
+    
+    // Unified Content - Load content (accessible to all authenticated users including students)
+    $routes->get('unified-content/load-content/(:num)', 'UnifiedContent::loadContent/$1');
     
     // Self-registration admin actions
     $routes->post('admin/self-registration/list', 'Admin\SelfRegistration::list');
@@ -259,6 +263,7 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('teacher/assignmentList', 'Teacher::assignmentList');
     $routes->post('teacher/studentCorrectionList', 'Teacher::studentCorrectionList');
     $routes->post('teacher/studentAnswerList', 'Teacher::studentAnswerList');
+    $routes->post('teacher/getOverallFeedback', 'Teacher::getOverallFeedback');
 
     // Teacher availability endpoints
     $routes->group('availability', function($routes) {
@@ -333,6 +338,7 @@ $routes->post('classes/viewAssignments', 'Classes::viewAssignments');
     $routes->post('classes/slotList', 'Classes::slotList');
     $routes->post('classes/updateClass', 'Classes::updateClass');
     $routes->post('classes/edit', 'Classes::edit');
+    $routes->post('classes/editClassContent', 'Classes::editClassContent');
     $routes->post('class/edit', 'Classes::edit');
     $routes->post('class/update', 'Classes::update');
     $routes->post('class/remove', 'Classes::remove');
@@ -549,12 +555,35 @@ $routes->post('content/detail', 'Content::detail');
     // Student Transactions
     $routes->get('api/schools/(:num)/students/(:num)/transactions', 'Api\PaymentController::getStudentTransactions/$1/$2');
 
-    // Billing endpoints
+    // Billing endpoints (legacy)
     $routes->get('api/billing/summary', 'Api\BillingController::summary');
     $routes->post('api/billing/enrollment/(:num)/seed', 'Api\BillingController::seedSchedule/$1');
     $routes->post('api/billing/schedule/(:num)/invoice-now', 'Api\BillingController::invoiceNow/$1');
     $routes->post('api/billing/run', 'Api\BillingController::triggerRun');
     $routes->get('api/billing/schedules', 'Api\BillingController::listSchedules');
+
+    // Billing endpoints (new payment system)
+    // Subscriptions
+    $routes->post('api/billing/subscriptions', 'Api\BillingController::createSubscription');
+    $routes->get('api/billing/subscriptions', 'Api\BillingController::listSubscriptions');
+    $routes->patch('api/billing/subscriptions/(:num)', 'Api\BillingController::updateSubscription/$1');
+
+    // Invoices
+    $routes->post('api/billing/invoices/generate', 'Api\BillingController::generateInvoice');
+    $routes->get('api/billing/invoices', 'Api\BillingController::listInvoices');
+    $routes->get('api/billing/invoices/(:num)', 'Api\BillingController::getInvoice/$1');
+    $routes->post('api/billing/invoices/(:num)/void', 'Api\BillingController::voidInvoice/$1');
+
+    // Policies
+    $routes->get('api/billing/policies/late_fee', 'Api\BillingController::getLateFeePolicy');
+    $routes->put('api/billing/policies/late_fee', 'Api\BillingController::updateLateFeePolicy');
+    $routes->get('api/billing/policies/dunning', 'Api\BillingController::getDunningPolicy');
+    $routes->put('api/billing/policies/dunning', 'Api\BillingController::updateDunningPolicy');
+
+    // Reports
+    $routes->get('api/billing/reports/pending_payments', 'Api\BillingController::pendingPaymentsReport'); // Fixed: match Angular service URL
+    $routes->get('api/billing/reports/aging', 'Api\BillingController::agingReport');
+    $routes->get('api/billing/reports/kpis', 'Api\BillingController::kpisReport');
 });
 
 // Admin routes (admin authentication required)
@@ -698,13 +727,151 @@ $routes->group('', ['filter' => 'admin'], function($routes) {
     $routes->post('api/payments/transactions/(:num)/void', 'Api\PaymentController::void/$1');
     $routes->get('api/payments/transactions/(:num)', 'Api\PaymentController::getTransaction/$1');
     $routes->get('api/schools/(:num)/payments/summary', 'Api\PaymentController::getSchoolSummary/$1');
+
+    // =====================================================
+    // Unified Content Creator (Admin/Teacher)
+    // =====================================================
+
+    // Create and update content
+    $routes->post('unified-content/create', 'UnifiedContent::create');
+    $routes->post('unified-content/update/(:num)', 'UnifiedContent::update/$1');
+
+    // Draft management
+    $routes->post('unified-content/save-draft', 'UnifiedContent::saveDraft');
+    $routes->get('unified-content/load-draft/(:num)', 'UnifiedContent::loadDraft/$1');
+
+    // File upload
+    $routes->post('unified-content/upload-pdf', 'UnifiedContent::uploadPdf');
+
+    // Get dropdown data (batches, subjects, grades)
+    $routes->get('unified-content/batches', 'UnifiedContent::getBatches');
+    $routes->get('unified-content/subjects', 'UnifiedContent::getSubjects');
+    $routes->get('unified-content/grades', 'UnifiedContent::getGrades');
 });
+
+// ==================== REPORT CARDS ROUTES ====================
+// Template Management
+$routes->post('reportcard/template/create', 'ReportCard::templateCreate');
+$routes->post('reportcard/template/list', 'ReportCard::templateList');
+$routes->post('reportcard/template/detail', 'ReportCard::templateDetail');
+$routes->post('reportcard/template/update', 'ReportCard::templateUpdate');
+$routes->post('reportcard/template/preview', 'ReportCard::templatePreview');
+
+// Grading Scale Management
+$routes->post('reportcard/scale/list', 'ReportCard::scaleList');
+$routes->post('reportcard/scale/create', 'ReportCard::scaleCreate');
+$routes->post('reportcard/scale/update', 'ReportCard::scaleUpdate');
+
+// Report Card Generation & Management
+$routes->post('reportcard/generate', 'ReportCard::generate');
+$routes->post('reportcard/list', 'ReportCard::reportCardList');
+$routes->post('reportcard/detail', 'ReportCard::reportCardDetail');
+$routes->post('reportcard/update', 'ReportCard::reportCardUpdate');
+$routes->post('reportcard/status', 'ReportCard::reportCardStatus');
+
+// Email & PDF Delivery
+$routes->post('reportcard/email', 'ReportCard::sendEmail');
+$routes->post('reportcard/email/bulk', 'ReportCard::bulkEmail');
+$routes->get('reportcard/download', 'ReportCard::downloadPdf');
+
+// Student Portal
+$routes->post('student/reportCards', 'ReportCard::studentReportCards');
+$routes->post('reportcard/view', 'ReportCard::viewReportCard');
+
+// Events & Analytics
+$routes->post('reportcard/events', 'ReportCard::events');
+$routes->post('reportcard/analytics', 'ReportCard::analytics');
 
 // The Auto Routing (Legacy) is very dangerous. It is easy to create vulnerable apps
 // where controller filters or CSRF protection are bypassed.
 // If you don't want to define all routes, please use the Auto Routing (Improved).
 // Set `$autoRoutesImproved` to true in `app/Config/Feature.php` and set the following to true.
 // $routes->setAutoRoute(false);
+
+// ==================== STUDENT PORTAL API ROUTES ====================
+
+$routes->group('api/student-portal', ['filter' => 'jwtauth'], function($routes) {
+
+    // PROFILE CHANGE REQUESTS
+    $routes->post('profile/change-request', 'StudentPortalAPI::createProfileChangeRequest');
+    $routes->get('profile/change-requests', 'StudentPortalAPI::listProfileChangeRequests');
+    $routes->get('profile/change-request/(:num)', 'StudentPortalAPI::getProfileChangeRequest/$1');
+
+    // ABSENCE REQUESTS
+    $routes->post('absence-request', 'StudentPortalAPI::createAbsenceRequest');
+    $routes->get('absence-requests', 'StudentPortalAPI::listAbsenceRequests');
+    $routes->get('absence-request/(:num)', 'StudentPortalAPI::getAbsenceRequest/$1');
+
+    // SPECIAL REQUESTS
+    $routes->post('special-request', 'StudentPortalAPI::createSpecialRequest');
+    $routes->get('special-requests', 'StudentPortalAPI::listSpecialRequests');
+    $routes->get('special-request/(:num)', 'StudentPortalAPI::getSpecialRequest/$1');
+    $routes->get('request-types', 'StudentPortalAPI::getRequestTypes');
+
+    // DOCUMENTS
+    $routes->post('document/upload', 'StudentPortalAPI::uploadDocument');
+    $routes->get('documents', 'StudentPortalAPI::listDocuments');
+    $routes->get('document/(:num)', 'StudentPortalAPI::getDocument/$1');
+    $routes->get('document/(:num)/download', 'StudentPortalAPI::downloadDocument/$1');
+    $routes->delete('document/(:num)', 'StudentPortalAPI::deleteDocument/$1');
+
+    // CONVERSATIONS
+    $routes->post('request/(:alpha)/(:num)/message', 'StudentPortalAPI::addMessage/$1/$2');
+    $routes->get('request/(:alpha)/(:num)/conversation', 'StudentPortalAPI::getConversation/$1/$2');
+});
+
+// ==================== ADMIN APPROVAL CENTER ROUTES ====================
+
+$routes->group('api/admin/approval-center', ['filter' => 'jwtauth,adminonly'], function($routes) {
+
+    // DASHBOARD
+    $routes->get('dashboard', 'StudentPortalAPI::getApprovalDashboard');
+    $routes->get('all-pending', 'StudentPortalAPI::getAllPendingRequests');
+    $routes->get('workload', 'StudentPortalAPI::getAdminWorkload');
+
+    // PROFILE CHANGE APPROVAL
+    $routes->get('profile-change/(:num)', 'StudentPortalAPI::getProfileChangeRequest/$1');
+    $routes->post('profile-change/(:num)/approve', 'StudentPortalAPI::approveProfileChange/$1');
+    $routes->post('profile-change/(:num)/reject', 'StudentPortalAPI::rejectProfileChange/$1');
+
+    // ABSENCE APPROVAL
+    $routes->get('absence/(:num)', 'StudentPortalAPI::getAbsenceRequest/$1');
+    $routes->post('absence/(:num)/approve', 'StudentPortalAPI::approveAbsence/$1');
+    $routes->post('absence/(:num)/reject', 'StudentPortalAPI::rejectAbsence/$1');
+
+    // SPECIAL REQUEST MANAGEMENT
+    $routes->get('special-request/(:num)', 'StudentPortalAPI::getSpecialRequest/$1');
+    $routes->patch('special-request/(:num)', 'StudentPortalAPI::updateSpecialRequest/$1');
+    $routes->post('special-request/(:num)/approve', 'StudentPortalAPI::approveSpecialRequest/$1');
+    $routes->post('special-request/(:num)/reject', 'StudentPortalAPI::rejectSpecialRequest/$1');
+    $routes->post('special-request/(:num)/assign', 'StudentPortalAPI::assignSpecialRequest/$1');
+
+    // DOCUMENT REVIEW
+    $routes->get('document/(:num)', 'StudentPortalAPI::getDocument/$1');
+    $routes->get('document/(:num)/download', 'StudentPortalAPI::downloadDocument/$1');
+    $routes->post('document/(:num)/approve', 'StudentPortalAPI::approveDocument/$1');
+    $routes->post('document/(:num)/reject', 'StudentPortalAPI::rejectDocument/$1');
+
+    // BULK OPERATIONS
+    $routes->post('bulk-approve', 'StudentPortalAPI::bulkApprove');
+    $routes->post('bulk-reject', 'StudentPortalAPI::bulkReject');
+
+    // CONVERSATIONS
+    $routes->get('request/(:alpha)/(:num)/conversation', 'StudentPortalAPI::getRequestConversations/$1/$2');
+    $routes->post('request/(:alpha)/(:num)/message', 'StudentPortalAPI::addConversationMessage/$1/$2');
+
+    // REQUEST TYPE CONFIGURATION
+    $routes->get('request-types/all', 'StudentPortalAPI::getAllRequestTypes');
+    $routes->post('request-type', 'StudentPortalAPI::createRequestType');
+    $routes->patch('request-type/(:num)', 'StudentPortalAPI::updateRequestType/$1');
+});
+
+// ==================== TEACHER ROUTES ====================
+
+$routes->group('api/teacher', ['filter' => 'jwtauth'], function($routes) {
+    // View absences for their classes
+    $routes->get('class/(:num)/absences', 'StudentPortalAPI::getAbsencesForClass/$1');
+});
 
 /*
  * --------------------------------------------------------------------

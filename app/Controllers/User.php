@@ -1044,4 +1044,277 @@ class User extends ResourceController
             ], 500);
         }
     }
+
+    /**
+     * Forgot password - reset password using email and new password
+     */
+    public function forgotPassword(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON();
+            
+            if (!$data) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid request data'
+                ], 400);
+            }
+
+            // Validate required fields
+            if (!isset($data->email_id) || empty($data->email_id)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Email is required'
+                ], 400);
+            }
+
+            if (!isset($data->password) || empty($data->password)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Password is required'
+                ], 400);
+            }
+
+            // Validate email format
+            $email = strtolower(trim($data->email_id));
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid email format'
+                ], 400);
+            }
+
+            // Find user by email
+            $user = $this->model->getUserByEmail($email);
+            
+            if (!$user) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User not found with this email'
+                ], 404);
+            }
+
+            // Hash the new password with salt (same as login/create)
+            $salt = 'ristainternational';
+            $hashedPassword = md5($salt . $data->password . $salt);
+
+            // Update password
+            $db = \Config\Database::connect();
+            $updated = $db->table('user')
+                ->where('user_id', $user['user_id'])
+                ->update([
+                    'password' => $hashedPassword,
+                    'default_password' => 0,
+                    'modified_date' => date('Y-m-d H:i:s')
+                ]);
+
+            if ($updated) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => [
+                        'message' => 'Password reset successfully',
+                        'user_id' => $user['user_id']
+                    ],
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to reset password'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Forgot password error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reset password with token (if token-based reset is needed)
+     */
+    public function resetPassword(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON();
+            
+            if (!$data) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid request data'
+                ], 400);
+            }
+
+            // Validate required fields
+            if (!isset($data->email_id) || empty($data->email_id)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Email is required'
+                ], 400);
+            }
+
+            if (!isset($data->password) || empty($data->password)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Password is required'
+                ], 400);
+            }
+
+            // Validate email format
+            $email = strtolower(trim($data->email_id));
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid email format'
+                ], 400);
+            }
+
+            // Find user by email
+            $user = $this->model->getUserByEmail($email);
+            
+            if (!$user) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User not found with this email'
+                ], 404);
+            }
+
+            // Hash the new password with salt (same as login/create)
+            $salt = 'ristainternational';
+            $hashedPassword = md5($salt . $data->password . $salt);
+
+            // Update password
+            $db = \Config\Database::connect();
+            $updated = $db->table('user')
+                ->where('user_id', $user['user_id'])
+                ->update([
+                    'password' => $hashedPassword,
+                    'default_password' => 0,
+                    'modified_date' => date('Y-m-d H:i:s')
+                ]);
+
+            if ($updated) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => [
+                        'message' => 'Password reset successfully',
+                        'user_id' => $user['user_id']
+                    ],
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to reset password'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Reset password error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update TC (Terms and Conditions) status for a user
+     */
+    public function tcUpdate(): ResponseInterface
+    {
+        try {
+            $data = $this->request->getJSON();
+            
+            if (!$data) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Invalid request data'
+                ], 400);
+            }
+
+            // Validate required fields
+            if (!isset($data->user_id) || empty($data->user_id)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User ID is required'
+                ], 400);
+            }
+
+            if (!isset($data->status)) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Status is required'
+                ], 400);
+            }
+
+            $userId = (int)$data->user_id;
+            $tcStatus = (int)$data->status;
+
+            // Validate user exists
+            $user = $this->model->getUserById($userId);
+            if (!$user) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User not found'
+                ], 404);
+            }
+
+            // Update tc_status
+            $db = \Config\Database::connect();
+            $updated = $db->table('user')
+                ->where('user_id', $userId)
+                ->update([
+                    'tc_status' => $tcStatus,
+                    'modified_date' => date('Y-m-d H:i:s')
+                ]);
+
+            if ($updated) {
+                return $this->respond([
+                    'IsSuccess' => true,
+                    'ResponseObject' => [
+                        'message' => 'TC status updated successfully',
+                        'user_id' => $userId,
+                        'tc_status' => $tcStatus
+                    ],
+                    'ErrorObject' => ''
+                ]);
+            } else {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Failed to update TC status'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'TC update error: ' . $e->getMessage());
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

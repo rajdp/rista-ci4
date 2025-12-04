@@ -815,4 +815,42 @@ class TeacherModel extends Model
             return [];
         }
     }
+
+    /**
+     * Get overall feedback for a student content submission
+     * Returns all active feedback records for the given student_content_id
+     */
+    public function getOverallFeedback(array $params): array
+    {
+        log_message('debug', '📋 TeacherModel::getOverallFeedback called with params: ' . json_encode($params));
+        
+        if (empty($params['student_content_id'])) {
+            log_message('error', '❌ getOverallFeedback: student_content_id is required');
+            return [];
+        }
+        
+        $studentContentId = (int)$params['student_content_id'];
+        
+        $query = "SELECT id, student_content_id, feedback, feedback_type, 
+                         COALESCE(version, '') as version,
+                         status, created_by, created_date, 
+                         COALESCE(modified_by, '') as modified_by,
+                         COALESCE(modified_date, '') as modified_date 
+                  FROM teacher_overall_feedback 
+                  WHERE student_content_id = {$studentContentId} 
+                  AND status = 1 
+                  ORDER BY id DESC";
+        
+        log_message('debug', '🔍 Get Overall Feedback Query: ' . $query);
+        
+        try {
+            $result = $this->db->query($query)->getResultArray();
+            log_message('debug', '✅ Get Overall Feedback returned ' . count($result) . ' records');
+            return $result;
+        } catch (\Exception $e) {
+            log_message('error', '❌ Get Overall Feedback Query Error: ' . $e->getMessage());
+            log_message('error', 'Query: ' . $query);
+            return [];
+        }
+    }
 }

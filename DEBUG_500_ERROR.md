@@ -243,3 +243,8 @@ php -r "new mysqli('localhost', 'edquill_demo', 'edquill_demo2025', 'edquill_dem
 
 **The key is to see the actual error message. Check the logs or enable error display!**
 
+
+
+
+
+

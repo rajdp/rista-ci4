@@ -431,35 +431,82 @@ class BookingsController extends ApptController
      */
     public function autoAssign(): ResponseInterface
     {
+        // Debug: Log raw request information
+        log_message('info', '[AutoAssign] === REQUEST DEBUG START ===');
+        log_message('info', '[AutoAssign] Method: ' . $this->request->getMethod());
+        log_message('info', '[AutoAssign] Content-Type: ' . $this->request->getHeaderLine('Content-Type'));
+        log_message('info', '[AutoAssign] Raw body length: ' . strlen($this->request->getBody()));
+        
         $payload = $this->jsonPayload();
         
-        // Log the received payload for debugging (without sensitive data)
-        log_message('debug', sprintf('[AutoAssign] Received payload: %s', json_encode(array_merge($payload, ['email' => isset($payload['email']) ? '[REDACTED]' : null]))));
+        log_message('info', '[AutoAssign] Payload count: ' . count($payload));
+        log_message('info', '[AutoAssign] === REQUEST DEBUG END ===');
+        
+        // Log the received payload for debugging (with better visibility)
+        $logPayload = $payload;
+        if (isset($logPayload['email'])) {
+            $logPayload['email'] = '[REDACTED]';
+        }
+        log_message('info', sprintf('[AutoAssign] Received payload keys: %s', json_encode(array_keys($payload))));
+        log_message('info', sprintf('[AutoAssign] Payload has school_key: %s, school_id: %s', 
+            isset($payload['school_key']) ? 'YES (' . $payload['school_key'] . ')' : 'NO',
+            isset($payload['school_id']) ? 'YES (' . $payload['school_id'] . ')' : 'NO'
+        ));
 
         // Resolve school_id from school_key or direct school_id
         $schoolId = null;
-        if (!empty($payload['school_key'])) {
+        
+        // IMPORTANT: If school_id is already provided, use it directly
+        if (!empty($payload['school_id']) && is_numeric($payload['school_id'])) {
+            $schoolId = (int) $payload['school_id'];
+            log_message('info', sprintf('[AutoAssign] ✅ Using direct school_id from payload: %d', $schoolId));
+        } elseif (!empty($payload['school_key'])) {
+            log_message('info', sprintf('[AutoAssign] Attempting to resolve school from key: %s', $payload['school_key']));
             $db = \Config\Database::connect();
             $builder = $db->table('school');
-            $builder->select('school_id');
+            $builder->select('school_id, school_key, name, status');
+            $builder->where('school_key', $payload['school_key']);
+            
+            // First try without status filter to see if school exists at all
+            $schoolAny = $builder->get()->getRowArray();
+            log_message('info', sprintf('[AutoAssign] Query result (any status): %s', json_encode($schoolAny ?: 'NOT FOUND')));
+            
+            // Now query with status filter
+            $builder = $db->table('school');
+            $builder->select('school_id, school_key, name, status');
             $builder->where('school_key', $payload['school_key']);
             $builder->where('status', 1);
             $school = $builder->get()->getRowArray();
+            
             if ($school) {
                 $schoolId = (int) $school['school_id'];
+                log_message('info', sprintf('[AutoAssign] ✅ Resolved school_id %d from school_key: %s (name: %s)', 
+                    $schoolId, $payload['school_key'], $school['name'] ?? 'N/A'));
+            } else {
+                log_message('warning', sprintf('[AutoAssign] ❌ Could not find ACTIVE school with key: %s', $payload['school_key']));
+                if ($schoolAny) {
+                    log_message('warning', sprintf('[AutoAssign] Found inactive school: id=%s, status=%s', 
+                        $schoolAny['school_id'] ?? 'N/A', $schoolAny['status'] ?? 'N/A'));
+                }
             }
-        } elseif (!empty($payload['school_id'])) {
-            $schoolId = (int) $payload['school_id'];
+        } else {
+            log_message('error', '[AutoAssign] ❌ Payload has neither school_key nor school_id');
         }
 
         if (!$schoolId) {
+            log_message('error', '[AutoAssign] ❌ FINAL: No school_id could be determined from payload');
             return $this->errorResponse('school_id or school_key is required');
         }
+        
+        log_message('info', sprintf('[AutoAssign] ✅ Proceeding with school_id: %d', $schoolId));
 
         $startAtIso = $payload['start_at_iso'] ?? null;
         $endAtIso = $payload['end_at_iso'] ?? null;
 
+        log_message('info', sprintf('[AutoAssign] Dates received - start_at_iso: %s, end_at_iso: %s', $startAtIso ?? 'NULL', $endAtIso ?? 'NULL'));
+
         if (!$startAtIso || !$endAtIso) {
+            log_message('error', '[AutoAssign] Missing start_at_iso or end_at_iso in payload');
             return $this->errorResponse('start_at_iso and end_at_iso are required');
         }
 

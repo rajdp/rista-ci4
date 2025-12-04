@@ -143,7 +143,7 @@ class MailboxCI4 extends ResourceController
     /**
      * Update message status (mark as read/unread)
      */
-    public function update(): ResponseInterface
+    public function update($id = null): ResponseInterface
     {
         try {
             $params = $this->request->getJSON(true) ?? [];

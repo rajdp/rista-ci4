@@ -132,3 +132,8 @@ php -r "new mysqli('localhost', 'edquill_demo', 'edquill_demo2025', 'edquill_dem
 
 **Next Step:** Check the error logs and share the specific error message!
 
+
+
+
+
+

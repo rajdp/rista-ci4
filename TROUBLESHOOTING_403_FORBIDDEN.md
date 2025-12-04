@@ -289,3 +289,8 @@ tail -f writable/logs/log-*.log
 
 **Most Common Fix:** File permissions (Solution 1) resolves 90% of 403 errors on GoDaddy.
 
+
+
+
+
+

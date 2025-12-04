@@ -348,16 +348,30 @@ class Dashboard extends BaseController
     {
         $db = Database::connect();
         
-        // Get daily leads and enrollments
-        $dailyData = $db->table('t_marketing_kpi_daily')
+        // Get daily leads and enrollments from student_self_registrations
+        // First, get leads (all submissions)
+        $leadsQuery = $db->table('student_self_registrations')
             ->where('school_id', $schoolId)
-            ->where('day >=', $fromDate)
-            ->where('day <=', $toDate)
-            ->select('day, SUM(leads) as leads, SUM(enrollments) as enrollments, SUM(revenue_cents) as revenue_cents')
-            ->groupBy('day')
-            ->orderBy('day', 'ASC')
+            ->where('submitted_at >=', $fromDate)
+            ->where('submitted_at <=', $toDate . ' 23:59:59')
+            ->select('DATE(submitted_at) as day, COUNT(*) as count')
+            ->groupBy('DATE(submitted_at)')
             ->get()
             ->getResultArray();
+        
+        // Then, get enrollments (converted registrations)
+        $enrollmentsQuery = $db->table('student_self_registrations')
+            ->where('school_id', $schoolId)
+            ->where('status', 'converted')
+            ->where('converted_at >=', $fromDate)
+            ->where('converted_at <=', $toDate . ' 23:59:59')
+            ->select('DATE(converted_at) as day, COUNT(*) as count')
+            ->groupBy('DATE(converted_at)')
+            ->get()
+            ->getResultArray();
+        
+        // Combine into dailyData format
+        $dailyData = [];
 
         // Get daily revenue
         $dailyRevenue = $db->table('t_revenue_daily')
@@ -378,15 +392,25 @@ class Dashboard extends BaseController
         $arrData = [];
         $conversionRateData = [];
 
-        // Create a map of dates for quick lookup
+        // Create a map of dates for quick lookup - build from separate queries
         $dailyMap = [];
-        foreach ($dailyData as $row) {
+        
+        // Add leads data
+        foreach ($leadsQuery as $row) {
             $day = $row['day'];
-            $dailyMap[$day] = [
-                'leads' => (int) ($row['leads'] ?? 0),
-                'enrollments' => (int) ($row['enrollments'] ?? 0),
-                'revenue' => (int) ($row['revenue_cents'] ?? 0),
-            ];
+            if (!isset($dailyMap[$day])) {
+                $dailyMap[$day] = ['leads' => 0, 'enrollments' => 0, 'revenue' => 0];
+            }
+            $dailyMap[$day]['leads'] = (int) ($row['count'] ?? 0);
+        }
+        
+        // Add enrollments data
+        foreach ($enrollmentsQuery as $row) {
+            $day = $row['day'];
+            if (!isset($dailyMap[$day])) {
+                $dailyMap[$day] = ['leads' => 0, 'enrollments' => 0, 'revenue' => 0];
+            }
+            $dailyMap[$day]['enrollments'] = (int) ($row['count'] ?? 0);
         }
 
         $revenueMap = [];
@@ -398,29 +422,77 @@ class Dashboard extends BaseController
             ];
         }
 
-        // Generate date range and populate data
+        // Generate weekly date range and populate data
         $start = new \DateTime($fromDate);
         $end = new \DateTime($toDate);
-        $interval = new \DateInterval('P1D');
-        $dateRange = new \DatePeriod($start, $interval, $end->modify('+1 day'));
-
-        foreach ($dateRange as $date) {
-            $dayStr = $date->format('Y-m-d');
-            $dayLabel = $date->format('M d');
+        
+        // Start from the beginning of the week (Sunday)
+        $start->modify('Sunday this week');
+        if ($start->format('Y-m-d') < $fromDate) {
+            $start = new \DateTime($fromDate);
+        }
+        
+        // Aggregate data by week
+        $current = clone $start;
+        while ($current <= $end) {
+            $weekStart = clone $current;
+            $weekEnd = clone $current;
+            $weekEnd->modify('+6 days');
             
-            $dates[] = $dayLabel;
-            $daily = $dailyMap[$dayStr] ?? ['leads' => 0, 'enrollments' => 0, 'revenue' => 0];
-            $revenue = $revenueMap[$dayStr] ?? ['mrr' => 0, 'arr' => 0];
+            // Don't go past the end date
+            if ($weekEnd > $end) {
+                $weekEnd = clone $end;
+            }
             
-            $leadsData[] = $daily['leads'];
-            $enrollmentsData[] = $daily['enrollments'];
-            $revenueData[] = round($daily['revenue'] / 100, 2); // Convert cents to dollars
-            $mrrData[] = round($revenue['mrr'] / 100, 2);
-            $arrData[] = round($revenue['arr'] / 100, 2);
+            // Aggregate data for this week
+            $weekLeads = 0;
+            $weekEnrollments = 0;
+            $weekRevenue = 0;
+            $weekMrr = 0;
+            $weekArr = 0;
+            $daysInWeek = 0;
             
-            // Calculate conversion rate for this day
-            $convRate = $daily['leads'] > 0 ? ($daily['enrollments'] / $daily['leads']) * 100 : 0;
+            $dayIterator = clone $weekStart;
+            while ($dayIterator <= $weekEnd) {
+                $dayStr = $dayIterator->format('Y-m-d');
+                
+                if (isset($dailyMap[$dayStr])) {
+                    $weekLeads += $dailyMap[$dayStr]['leads'];
+                    $weekEnrollments += $dailyMap[$dayStr]['enrollments'];
+                    $weekRevenue += $dailyMap[$dayStr]['revenue'];
+                }
+                
+                if (isset($revenueMap[$dayStr])) {
+                    $weekMrr += $revenueMap[$dayStr]['mrr'];
+                    $weekArr += $revenueMap[$dayStr]['arr'];
+                    $daysInWeek++;
+                }
+                
+                $dayIterator->modify('+1 day');
+            }
+            
+            // Average MRR and ARR for the week
+            if ($daysInWeek > 0) {
+                $weekMrr = $weekMrr / $daysInWeek;
+                $weekArr = $weekArr / $daysInWeek;
+            }
+            
+            // Format week label
+            $weekLabel = $weekStart->format('M d') . ' - ' . $weekEnd->format('M d');
+            $dates[] = $weekLabel;
+            
+            $leadsData[] = $weekLeads;
+            $enrollmentsData[] = $weekEnrollments;
+            $revenueData[] = round($weekRevenue / 100, 2); // Convert cents to dollars
+            $mrrData[] = round($weekMrr / 100, 2);
+            $arrData[] = round($weekArr / 100, 2);
+            
+            // Calculate conversion rate for this week
+            $convRate = $weekLeads > 0 ? ($weekEnrollments / $weekLeads) * 100 : 0;
             $conversionRateData[] = round($convRate, 2);
+            
+            // Move to next week
+            $current->modify('+7 days');
         }
 
         return [

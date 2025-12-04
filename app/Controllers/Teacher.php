@@ -553,4 +553,75 @@ class Teacher extends ResourceController
             ], 500);
         }
     }
+
+    /**
+     * Get overall feedback for a student content submission
+     * Returns all active feedback records for the given student_content_id
+     */
+    public function getOverallFeedback(): ResponseInterface
+    {
+        try {
+            $params = $this->request->getJSON(true) ?? [];
+            
+            if (empty($params)) {
+                $params = $this->request->getPost() ?? [];
+            }
+
+            log_message('debug', '📥 Teacher::getOverallFeedback called with params: ' . json_encode($params));
+
+            // Validate required parameters
+            if (empty($params['platform']) || !in_array($params['platform'], ['web', 'ios'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Platform should not be empty and must be "web" or "ios"'
+                ], 400);
+            }
+
+            if (empty($params['role_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Role Id should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['user_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'User Id should not be empty'
+                ], 400);
+            }
+
+            if (empty($params['student_content_id'])) {
+                return $this->respond([
+                    'IsSuccess' => false,
+                    'ResponseObject' => null,
+                    'ErrorObject' => 'Student Content Id should not be empty'
+                ], 400);
+            }
+
+            // Get overall feedback from model
+            $feedbackList = $this->teacherModel->getOverallFeedback($params);
+            
+            log_message('debug', '✅ Teacher::getOverallFeedback returning ' . count($feedbackList) . ' feedback records');
+
+            return $this->respond([
+                'IsSuccess' => true,
+                'ResponseObject' => $feedbackList,
+                'ErrorObject' => ''
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '❌ Teacher::getOverallFeedback error: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            
+            return $this->respond([
+                'IsSuccess' => false,
+                'ResponseObject' => null,
+                'ErrorObject' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

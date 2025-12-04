@@ -184,3 +184,8 @@ ls -la vendor/codeigniter4/framework/system/Exceptions/InvalidArgumentException.
 
 **The vendor directory contains the CodeIgniter framework. It must be complete for the application to work!**
 
+
+
+
+
+

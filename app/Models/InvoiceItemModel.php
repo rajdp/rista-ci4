@@ -7,26 +7,24 @@ use CodeIgniter\Model;
 class InvoiceItemModel extends Model
 {
     protected $table = 't_invoice_item';
-    protected $primaryKey = 'invoice_item_id';
+    protected $primaryKey = 'item_id'; // Fixed: actual column name is item_id, not invoice_item_id
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
     protected $protectFields = true;
     protected $allowedFields = [
         'invoice_id',
-        'student_fee_plan_id',
         'description',
-        'quantity',
-        'unit_cents',
-        'total_cents',
-        'kind',
-        'course_id',
-        'enrollment_id',
+        'qty', // Fixed: actual column name is qty, not quantity
+        'unit_price_cents', // Fixed: actual column name is unit_price_cents, not unit_cents
+        'line_total_cents', // Fixed: actual column name is line_total_cents, not total_cents
+        'type', // Fixed: actual column name is type, not kind
+        'meta_json',
     ];
 
-    protected $useTimestamps = true;
-    protected $createdField = 'created_at';
-    protected $updatedField = null; // No updated_at field
+    protected $useTimestamps = false; // Fixed: table has no timestamp columns
+    protected $createdField = '';
+    protected $updatedField = '';
 
     /**
      * Get all items for an invoice
@@ -37,7 +35,7 @@ class InvoiceItemModel extends Model
     public function getInvoiceItems(int $invoiceId): array
     {
         return $this->where('invoice_id', $invoiceId)
-            ->orderBy('kind', 'ASC') // Order: proration, recurring, deposit, onboarding, credit, tax
+            ->orderBy('type', 'ASC') // Order by type: tuition, deposit, material, registration, late_fee, adjustment, tax
             ->findAll();
     }
 
@@ -49,9 +47,9 @@ class InvoiceItemModel extends Model
      */
     public function createItem(array $data)
     {
-        // Ensure total_cents is calculated if not provided
-        if (!isset($data['total_cents']) && isset($data['quantity']) && isset($data['unit_cents'])) {
-            $data['total_cents'] = (int)$data['quantity'] * (int)$data['unit_cents'];
+        // Ensure line_total_cents is calculated if not provided
+        if (!isset($data['line_total_cents']) && isset($data['qty']) && isset($data['unit_price_cents'])) {
+            $data['line_total_cents'] = (int)$data['qty'] * (int)$data['unit_price_cents'];
         }
 
         return $this->insert($data);
@@ -65,11 +63,11 @@ class InvoiceItemModel extends Model
      */
     public function getInvoiceTotal(int $invoiceId): int
     {
-        $result = $this->selectSum('total_cents')
+        $result = $this->selectSum('line_total_cents')
             ->where('invoice_id', $invoiceId)
             ->first();
 
-        return (int)($result['total_cents'] ?? 0);
+        return (int)($result['line_total_cents'] ?? 0);
     }
 
     /**

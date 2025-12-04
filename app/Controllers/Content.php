@@ -2695,10 +2695,13 @@ class Content extends ResourceController
                 $params = $this->request->getPost() ?? [];
             }
 
-            log_message('debug', '📝 Content::addStudentAnswer called with params: ' . json_encode($params));
-            log_message('debug', '📝 Content::addStudentAnswer - content_format: ' . ($params['content_format'] ?? 'NOT SET'));
-            log_message('debug', '📝 Content::addStudentAnswer - has answers: ' . (isset($params['answers']) && is_array($params['answers']) ? 'YES (' . count($params['answers']) . ')' : 'NO'));
-            log_message('debug', '📝 Content::addStudentAnswer - has questions: ' . (isset($params['questions']) && is_array($params['questions']) ? 'YES (' . count($params['questions']) . ')' : 'NO'));
+            log_message('debug', '🔍 [SUBMIT] ========== addStudentAnswer called ==========');
+            log_message('debug', '🔍 [SUBMIT] Request params: ' . json_encode($params, JSON_PRETTY_PRINT));
+            log_message('debug', '🔍 [SUBMIT] content_format: ' . ($params['content_format'] ?? 'NOT SET'));
+            log_message('debug', '🔍 [SUBMIT] status in request: ' . ($params['status'] ?? 'NOT SET'));
+            log_message('debug', '🔍 [SUBMIT] student_content_id: ' . ($params['student_content_id'] ?? 'NOT SET'));
+            log_message('debug', '🔍 [SUBMIT] has answers: ' . (isset($params['answers']) && is_array($params['answers']) ? 'YES (' . count($params['answers']) . ')' : 'NO'));
+            log_message('debug', '🔍 [SUBMIT] has questions: ' . (isset($params['questions']) && is_array($params['questions']) ? 'YES (' . count($params['questions']) . ')' : 'NO'));
 
             // Validation
             if (empty($params['platform']) || !in_array($params['platform'], ['web', 'ios'])) {
@@ -2800,16 +2803,45 @@ class Content extends ResourceController
                 ->get()
                 ->getRowArray();
 
+            log_message('debug', '🔍 [SUBMIT] Status determination - Requested status: ' . ($params['status'] ?? 'NOT SET'));
+            log_message('debug', '🔍 [SUBMIT] Current student_content record: ' . json_encode($statusQuery, JSON_PRETTY_PRINT));
+
             $status = $params['status'] ?? 1;
             if ($statusQuery) {
                 $redoTest = $statusQuery['redo_test'] ?? 0;
                 $currentStatus = $statusQuery['status'] ?? 1;
+                $requestedStatus = $params['status'] ?? 1;
                 
-                // Only allow status change if redo is allowed or status is not submitted (4)
-                if (!(($redoTest == 0 && $currentStatus != 4) || ($redoTest == 1 || $redoTest == 2))) {
-                    $status = $currentStatus;
+                log_message('debug', '🔍 [SUBMIT] Current status: ' . $currentStatus . ', redo_test: ' . $redoTest . ', requested status: ' . $requestedStatus);
+                
+                // CRITICAL SAFEGUARD: Explicitly reject status = 1 (auto-save) updates when current status is 4 (submitted)
+                // This prevents auto-save from overwriting a final submission, even if there's a race condition
+                if ($currentStatus == 4 && $requestedStatus == 1) {
+                    // Only allow if redo is explicitly enabled (redo_test == 1 or 2)
+                    if ($redoTest == 0) {
+                        $status = $currentStatus; // Keep status = 4
+                        log_message('warning', '🚫 [SUBMIT] BLOCKED: Auto-save (status=1) attempted on submitted content (status=4). Rejected to preserve submission.');
+                        log_message('debug', '🔍 [SUBMIT] Status change blocked - keeping submitted status: ' . $status);
+                    } else {
+                        // Redo is allowed, but log it for monitoring
+                        log_message('info', '⚠️ [SUBMIT] Auto-save (status=1) on submitted content (status=4) allowed due to redo_test=' . $redoTest);
+                        log_message('debug', '🔍 [SUBMIT] Status change allowed - new status: ' . $status);
+                    }
+                } else {
+                    // Original logic for other status transitions
+                    // Only allow status change if redo is allowed or status is not submitted (4)
+                    if (!(($redoTest == 0 && $currentStatus != 4) || ($redoTest == 1 || $redoTest == 2))) {
+                        $status = $currentStatus;
+                        log_message('debug', '🔍 [SUBMIT] Status change blocked - keeping current status: ' . $status);
+                    } else {
+                        log_message('debug', '🔍 [SUBMIT] Status change allowed - new status: ' . $status);
+                    }
                 }
+            } else {
+                log_message('warning', '⚠️ [SUBMIT] No student_content record found for ID: ' . $params['student_content_id']);
             }
+            
+            log_message('debug', '🔍 [SUBMIT] Final status to be saved: ' . $status);
 
             // Update student_content
             $updateData = [
@@ -2818,11 +2850,39 @@ class Content extends ResourceController
                 'upload_answer' => isset($params['upload_answer']) && !empty($params['upload_answer']) ? json_encode($params['upload_answer']) : '',
                 'answer_completed_date' => date('Y-m-d H:i:s'),
                 'platform' => $platform,
-                'laq_id' => $params['laq_id'] ?? 0
+                'laq_id' => $params['laq_id'] ?? 0,
+                'content_time_taken' => isset($params['content_time_taken']) ? (int)$params['content_time_taken'] : 0
             ];
 
+            log_message('debug', '🔍 [SUBMIT] Updating student_content table');
+            log_message('debug', '🔍 [SUBMIT] student_content_id: ' . $params['student_content_id']);
+            log_message('debug', '🔍 [SUBMIT] Update data: ' . json_encode($updateData, JSON_PRETTY_PRINT));
+
             $updateCondition = ['id' => $params['student_content_id']];
+            $updateSQL = $buildUpdateSQL('student_content', $updateData, $updateCondition);
+            log_message('debug', '🔍 [SUBMIT] UPDATE SQL: ' . $updateSQL);
+            
             $updateResult = $db->table('student_content')->update($updateData, $updateCondition);
+            
+            log_message('debug', '🔍 [SUBMIT] Update result: ' . ($updateResult ? 'SUCCESS (rows affected: ' . $updateResult . ')' : 'FAILED (0 rows affected)'));
+            
+            // Verify the update by querying the record again
+            $verifyQuery = $db->table('student_content')
+                ->select('status, answer_completed_date, content_time_taken, platform')
+                ->where('id', $params['student_content_id'])
+                ->get()
+                ->getRowArray();
+            log_message('debug', '🔍 [SUBMIT] Verification query result: ' . json_encode($verifyQuery, JSON_PRETTY_PRINT));
+            
+            if ($verifyQuery && isset($verifyQuery['status'])) {
+                if ($verifyQuery['status'] == $status) {
+                    log_message('debug', '✅ [SUBMIT] Status verified - matches expected: ' . $status);
+                } else {
+                    log_message('error', '❌ [SUBMIT] Status MISMATCH - Expected: ' . $status . ', Actual: ' . $verifyQuery['status']);
+                }
+            } else {
+                log_message('error', '❌ [SUBMIT] Verification query returned no data or missing status field');
+            }
 
             // Update student_work if exists
             $workData = [
@@ -3189,6 +3249,8 @@ class Content extends ResourceController
                 }
 
                 $message = $status == 4 ? 'Answers Submitted Successfully' : 'Answers Saved Successfully';
+                log_message('debug', '✅ [SUBMIT] Returning success response: ' . $message);
+                log_message('debug', '✅ [SUBMIT] Final status in response: ' . $status);
                 
                 return $this->respond([
                     'IsSuccess' => true,
@@ -3196,6 +3258,11 @@ class Content extends ResourceController
                     'ErrorObject' => ''
                 ]);
             } else {
+                log_message('error', '❌ [SUBMIT] Failed to update student_content table - updateResult is false');
+                log_message('error', '❌ [SUBMIT] student_content_id: ' . $params['student_content_id']);
+                log_message('error', '❌ [SUBMIT] Update data was: ' . json_encode($updateData, JSON_PRETTY_PRINT));
+                log_message('error', '❌ [SUBMIT] Update condition was: ' . json_encode($updateCondition, JSON_PRETTY_PRINT));
+                
                 return $this->respond([
                     'IsSuccess' => false,
                     'ResponseObject' => null,

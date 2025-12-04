@@ -49,11 +49,11 @@ class CreateStudentContentClassAccess extends Migration
         $this->forge->addForeignKey('student_content_id', 'student_content', 'id', 'CASCADE', 'CASCADE', 'fk_scca_student_content');
         $this->forge->addForeignKey('class_id', 'classes', 'id', 'CASCADE', 'CASCADE', 'fk_scca_class');
         
-        $this->forge->createTable('student_content_class_access');
+        $this->forge->createTable('student_content_class_access', true); // true = IF NOT EXISTS
     }
 
     public function down()
     {
-        $this->forge->dropTable('student_content_class_access');
+        $this->forge->dropTable('student_content_class_access', true); // true = IF EXISTS
     }
 }

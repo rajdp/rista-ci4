@@ -216,3 +216,8 @@ Once you've uploaded the `app/` directory:
 
 **The missing `app/` directory is why you're getting 500 errors. Upload it completely and the errors should be resolved!**
 
+
+
+
+
+

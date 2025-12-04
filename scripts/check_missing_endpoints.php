@@ -140,3 +140,8 @@ echo "Report generated: $outputFile\n";
 echo "Missing endpoints: " . count($missing) . "\n";
 echo "Found endpoints: " . count($found) . "\n";
 
+
+
+
+
+

@@ -83,3 +83,8 @@ chmod -R 755 writable/logs/
 
 **The `php_error.log` file should contain the error message you need!**
 
+
+
+
+
+

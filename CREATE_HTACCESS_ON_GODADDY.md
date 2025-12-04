@@ -212,3 +212,8 @@ Options -Indexes
 
 **The .htaccess file is ESSENTIAL** - without it, CodeIgniter 4 cannot route requests properly and you'll get 403 errors.
 
+
+
+
+
+

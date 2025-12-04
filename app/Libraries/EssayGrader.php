@@ -2,41 +2,52 @@
 
 namespace App\Libraries;
 
-use CodeIgniter\HTTP\CURLRequest;
-
 class EssayGrader
 {
-    protected $modelConfig;
-    protected $essayPrompt;
-    protected $essayOld;
-    protected $essayNew;
-    protected $essayOldFeedback;
-    protected $traitInstructions;
-    protected $precheckModelConfig;
-    protected $apiKey;
-    protected $studentGrade;
-    protected $contentId;
-    protected $studentId;
-    protected $logFilename;
+    public $model_config;
+    public $essay_prompt;
+    public $essay_old;
+    public $essay_new;
+    public $essay_old_feedback;
+    public $trait_instructions;
+    public $precheck_model_config;
+    public $api_key;
+    public $student_grade; // New property for student grade
+    public $content_id;
+    public $student_id;
 
-    public function __construct($modelConfig, $essayPrompt, $essayOld, $essayNew, $essayOldFeedback, $traitInstructions, $studentGrade, $precheckModelConfig = null, $requestData = [])
+    public $log_filename;
+    
+    public function __construct($model_config, $essay_prompt, $essay_old, $essay_new, $essay_old_feedback, $trait_instructions, $student_grade, $precheck_model_config = null, $requestData)
     {
-        $this->modelConfig = $modelConfig;
-        $this->essayPrompt = $essayPrompt;
-        $this->essayOld = $essayOld;
-        $this->essayNew = $essayNew;
-        $this->essayOldFeedback = $essayOldFeedback;
-        $this->traitInstructions = $traitInstructions;
-        $this->studentGrade = $studentGrade;
-        $this->precheckModelConfig = $precheckModelConfig ?: $GLOBALS['MODELS']["gpt4o-mini"] ?? null;
-        $this->apiKey = env('openai.apiKey', '');
-        $this->contentId = $requestData['content_id'] ?? null;
-        $this->studentId = $requestData['student_id'] ?? null;
-        $this->logFilename = WRITEPATH . 'logs/essay/';
+        $this->model_config = $model_config;
+        $this->essay_prompt = $essay_prompt;
+        $this->essay_old = '';
+        $this->essay_new = $essay_new;
+        $this->essay_old_feedback = '';
+        $this->trait_instructions = $trait_instructions;
+        $this->student_grade = $student_grade; // Assign student grade
+        // Use provided precheck model, or default to "gpt4o-mini"
+        $this->precheck_model_config = $precheck_model_config ? $precheck_model_config : ($GLOBALS['MODELS']["gpt4o-mini"] ?? null);
+        
+        // Get API key from environment or config
+        $this->api_key = env('openai.apiKey', '');
+        if (empty($this->api_key)) {
+            // Try to read from properties.ini if it exists
+            $propertiesPath = ROOTPATH . '../properties.ini';
+            if (file_exists($propertiesPath)) {
+                $prop = parse_ini_file($propertiesPath, true, INI_SCANNER_RAW);
+                $this->api_key = $prop['api_key'] ?? '';
+            }
+        }
+        
+        $this->content_id = $requestData['content_id'] ?? null;
+        $this->student_id = $requestData['student_id'] ?? null;
+        $this->log_filename = WRITEPATH . 'logs/essay/';
         
         // Ensure log directory exists
-        if (!is_dir($this->logFilename)) {
-            mkdir($this->logFilename, 0755, true);
+        if (!is_dir($this->log_filename)) {
+            mkdir($this->log_filename, 0755, true);
         }
     }
 
@@ -51,263 +62,333 @@ class EssayGrader
     {
         $url = "https://api.openai.com/v1/chat/completions";
         $data = [
-            'model' => $model,
-            'messages' => $messages,
-            'temperature' => 0.7,
-            'max_tokens' => 2000
+            "model" => $model,
+            "messages" => $messages
+        ];
+        $jsonData = json_encode($data);
+        $tstjsonData = json_encode($data, JSON_PRETTY_PRINT);
+        $promptLogFileName = $this->log_filename . $this->student_id . '_' . $this->content_id . '_' . 'promptlog.txt';
+        file_put_contents($promptLogFileName, "\n Data: " . $tstjsonData, FILE_APPEND);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/json",
+            "Authorization: Bearer " . $this->api_key
+        ]);
+        $response = curl_exec($ch);
+        if (curl_errno($ch)) {
+            echo "cURL error: " . curl_error($ch) . "\n";
+            curl_close($ch);
+            return false;
+        }
+        curl_close($ch);
+        $promptLogFileName = $this->log_filename . $this->student_id . '_' . $this->content_id . '_' . 'promptlog.txt';
+        file_put_contents($promptLogFileName, "\n Model Response: " . json_encode($response, JSON_PRETTY_PRINT), FILE_APPEND);
+        
+        // Log to Common model if available
+        if (class_exists('\App\Models\Common_model')) {
+            $common_model = new \App\Models\Common_model();
+            if (method_exists($common_model, 'createLog')) {
+                $common_model->createLog(
+                    $jsonData,
+                    'v1/student/getOpenAiFeedback',
+                    $response,
+                    'OpenAiFeedbackResponse'
+                );
+            }
+        }
+
+        $decoded = json_decode($response, true);
+        return $decoded;
+    }
+
+    /**
+     * Build the prompt for a specific trait.
+     *
+     * @param string $trait
+     * @return string
+     */
+    public function build_trait_prompt($trait)
+    {
+        $context_block = "<context>\nYou are an expert essay grading and writing coach agent.\n</context>\n";
+        $instruction_block = "<instruction>\n" .
+            "Grade the essay on '{$trait}' with the following guidelines, on a scale of 1-5:\n" .
+            $this->trait_instructions[$trait] . "\n\n" .
+            "Return your output strictly in valid JSON format with the following structure:\n" .
+            "{\n" .
+            "  \"{$trait}\": {\n" .
+            "      \"score\": <number>,\n" .
+            "      \"feedback\": [\n" .
+            "         {\"snippet\": \"<text snippet>\", \"suggestion\": \"<suggestion>\"}\n" .
+            "      ]\n" .
+            "  }\n" .
+            "}\n" .
+            "Do not include any additional text or commentary outside of this JSON structure.\n" .
+            "</instruction>\n";
+        $essay_block = "Essay Prompt: " . $this->essay_prompt . "\nEssay:\n" . $this->essay_new;
+        return $context_block . "\n" . $instruction_block . "\n" . $essay_block;
+    }
+
+    /**
+     * Build a single prompt to grade all traits combined.
+     *
+     * @return string
+     */
+    public function build_combined_trait_prompt()
+    {
+        // ----- ROLE -----
+        $role_block = "<role>
+You are an expert Essay Grader & Writing Coach. Your primary goal is to build student confidence. Your feedback should be supportive, specific, and actionable, and your scoring should be
+encouraging.
+</role>";
+
+        // ----- CONTEXT -----
+        $context_block = "<context>
+Student grade: {$this->student_grade}
+Essay topic/prompt: \"{$this->essay_prompt}\"
+Tailor wording and expectations to Grade {$this->student_grade} (simple, clear; avoid jargon).
+</context>";
+
+        // ----- TASK -----
+        $task = "<task>
+
+Analyze the student essay using the trait guidelines. For each trait:
+- Assign a score (1–5).
+- Provide a brief rationale. If score < 5, explicitly name what's missing vs. the guideline.
+- Provide 2–4 concrete suggestions, each with (a) a short quoted snippet from the essay (≤200 chars), (b) a precise improvement, (c) WHY it helps, and (d) a tiny example rewrite.
+ Also provide: overall summary, strengths, top opportunities, and a 2–3 step Next Edit Plan the student can do now.
+ </task>";
+
+        $scoring_policy = "<scoring_policy>
+ Generosity and Optimism are key:
+ - Assume a baseline score of 4 for each trait. Only deduct points if specific guidelines are clearly and repeatedly missed.
+ - When evidence is mixed or between two levels, always choose the HIGHER score.
+ - Prioritize the student's effort and the core message over minor mechanical errors (especially for Conventions).
+ </scoring_policy>";
+
+        $grading_criteria_block = "<grading_criteria>
+ Scale per trait:
+ 1 = Far below expectations
+ 2 = Below expectations, with significant issues
+ 3 = Meets expectations
+ 4 = Above expectations, showing good effort
+ 5 = Excellent effort and clear understanding shown for this grade
+ </grading_criteria>";
+
+        // ----- ESSAY TO GRADE -----
+        $essay_to_grade_block = "<essay_to_grade>
+{$this->essay_new}
+</essay_to_grade>";
+
+        // ----- OUTPUT FORMAT (STRICT JSON) -----
+        $traitBlocks = [];
+
+        foreach ($this->trait_instructions as $trait => $desc) {
+            $traitBlocks[$trait] = [
+                "score" => "<number>",
+                "rationale" => "<rationale>",
+                "feedback" => [
+                    [
+                        "snippet" => "<verbatim>",
+                        "suggestion" => "<suggestion>",
+                        "why" => "<why it helps>",
+                        "example_rewrite" => "<example>"
+                    ],
+                    [
+                        "snippet" => "...",
+                        "suggestion" => "...",
+                        "why" => "...",
+                        "example_rewrite" => "..."
+                    ]
+                ]
+            ];
+        }
+
+        // Full structure
+        $outputArray = [
+            "overall" => [
+                "total_score" => "<number>",
+                "summary" => "<2–3 sentence overview tailored to the student>",
+                "strengths" => ["<short strength>", "<short strength>"],
+                "top_opportunities" => ["<short opportunity>", "<short opportunity>"]
+            ],
+            "traits" => $traitBlocks,
+            "next_edit_plan" => [
+                [
+                    "priority" => 1,
+                    "action" => "<one high-impact change>",
+                    "example_rewrite" => "<one sentence showing how>"
+                ]
+            ]
         ];
 
-        $client = \Config\Services::curlrequest();
-        
-        try {
-            $response = $client->post($url, [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                    'Content-Type' => 'application/json'
-                ],
-                'json' => $data,
-                'timeout' => 60
-            ]);
+        // Encode it as JSON string and wrap in <output_format> tags
+        $output_format_block = "<output_format>\n";
+        $output_format_block .= " Return your output strictly as ONE valid JSON object. No extra text, no markdown, no code fences.\n\n";
+        $output_format_block .= json_encode($outputArray, JSON_PRETTY_PRINT);
+        $output_format_block .= "\n</output_format>";
 
-            if ($response->getStatusCode() === 200) {
-                return json_decode($response->getBody(), true);
-            } else {
-                $this->logError('OpenAI API Error: ' . $response->getStatusCode() . ' - ' . $response->getBody());
-                return false;
-            }
-        } catch (\Exception $e) {
-            $this->logError('OpenAI API Exception: ' . $e->getMessage());
+        $promptLogFileName = $this->log_filename . $this->student_id . '_' . $this->content_id . '_' . 'promptlog.txt';
+        // Log (optional)
+        file_put_contents(
+            $promptLogFileName,
+            "\n".$role_block."\n".$context_block."\n".$task."\n".$scoring_policy."\n".$grading_criteria_block."\n".$essay_to_grade_block."\n".$output_format_block,
+            FILE_APPEND
+        );
+
+        return $role_block . "\n" . $context_block . "\n" . $task . "\n" . $scoring_policy . "\n" . $grading_criteria_block . "\n" . $essay_to_grade_block . "\n" . $output_format_block;
+    }
+
+    public function precheck_similarity()
+    {
+        if (trim($this->essay_old) == "") {
+            return true;
+        }
+
+        $prompt = "Compare the following two essays for similarity. " .
+            "If they are too similar, reply with exactly \"GET OUT OF HERE\". " .
+            "If they are sufficiently different, reply with exactly \"KEEP GOING\".\n\n" .
+            "Essay Old:\n" . $this->essay_old . "\n\n" .
+            "Essay New:\n" . $this->essay_new;
+        $messages = [
+            ["role" => "user", "content" => $prompt]
+        ];
+        $response = $this->callOpenAI($this->precheck_model_config->model_name, $messages);
+        if (!$response || !isset($response["choices"][0]["message"]["content"])) {
+            // echo "Precheck similarity API call failed.\n";
+            return false;
+        }
+        $result_text = trim($response["choices"][0]["message"]["content"]);
+        $cleaned_text = strtoupper(trim($this->clean_json_output($result_text)));
+        if (strpos($cleaned_text, "GET OUT OF HERE") !== false) {
+            return false;
+        } elseif (strpos($cleaned_text, "KEEP GOING") !== false) {
+            return true;
+        } else {
+            // echo "Ambiguous precheck response: " . $cleaned_text . "\n";
             return false;
         }
     }
 
     /**
-     * Grade the essay using AI
+     * Grade all essay traits in a single API call.
      *
-     * @return array
+     * @return array An associative array with 'result' and 'usage'.
      */
-    public function gradeEssay()
+    public function grade_all_traits_combined()
     {
-        try {
-            // Pre-check the essay for basic requirements
-            $precheckResult = $this->precheckEssay();
-            if (!$precheckResult['passed']) {
-                return [
-                    'success' => false,
-                    'error' => $precheckResult['message'],
-                    'suggestions' => $precheckResult['suggestions'] ?? []
-                ];
+        $prompt = $this->build_combined_trait_prompt();
+        $messages = [
+            ["role" => "user", "content" => $prompt]
+        ];
+        $response = $this->callOpenAI($this->model_config->model_name, $messages);
+
+        if (!$response || !isset($response["choices"][0]["message"]["content"])) {
+            //  echo "API request for combined traits failed.\n";
+            return ["result" => null, "usage" => []];
+        }
+        $result_text = $response["choices"][0]["message"]["content"];
+        $cleaned_text = $this->clean_json_output($result_text);
+        $result_json = json_decode($cleaned_text, true);
+        if ($result_json === null) {
+            // echo "Failed to parse JSON for combined traits: " . json_last_error_msg() . "\n";
+        }
+        $usage = isset($response["usage"]) ? $response["usage"] : [];
+        return ["result" => $result_json, "usage" => $usage];
+    }
+
+    public function run($params)
+    {
+        // --- Precheck for Essay Similarity ---
+        // Commented out as per pre-migration code
+        /*
+        if (trim($this->essay_old) != "") {
+            $proceed = $this->precheck_similarity();
+            if (!$proceed) {
+                $this->jsonarr['IsSuccess'] = false;
+                $this->jsonarr['ErrorObject'] = "LLM precheck response indicated: GET OUT OF HERE. Exiting grading process.";
+                $this->printjson($this->jsonarr);exit;
+            } else {
+               // echo "LLM precheck response indicated: KEEP GOING. Proceeding with grading.\n";
+            }
+        } else {
+          //  echo "No old essay provided; bypassing precheck.\n";
+        }
+        */
+        
+        // --- Grade All Traits (combined API call) ---
+        $combined_res = $this->grade_all_traits_combined();
+        if (!empty($combined_res['result']) && !empty($combined_res['usage'])) {
+            $combined_results = $combined_res["result"];
+            $total_usage = $combined_res["usage"];
+
+            // --- Calculate Costs ---
+            $total_cost = $this->calculate_cost($total_usage, $this->model_config);
+
+            // --- Output Results ---
+            $score_array = [];
+            foreach ($this->trait_instructions as $trait => $instruction) {
+                $trait_data = isset($combined_results['traits'][$trait]) ? $combined_results['traits'][$trait] : [];
+                $score = isset($trait_data["score"]) ? $trait_data["score"] : 0;
+                $score_array[] = $score;
             }
 
-            // Prepare the grading prompt
-            $gradingPrompt = $this->buildGradingPrompt();
-            
-            $messages = [
-                [
-                    'role' => 'system',
-                    'content' => 'You are an expert essay grader. Provide detailed feedback on student essays focusing on content, structure, grammar, and style.'
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $gradingPrompt
-                ]
-            ];
+            $overall_total = array_sum($score_array);
+            $overall_possible = 5 * count($this->trait_instructions);
+            $overall_percentage = ($overall_total / $overall_possible) * 100;
 
-            $response = $this->callOpenAI($this->modelConfig['model'], $messages);
-            
-            if (!$response) {
-                return [
-                    'success' => false,
-                    'error' => 'Failed to get AI response'
-                ];
-            }
+            $result['overall_total'] = $overall_total;
+            $result['overall_possible'] = $overall_possible;
+            $result['combined_results'] = $combined_results;
+            $result['prompt_token'] = $total_usage["prompt_tokens"];
+            $result['completion_token'] = $total_usage["completion_tokens"];
+            $result['total_token'] = $total_usage["total_tokens"];
+            $result['total_cost'] = $total_cost;
+            $apiCostLogFileName = $this->log_filename . $this->student_id . '_' . $this->content_id . '_' . 'apicost.txt';
+            file_put_contents($apiCostLogFileName, "\nUsage Statistics (combined):\n" .
+                "  Prompt Tokens: " . $total_usage["prompt_tokens"] . "\n" .
+                "  Completion Tokens: " . $total_usage["completion_tokens"] . "\n" .
+                "  Total Tokens: " . $total_usage["total_tokens"] . "\n" .
+                "  Total cost:" . $total_cost, FILE_APPEND);
 
-            $aiResponse = $response['choices'][0]['message']['content'] ?? '';
-            
-            // Parse the AI response
-            $gradingResult = $this->parseGradingResponse($aiResponse);
-            
-            // Log the grading result
-            $this->logGradingResult($gradingResult);
-            
-            return [
-                'success' => true,
-                'grade' => $gradingResult['grade'] ?? 'N/A',
-                'feedback' => $gradingResult['feedback'] ?? '',
-                'suggestions' => $gradingResult['suggestions'] ?? [],
-                'traits' => $gradingResult['traits'] ?? [],
-                'overall_score' => $gradingResult['overall_score'] ?? 0
-            ];
+            return $result;
 
-        } catch (\Exception $e) {
-            $this->logError('Essay grading error: ' . $e->getMessage());
-            return [
-                'success' => false,
-                'error' => 'An error occurred while grading the essay'
-            ];
+        } else {
+            return null;
         }
     }
-
-    /**
-     * Pre-check the essay for basic requirements
-     *
-     * @return array
-     */
-    private function precheckEssay()
+    
+    private function clean_json_output($text)
     {
-        if (empty($this->essayNew)) {
-            return [
-                'passed' => false,
-                'message' => 'Essay content is empty',
-                'suggestions' => ['Please write your essay before submitting']
-            ];
+        $lines = preg_split("/\r\n|\r|\n/", trim($text));
+        if (count($lines) > 0 && strpos(trim($lines[0]), "```") === 0) {
+            // Remove the first and last line (assumed to be code fences)
+            array_shift($lines);
+            array_pop($lines);
         }
-
-        // Check minimum word count
-        $wordCount = str_word_count($this->essayNew);
-        if ($wordCount < 50) {
-            return [
-                'passed' => false,
-                'message' => 'Essay is too short',
-                'suggestions' => ['Please write at least 50 words']
-            ];
-        }
-
-        // Check maximum word count
-        if ($wordCount > 5000) {
-            return [
-                'passed' => false,
-                'message' => 'Essay is too long',
-                'suggestions' => ['Please keep your essay under 5000 words']
-            ];
-        }
-
-        return ['passed' => true];
+        return implode("\n", $lines);
     }
 
-    /**
-     * Build the grading prompt
-     *
-     * @return string
-     */
-    private function buildGradingPrompt()
+    private function calculate_cost($usage, $model_config)
     {
-        $prompt = "Please grade the following essay:\n\n";
-        $prompt .= "Essay Prompt: " . $this->essayPrompt . "\n\n";
-        $prompt .= "Student Grade Level: " . $this->studentGrade . "\n\n";
-        $prompt .= "Essay Content:\n" . $this->essayNew . "\n\n";
-        
-        if (!empty($this->traitInstructions)) {
-            $prompt .= "Grading Instructions:\n" . $this->traitInstructions . "\n\n";
+        if (!is_array($usage)) {
+            $usage = (array) $usage;
         }
-        
-        $prompt .= "Please provide:\n";
-        $prompt .= "1. Overall grade (A, B, C, D, F)\n";
-        $prompt .= "2. Detailed feedback on content, structure, grammar, and style\n";
-        $prompt .= "3. Specific suggestions for improvement\n";
-        $prompt .= "4. Score out of 100\n";
-        $prompt .= "5. Analysis of key traits (creativity, clarity, organization, etc.)\n";
-        
-        return $prompt;
-    }
+        $prompt_tokens = isset($usage["prompt_tokens"]) ? $usage["prompt_tokens"] : 0;
+        $completion_tokens = isset($usage["completion_tokens"]) ? $usage["completion_tokens"] : 0;
+        $prompt_tokens_details = isset($usage["prompt_tokens_details"]) ? $usage["prompt_tokens_details"] : [];
+        $cached_tokens = isset($prompt_tokens_details["cached_tokens"]) ? $prompt_tokens_details["cached_tokens"] : 0;
+        $non_cached_tokens = $prompt_tokens - $cached_tokens;
 
-    /**
-     * Parse the AI grading response
-     *
-     * @param string $response
-     * @return array
-     */
-    private function parseGradingResponse($response)
-    {
-        $result = [
-            'grade' => 'N/A',
-            'feedback' => $response,
-            'suggestions' => [],
-            'traits' => [],
-            'overall_score' => 0
-        ];
+        $input_cost_per_token = $model_config->input_cost / 1000000;
+        $cached_cost_per_token = ($model_config->cached_input_cost ? $model_config->cached_input_cost : 0) / 1000000;
+        $output_cost_per_token = $model_config->output_cost / 1000000;
 
-        // Extract grade
-        if (preg_match('/grade[:\s]+([A-F])/i', $response, $matches)) {
-            $result['grade'] = strtoupper($matches[1]);
-        }
-
-        // Extract score
-        if (preg_match('/(\d+)\s*\/\s*100|score[:\s]+(\d+)/i', $response, $matches)) {
-            $result['overall_score'] = (int)($matches[1] ?? $matches[2]);
-        }
-
-        // Extract suggestions
-        if (preg_match('/suggestions?[:\s]+(.*?)(?=\n\n|\n[A-Z]|$)/is', $response, $matches)) {
-            $suggestions = explode("\n", trim($matches[1]));
-            $result['suggestions'] = array_filter(array_map('trim', $suggestions));
-        }
-
-        return $result;
-    }
-
-    /**
-     * Log grading result
-     *
-     * @param array $result
-     */
-    private function logGradingResult($result)
-    {
-        $logData = [
-            'timestamp' => date('Y-m-d H:i:s'),
-            'content_id' => $this->contentId,
-            'student_id' => $this->studentId,
-            'grade' => $result['grade'],
-            'score' => $result['overall_score'],
-            'model_used' => $this->modelConfig['model'] ?? 'unknown'
-        ];
-
-        $logFile = $this->logFilename . 'grading_' . date('Y-m-d') . '.log';
-        file_put_contents($logFile, json_encode($logData) . "\n", FILE_APPEND | LOCK_EX);
-    }
-
-    /**
-     * Log error
-     *
-     * @param string $message
-     */
-    private function logError($message)
-    {
-        $logData = [
-            'timestamp' => date('Y-m-d H:i:s'),
-            'content_id' => $this->contentId,
-            'student_id' => $this->studentId,
-            'error' => $message
-        ];
-
-        $logFile = $this->logFilename . 'errors_' . date('Y-m-d') . '.log';
-        file_put_contents($logFile, json_encode($logData) . "\n", FILE_APPEND | LOCK_EX);
-    }
-
-    /**
-     * Get available models
-     *
-     * @return array
-     */
-    public static function getAvailableModels()
-    {
-        return [
-            'gpt-4' => 'GPT-4',
-            'gpt-4-turbo' => 'GPT-4 Turbo',
-            'gpt-3.5-turbo' => 'GPT-3.5 Turbo',
-            'gpt-4o' => 'GPT-4o',
-            'gpt-4o-mini' => 'GPT-4o Mini'
-        ];
-    }
-
-    /**
-     * Validate model configuration
-     *
-     * @param array $config
-     * @return bool
-     */
-    public static function validateModelConfig($config)
-    {
-        return isset($config['model']) && !empty($config['model']);
+        return ($non_cached_tokens * $input_cost_per_token) +
+            ($cached_tokens * $cached_cost_per_token) +
+            ($completion_tokens * $output_cost_per_token);
     }
 }

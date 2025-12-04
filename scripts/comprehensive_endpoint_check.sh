@@ -84,3 +84,8 @@ echo "Frontend endpoints: $OUTPUT_DIR/frontend_endpoints.txt"
 echo "CI4 routes: $OUTPUT_DIR/ci4_routes.txt"
 echo "Missing endpoints: $OUTPUT_DIR/missing.txt"
 
+
+
+
+
+

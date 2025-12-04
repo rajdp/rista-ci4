@@ -19,3 +19,8 @@ CREATE TABLE IF NOT EXISTS `student_custom_items` (
     KEY `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
+
+
+
+

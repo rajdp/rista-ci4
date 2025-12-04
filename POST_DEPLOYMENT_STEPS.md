@@ -267,3 +267,8 @@ chmod -R 755 writable/
 
 **Note:** CodeIgniter 4 doesn't require a traditional "installation" - once files are uploaded, `.env` is configured, encryption key is set, and permissions are correct, it should work immediately.
 
+
+
+
+
+
