@@ -790,7 +790,7 @@ $routes->post('reportcard/analytics', 'ReportCard::analytics');
 
 // ==================== STUDENT PORTAL API ROUTES ====================
 
-$routes->group('api/student-portal', ['filter' => 'jwtauth'], function($routes) {
+$routes->group('api/student-portal', ['filter' => 'auth'], function($routes) {
 
     // PROFILE CHANGE REQUESTS
     $routes->post('profile/change-request', 'StudentPortalAPI::createProfileChangeRequest');
@@ -815,6 +815,9 @@ $routes->group('api/student-portal', ['filter' => 'jwtauth'], function($routes) 
     $routes->get('document/(:num)/download', 'StudentPortalAPI::downloadDocument/$1');
     $routes->delete('document/(:num)', 'StudentPortalAPI::deleteDocument/$1');
 
+    // STUDENT CLASSES
+    $routes->get('student/classes', 'StudentPortalAPI::getStudentClasses');
+
     // CONVERSATIONS
     $routes->post('request/(:alpha)/(:num)/message', 'StudentPortalAPI::addMessage/$1/$2');
     $routes->get('request/(:alpha)/(:num)/conversation', 'StudentPortalAPI::getConversation/$1/$2');
@@ -822,7 +825,7 @@ $routes->group('api/student-portal', ['filter' => 'jwtauth'], function($routes) 
 
 // ==================== ADMIN APPROVAL CENTER ROUTES ====================
 
-$routes->group('api/admin/approval-center', ['filter' => 'jwtauth,adminonly'], function($routes) {
+$routes->group('api/admin/approval-center', ['filter' => 'auth,admin'], function($routes) {
 
     // DASHBOARD
     $routes->get('dashboard', 'StudentPortalAPI::getApprovalDashboard');
@@ -868,7 +871,7 @@ $routes->group('api/admin/approval-center', ['filter' => 'jwtauth,adminonly'], f
 
 // ==================== TEACHER ROUTES ====================
 
-$routes->group('api/teacher', ['filter' => 'jwtauth'], function($routes) {
+$routes->group('api/teacher', ['filter' => 'auth'], function($routes) {
     // View absences for their classes
     $routes->get('class/(:num)/absences', 'StudentPortalAPI::getAbsencesForClass/$1');
 });

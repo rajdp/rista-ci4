@@ -144,8 +144,8 @@ class DocumentService
     public function listDocuments(int $studentId, int $schoolId, array $filters = []): array
     {
         try {
-            $limit = $filters['limit'] ?? 50;
-            $offset = $filters['offset'] ?? 0;
+            $limit = (int) ($filters['limit'] ?? 50);
+            $offset = (int) ($filters['offset'] ?? 0);
 
             $documents = $this->documentModel->getStudentDocuments($schoolId, $studentId, $filters, $limit, $offset);
 
@@ -445,8 +445,8 @@ class DocumentService
     public function getPendingDocuments(int $schoolId, array $filters = []): array
     {
         try {
-            $limit = $filters['limit'] ?? 50;
-            $offset = $filters['offset'] ?? 0;
+            $limit = (int) ($filters['limit'] ?? 50);
+            $offset = (int) ($filters['offset'] ?? 0);
 
             $documents = $this->documentModel->getPendingDocuments($schoolId, $limit, $offset);
 

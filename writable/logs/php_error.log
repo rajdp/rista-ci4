@@ -206,3 +206,29 @@
 [29-Nov-2025 03:19:08 UTC] PHP Fatal error:  Access level to App\Controllers\Mailbox::setCorsHeaders() must be protected (as in class App\Controllers\BaseController) or weaker in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Mailbox.php on line 287
 [29-Nov-2025 03:21:08 UTC] PHP Fatal error:  Access level to App\Controllers\Mailbox::setCorsHeaders() must be protected (as in class App\Controllers\BaseController) or weaker in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Mailbox.php on line 287
 [29-Nov-2025 03:21:13 UTC] PHP Fatal error:  Access level to App\Controllers\Mailbox::setCorsHeaders() must be protected (as in class App\Controllers\BaseController) or weaker in /Applications/MAMP/htdocs/rista_ci4/app/Controllers/Mailbox.php on line 287
+[04-Dec-2025 06:38:36 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-12-04 06:38:36
+[04-Dec-2025 06:38:36 UTC] 📦 Params received: {"platform":"web","user_id":"2488","role_id":"5","class_id":["1374"]}
+[04-Dec-2025 06:38:36 UTC] ✅ All validations passed
+[04-Dec-2025 06:38:36 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1374) 
+                        AND md.user_id = 2488 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[04-Dec-2025 06:38:36 UTC] 📦 Query returned 0 rows: []
+[04-Dec-2025 06:38:36 UTC] ✅ Prepared response with 1 items: [{"class_id":"1374","newMessage":0}]
+[04-Dec-2025 06:38:36 UTC] ✅ SSE response sent successfully
+[04-Dec-2025 14:55:29 UTC] 🚀 MailboxCI4::getMessageCount() called at 2025-12-04 14:55:29
+[04-Dec-2025 14:55:29 UTC] 📦 Params received: {"platform":"web","user_id":"2488","role_id":"5","class_id":["1374"]}
+[04-Dec-2025 14:55:29 UTC] ✅ All validations passed
+[04-Dec-2025 14:55:29 UTC] 📊 SQL Query: SELECT m.class_id, COUNT(*) as message_count 
+                      FROM mailbox m
+                      LEFT JOIN mailbox_details md ON m.message_id = md.message_id
+                      WHERE m.class_id IN (1374) 
+                        AND md.user_id = 2488 
+                        AND md.is_read = 0
+                      GROUP BY m.class_id
+[04-Dec-2025 14:55:29 UTC] 📦 Query returned 0 rows: []
+[04-Dec-2025 14:55:29 UTC] ✅ Prepared response with 1 items: [{"class_id":"1374","newMessage":0}]
+[04-Dec-2025 14:55:29 UTC] ✅ SSE response sent successfully

@@ -104,8 +104,8 @@ class AbsenceRequestService
             $schoolId = $filters['school_id'] ?? null;
             $studentId = $filters['student_id'] ?? null;
             $status = $filters['status'] ?? null;
-            $limit = $filters['limit'] ?? 50;
-            $offset = $filters['offset'] ?? 0;
+            $limit = (int) ($filters['limit'] ?? 50);
+            $offset = (int) ($filters['offset'] ?? 0);
 
             if (!$schoolId) {
                 return [

@@ -76,8 +76,8 @@ class StudentPortalAPI extends ResourceController
         $data = $this->request->getJSON(true);
 
         $result = $this->profileService->createProfileChangeRequest(
-            $userInfo['user_id'],
-            $userInfo['school_id'],
+            (int) $userInfo['user_id'],
+            (int) $userInfo['school_id'],
             $data['changes'] ?? [],
             $data['reason'] ?? null
         );
@@ -114,7 +114,7 @@ class StudentPortalAPI extends ResourceController
 
         $result = $this->profileService->approveProfileChange(
             $requestId,
-            $userInfo['user_id'],
+            (int) $userInfo['user_id'],
             $data['notes'] ?? null
         );
 
@@ -132,7 +132,7 @@ class StudentPortalAPI extends ResourceController
 
         $result = $this->profileService->rejectProfileChange(
             $requestId,
-            $userInfo['user_id'],
+            (int) $userInfo['user_id'],
             $data['reason']
         );
 
@@ -147,8 +147,8 @@ class StudentPortalAPI extends ResourceController
         $data = $this->request->getJSON(true);
 
         $result = $this->absenceService->createAbsenceRequest(
-            $userInfo['user_id'],
-            $userInfo['school_id'],
+            (int) $userInfo['user_id'],
+            (int) $userInfo['school_id'],
             $data
         );
 
@@ -184,7 +184,7 @@ class StudentPortalAPI extends ResourceController
 
         $result = $this->absenceService->approveAbsence(
             $absenceId,
-            $userInfo['user_id'],
+            (int) $userInfo['user_id'],
             $data['notes'] ?? null
         );
 
@@ -202,7 +202,7 @@ class StudentPortalAPI extends ResourceController
 
         $result = $this->absenceService->rejectAbsence(
             $absenceId,
-            $userInfo['user_id'],
+            (int) $userInfo['user_id'],
             $data['reason']
         );
 
@@ -226,8 +226,8 @@ class StudentPortalAPI extends ResourceController
         $data = $this->request->getJSON(true);
 
         $result = $this->specialRequestService->createSpecialRequest(
-            $userInfo['user_id'],
-            $userInfo['school_id'],
+            (int) $userInfo['user_id'],
+            (int) $userInfo['school_id'],
             $data
         );
 
@@ -272,7 +272,7 @@ class StudentPortalAPI extends ResourceController
         $result = $this->specialRequestService->updateRequestStatus(
             $requestId,
             $data['status'],
-            $userInfo['user_id'],
+            (int) $userInfo['user_id'],
             $data['notes'] ?? null
         );
 
@@ -291,7 +291,7 @@ class StudentPortalAPI extends ResourceController
         $result = $this->specialRequestService->assignRequest(
             $requestId,
             $data['assigned_to'],
-            $userInfo['user_id']
+            (int) $userInfo['user_id']
         );
 
         return $this->apiResponse($result);
@@ -300,14 +300,14 @@ class StudentPortalAPI extends ResourceController
     public function getRequestTypes()
     {
         $userInfo = $this->getUserInfo();
-        $result = $this->specialRequestService->getRequestTypeConfig($userInfo['school_id']);
+        $result = $this->specialRequestService->getRequestTypeConfig((int) $userInfo['school_id']);
         return $this->apiResponse($result);
     }
 
     public function getAllRequestTypes()
     {
         $userInfo = $this->getUserInfo();
-        $result = $this->specialRequestService->getAllRequestTypes($userInfo['school_id']);
+        $result = $this->specialRequestService->getAllRequestTypes((int) $userInfo['school_id']);
         return $this->apiResponse($result);
     }
 
@@ -316,7 +316,7 @@ class StudentPortalAPI extends ResourceController
         $userInfo = $this->getUserInfo();
         $data = $this->request->getJSON(true);
 
-        $result = $this->specialRequestService->createRequestType($userInfo['school_id'], $data);
+        $result = $this->specialRequestService->createRequestType((int) $userInfo['school_id'], $data);
         return $this->apiResponse($result, 201);
     }
 
@@ -353,8 +353,8 @@ class StudentPortalAPI extends ResourceController
         ];
 
         $result = $this->documentService->uploadDocument(
-            $userInfo['user_id'],
-            $userInfo['school_id'],
+            (int) $userInfo['user_id'],
+            (int) $userInfo['school_id'],
             $fileData,
             $metadata
         );
@@ -375,13 +375,13 @@ class StudentPortalAPI extends ResourceController
 
         $studentId = $userInfo['role_id'] == 5 ? $userInfo['user_id'] : $this->request->getGet('student_id');
 
-        $result = $this->documentService->listDocuments($studentId, $userInfo['school_id'], $filters);
+        $result = $this->documentService->listDocuments((int) $studentId, (int) $userInfo['school_id'], $filters);
         return $this->apiResponse($result);
     }
 
     public function getDocument($documentId)
     {
-        $result = $this->documentService->getDocument($documentId);
+        $result = $this->documentService->getDocument((int) $documentId);
         return $this->apiResponse($result);
     }
 
@@ -390,9 +390,9 @@ class StudentPortalAPI extends ResourceController
         $userInfo = $this->getUserInfo();
 
         $result = $this->documentService->downloadDocument(
-            $documentId,
-            $userInfo['user_id'],
-            $userInfo['role_id']
+            (int) $documentId,
+            (int) $userInfo['user_id'],
+            (int) $userInfo['role_id']
         );
 
         if (!$result['success']) {
@@ -407,7 +407,7 @@ class StudentPortalAPI extends ResourceController
     public function deleteDocument($documentId)
     {
         $userInfo = $this->getUserInfo();
-        $result = $this->documentService->deleteDocument($documentId, $userInfo['user_id']);
+        $result = $this->documentService->deleteDocument((int) $documentId, (int) $userInfo['user_id']);
         return $this->apiResponse($result);
     }
 
@@ -417,8 +417,8 @@ class StudentPortalAPI extends ResourceController
         $data = $this->request->getJSON(true);
 
         $result = $this->documentService->approveDocument(
-            $documentId,
-            $userInfo['user_id'],
+            (int) $documentId,
+            (int) $userInfo['user_id'],
             $data['notes'] ?? null
         );
 
@@ -435,8 +435,8 @@ class StudentPortalAPI extends ResourceController
         }
 
         $result = $this->documentService->rejectDocument(
-            $documentId,
-            $userInfo['user_id'],
+            (int) $documentId,
+            (int) $userInfo['user_id'],
             $data['notes']
         );
 
@@ -448,7 +448,7 @@ class StudentPortalAPI extends ResourceController
     public function getApprovalDashboard()
     {
         $userInfo = $this->getUserInfo();
-        $result = $this->approvalService->getDashboardStats($userInfo['school_id']);
+        $result = $this->approvalService->getDashboardStats((int) $userInfo['school_id']);
         return $this->apiResponse($result);
     }
 
@@ -462,7 +462,7 @@ class StudentPortalAPI extends ResourceController
             'offset' => $this->request->getGet('offset') ?? 0,
         ];
 
-        $result = $this->approvalService->getAllPendingRequests($userInfo['school_id'], $filters);
+        $result = $this->approvalService->getAllPendingRequests((int) $userInfo['school_id'], $filters);
         return $this->apiResponse($result);
     }
 
@@ -478,7 +478,7 @@ class StudentPortalAPI extends ResourceController
         $result = $this->approvalService->bulkApprove(
             $data['request_type'],
             $data['request_ids'],
-            $userInfo['user_id']
+            (int) $userInfo['user_id']
         );
 
         return $this->apiResponse($result);
@@ -496,7 +496,7 @@ class StudentPortalAPI extends ResourceController
         $result = $this->approvalService->bulkReject(
             $data['request_type'],
             $data['request_ids'],
-            $userInfo['user_id'],
+            (int) $userInfo['user_id'],
             $data['reason']
         );
 
@@ -508,8 +508,50 @@ class StudentPortalAPI extends ResourceController
         $userInfo = $this->getUserInfo();
         $adminId = $this->request->getGet('admin_id') ?? $userInfo['user_id'];
 
-        $result = $this->approvalService->getAdminWorkload($adminId, $userInfo['school_id']);
+        $result = $this->approvalService->getAdminWorkload((int) $adminId, (int) $userInfo['school_id']);
         return $this->apiResponse($result);
+    }
+
+    // ==================== STUDENT CLASSES ====================
+
+    /**
+     * Get student's enrolled classes for absence request
+     */
+    public function getStudentClasses()
+    {
+        $userInfo = $this->getUserInfo();
+        $db = \Config\Database::connect();
+
+        try {
+            $classes = $db->table('student_class sc')
+                ->select('
+                    sc.class_id,
+                    c.class_name,
+                    c.class_code,
+                    CONCAT(COALESCE(up.first_name, ""), " ", COALESCE(up.last_name, "")) as teacher_name
+                ')
+                ->join('class c', 'c.class_id = sc.class_id', 'left')
+                ->join('user_profile up', 'up.user_id = c.teacher_id', 'left')
+                ->where('sc.student_id', (int) $userInfo['user_id'])
+                ->where('sc.status', '1')
+                ->where('c.status', '1')
+                ->orderBy('c.class_name', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->apiResponse([
+                'success' => true,
+                'data' => $classes
+            ]);
+
+        } catch (\Throwable $e) {
+            log_message('error', 'StudentPortalAPI::getStudentClasses - ' . $e->getMessage());
+            return $this->apiResponse([
+                'success' => false,
+                'data' => null,
+                'error' => 'Unable to load student classes'
+            ], 200, 500);
+        }
     }
 
     // ==================== CONVERSATIONS ====================
@@ -524,11 +566,11 @@ class StudentPortalAPI extends ResourceController
         }
 
         $result = $this->conversationService->addMessage(
-            $userInfo['school_id'],
+            (int) $userInfo['school_id'],
             $requestType,
             $requestId,
-            $userInfo['user_id'],
-            $userInfo['role_id'],
+            (int) $userInfo['user_id'],
+            (int) $userInfo['role_id'],
             $data['message'],
             $data['is_internal'] ?? false
         );
@@ -543,8 +585,8 @@ class StudentPortalAPI extends ResourceController
         $result = $this->conversationService->getConversation(
             $requestType,
             $requestId,
-            $userInfo['user_id'],
-            $userInfo['role_id']
+            (int) $userInfo['user_id'],
+            (int) $userInfo['role_id']
         );
 
         return $this->apiResponse($result);

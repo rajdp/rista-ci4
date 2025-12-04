@@ -92,8 +92,8 @@ class ApprovalCenterService
     {
         try {
             $type = $filters['type'] ?? 'all';
-            $limit = $filters['limit'] ?? 50;
-            $offset = $filters['offset'] ?? 0;
+            $limit = (int) ($filters['limit'] ?? 50);
+            $offset = (int) ($filters['offset'] ?? 0);
 
             $allRequests = [];
 

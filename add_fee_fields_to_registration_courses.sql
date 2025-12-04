@@ -17,3 +17,5 @@ ADD COLUMN IF NOT EXISTS class_id BIGINT UNSIGNED NULL AFTER prorated_fee;
 
 
 
+
+

@@ -8,6 +8,11 @@ class CreateStudentAssignContentTable extends Migration
 {
     public function up()
     {
+        // Skip if table already exists
+        if ($this->db->tableExists('student_assign_content')) {
+            return;
+        }
+
         $this->forge->addField([
             'id' => [
                 'type' => 'BIGINT',

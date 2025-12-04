@@ -35,3 +35,5 @@ INNER JOIN school s ON s.school_id = ass.school_id
 WHERE ass.name = 'payment_methods'
 ORDER BY ass.school_id;
 
+
+
